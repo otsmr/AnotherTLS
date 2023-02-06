@@ -1,4 +1,4 @@
-use anothertls::{update_to_tls_listener, TlsConfig, TlsListener};
+use anothertls::{TlsConfig, TlsListener};
 use std::{
     io,
     net::{TcpListener, ToSocketAddrs},
@@ -12,18 +12,40 @@ impl HttpsServer {
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
         let listener = TcpListener::bind(addr)?;
 
-        let listener = update_to_tls_listener(listener, TlsConfig {});
+        let listener = TlsListener::new(listener, TlsConfig {});
 
         Ok(Self { listener })
     }
 
     pub fn static_file_server(&self, _http_root: &str) {
-        match self.listener.accept() {
-            Ok((_socket, _addr)) => {
-                log::debug!("New Connection");
-            }
-            Err(e) => log::error!("couldn't get client: {:?}", e),
-        };
+        loop {
+            match self.listener.accept() {
+                Ok((mut socket, _addr)) => {
+
+                    if socket.connect_block().is_err() {
+                        break;
+                    }
+
+                    log::debug!("New Connection");
+
+                    let mut buf: [u8; 4096] = [0; 4096];
+
+                    loop {
+
+                        let n = match socket.read(&mut buf) {
+                            Ok(n) => n,
+                            _ => break,
+                        };
+
+                        log::info!("Read from socket: {}", n);
+
+                    }
+
+
+                }
+                Err(e) => log::error!("couldn't get client: {:?}", e),
+            };
+        }
     }
 }
 
