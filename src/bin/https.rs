@@ -1,4 +1,5 @@
-use anothertls::{TlsConfig, TlsListener};
+use anothertls::TlsConfig;
+use anothertls::net::TlsListener;
 use std::{
     io,
     net::{TcpListener, ToSocketAddrs},
