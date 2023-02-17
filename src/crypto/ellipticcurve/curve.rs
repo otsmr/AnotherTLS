@@ -1,12 +1,12 @@
-use num_bigint::{BigInt, ToBigInt};
+use ibig::{ibig, IBig};
 use super::Point;
 
 pub struct Curve {
     pub name: String,
-    pub p: BigInt,
-    pub a: BigInt,
-    pub b: BigInt,
-    pub n: BigInt,
+    pub p: IBig,
+    pub a: IBig,
+    pub b: IBig,
+    pub n: IBig,
     pub g: Point,
 
 }
@@ -19,13 +19,13 @@ impl Curve {
     pub fn secp256r1() -> Self {
         Curve {
             name: "secp256r1".to_string(),
-            p: BigInt::parse_bytes(b"ffffffff00000001000000000000000000000000ffffffffffffffffffffffff", 16).unwrap(),
-            a: BigInt::parse_bytes(b"ffffffff00000001000000000000000000000000fffffffffffffffffffffffc", 16).unwrap(),
-            b: BigInt::parse_bytes(b"5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b", 16).unwrap(),
-            n: BigInt::parse_bytes(b"ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16).unwrap(),
+            p: ibig!(_ffffffff00000001000000000000000000000000ffffffffffffffffffffffff base 16),
+            a: ibig!(_ffffffff00000001000000000000000000000000fffffffffffffffffffffffc base 16),
+            b: ibig!(_5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b base 16),
+            n: ibig!(_ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551 base 16),
             g: Point {
-                x: BigInt::parse_bytes(b"6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296", 16).unwrap(),
-                y: BigInt::parse_bytes(b"4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5", 16).unwrap()
+                x: ibig!(_6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296 base 16),
+                y: ibig!(_4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5 base 16)
             }
         }
     }
@@ -50,7 +50,8 @@ impl Curve {
         let a = self.a.clone();
         let b = self.b.clone();
 
-        let y_2 = p.y.modpow(&2i32.to_bigint().unwrap(), &self.p);
+        // FIXME: use mod_pow
+        let y_2 = p.y.pow(2) % self.p;
         let x = (p.x.pow(3) + a * p.x.clone() + b) % self.p.clone();
 
         if y_2 != x  {

@@ -1,12 +1,12 @@
 use num_traits::One;
-use num_bigint::{BigInt, ToBigInt};
+use ibig::{ibig, IBig};
 
 use super::math;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Point {
-    pub x: BigInt,
-    pub y: BigInt,
+    pub x: IBig,
+    pub y: IBig,
 }
 
 impl Point {
@@ -30,13 +30,21 @@ impl Point {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct JacobianPoint {
-    pub x: BigInt,
-    pub y: BigInt,
-    pub z: BigInt,
+    pub x: IBig,
+    pub y: IBig,
+    pub z: IBig,
 }
 
 impl JacobianPoint {
+    pub fn new(x: i32, y: i32, z: i32) -> Self {
+        Self {
+            x: x.to_bigint().unwrap(),
+            y: y.to_bigint().unwrap(),
+            z: z.to_bigint().unwrap(),
+        }
+    }
     pub fn from_point(p: Point) -> Self {
         JacobianPoint {
             x: p.x,
@@ -45,9 +53,9 @@ impl JacobianPoint {
         }
     }
 
-    pub fn to_point(&self, p: BigInt) -> Point {
+    pub fn to_point(&self, p: &IBig) -> Point {
 
-        let z = math::inv(&self.z, &p);
+        let z = math::inv(&self.z, p);
         let x = self.x.clone() * z.pow(2) % p.clone();
         let y = self.y.clone() * z.pow(3) % p;
 
