@@ -18,33 +18,33 @@ use super::Point;
 /// # Examples
 ///
 /// ```
-/// # use num_bigint::{IBig, ToIBig};
+/// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::inv;
-/// let x = 7u32.to_bigint().unwrap();
-/// let n = 11u32.to_bigint().unwrap();
+/// let x = ibig!(7);
+/// let n = ibig!(11);
 ///
-/// assert_eq!(inv(&x, &n), 8u32.to_bigint().unwrap());
+/// assert_eq!(inv(&x, &n), ibig!(8));
 /// ```
 ///
 /// ```
-/// # use num_bigint::{IBig, ToIBig};
+/// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::inv;
-/// let x = 5i32.to_bigint().unwrap();
-/// let n = 11i32.to_bigint().unwrap();
+/// let x = ibig!(5);
+/// let n = ibig!(11);
 ///
-/// assert_eq!(inv(&x, &n), 9i32.to_bigint().unwrap());
+/// assert_eq!(inv(&x, &n), ibig!(9));
 /// ```
 pub fn inv(x: &IBig, n: &IBig) -> IBig {
     if x.eq(&ibig!(0)) {
         return ibig!(0);
     }
 
-    let mut lm = 1u32.to_bigint().unwrap();
-    let mut hm = 0u32.to_bigint().unwrap();
+    let mut lm = ibig!(1);
+    let mut hm = ibig!(0);
     let mut low = x % n;
     let mut high = n.clone();
 
-    while low > 1u32.to_bigint().unwrap() {
+    while low > ibig!(1) {
         let r = &high / &low;
         let nm = &hm - &lm * &r;
         let nw = &high - &low * &r;
@@ -60,25 +60,25 @@ pub fn inv(x: &IBig, n: &IBig) -> IBig {
 /// Calculates the modules
 ///
 /// ````
-/// # use num_bigint::{IBig, ToIBig};
+/// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::rem_euclid;
-/// let x = 12i32.to_bigint().unwrap();
-/// let n = 11i32.to_bigint().unwrap();
+/// let x = ibig!(12);
+/// let n = ibig!(11);
 ///
-/// assert_eq!(rem_euclid(&x, &n), 1i32.to_bigint().unwrap());
+/// assert_eq!(rem_euclid(&x, &n), ibig!(1));
 /// ````
 /// ````
-/// # use num_bigint::{IBig, ToIBig};
+/// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::rem_euclid;
-/// let x = -5i32.to_bigint().unwrap();
-/// let n = 11i32.to_bigint().unwrap();
+/// let x = ibig!(-5);
+/// let n = ibig!(11);
 ///
-/// assert_eq!(rem_euclid(&x, &n), 6i32.to_bigint().unwrap());
+/// assert_eq!(rem_euclid(&x, &n), ibig!(6));
 /// ````
 pub fn rem_euclid(x: &IBig, v: &IBig) -> IBig {
     let r = x % v;
-    if r < IBig::zero() {
-        if *v < IBig::zero() {
+    if r < ibig!(0) {
+        if *v < ibig!(0) {
             r - v
         } else {
             r + v
@@ -99,26 +99,26 @@ fn jacobian_double(p: &JacobianPoint, curve: &Curve) -> JacobianPoint {
     let a = curve.a.clone();
     let prime = &curve.p;
 
-    if p.y == IBig::zero() {
+    if p.y == ibig!(0) {
         return JacobianPoint {
-            x: IBig::zero(),
-            y: IBig::zero(),
-            z: IBig::zero(),
+            x: ibig!(0),
+            y: ibig!(0),
+            z: ibig!(0),
         };
     }
 
-    let ysq = p.y.modpow(&IBig::from(2u32), prime);
-    let s = rem_euclid(&(p.x.clone() * &IBig::from(4u32) * ysq.clone()), prime);
+    let ysq = p.y.pow(2);
+    let s = rem_euclid(&(p.x.clone() * &ibig!(4) * ysq.clone()), prime);
     let m = rem_euclid(
-        &(p.x.clone().pow(2u32) * &IBig::from(3u32) + a * p.z.clone().pow(4u32)),
+        &(p.x.clone().pow(2) * &ibig!(3) + a * p.z.clone().pow(4)),
         prime,
     );
-    let nx = rem_euclid(&(m.pow(2u32) - &IBig::from(2u32) * s.clone()), prime);
+    let nx = rem_euclid(&(m.pow(2) - &ibig!(2) * s.clone()), prime);
     let ny = rem_euclid(
-        &(m * (s - nx.clone()) - &IBig::from(8u32) * ysq.pow(2u32)),
+        &(m * (s - nx.clone()) - &ibig!(8) * ysq.pow(2)),
         prime,
     );
-    let nz = rem_euclid(&(p.y.clone() * p.z.clone() * &IBig::from(2u32)), prime);
+    let nz = rem_euclid(&(p.y.clone() * p.z.clone() * &ibig!(2)), prime);
 
     JacobianPoint {
         x: nx,
@@ -137,10 +137,10 @@ pub fn add(p: Point, q: Point, curve: &Curve) -> Point {
 }
 
 fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> JacobianPoint {
-    if p.y.is_zero() {
+    if p.y == ibig!(0) {
         return q.clone();
     }
-    if q.y.is_zero() {
+    if q.y == ibig!(0) {
         return p.clone();
     }
 

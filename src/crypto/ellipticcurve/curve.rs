@@ -38,7 +38,7 @@ impl Curve {
     /// # use anothertls::crypto::ellipticcurve::curve::Curve;
     /// # use anothertls::crypto::ellipticcurve::Point;
     /// let curve = Curve::secp256r1();
-    /// assert_eq!(curve.contains(&Point::u32u(10, 10)), false);
+    /// assert_eq!(curve.contains(&Point::u32(10, 10)), false);
     /// assert_eq!(curve.contains(&curve.g), true);
     /// ```
     pub fn contains(&self, p: &Point) -> bool {
@@ -51,7 +51,7 @@ impl Curve {
         let b = self.b.clone();
 
         // FIXME: use mod_pow
-        let y_2 = p.y.pow(2) % self.p;
+        let y_2 = p.y.pow(2) % self.p.clone();
         let x = (p.x.pow(3) + a * p.x.clone() + b) % self.p.clone();
 
         if y_2 != x  {

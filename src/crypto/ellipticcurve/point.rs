@@ -1,5 +1,5 @@
 use num_traits::One;
-use ibig::{ibig, IBig};
+use ibig::IBig;
 
 use super::math;
 
@@ -10,22 +10,10 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn u32(x: u32, y: u32) -> Option<Point> {
-        Some(Self {
-            x: match x.to_bigint() {
-                Some(x) => x,
-                None => return None,
-            },
-            y: match y.to_bigint() {
-                Some(y) => y,
-                None => return None,
-            },
-        })
-    }
-    pub fn u32u(x: u32, y: u32) -> Point {
+    pub fn u32(x: u32, y: u32) -> Point {
         Self {
-            x: x.to_bigint().unwrap(),
-            y: y.to_bigint().unwrap(),
+            x: IBig::from(x),
+            y: IBig::from(y),
         }
     }
 }
@@ -40,9 +28,9 @@ pub struct JacobianPoint {
 impl JacobianPoint {
     pub fn new(x: i32, y: i32, z: i32) -> Self {
         Self {
-            x: x.to_bigint().unwrap(),
-            y: y.to_bigint().unwrap(),
-            z: z.to_bigint().unwrap(),
+            x: IBig::from(x),
+            y: IBig::from(y),
+            z: IBig::from(z),
         }
     }
     pub fn from_point(p: Point) -> Self {
