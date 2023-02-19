@@ -20,6 +20,10 @@ print(hex(pp.x))
 print(hex(pp.y))
 
 
-pq = Math._fromJacobian(Math._jacobianAdd(p, q, c.A, c.P), c.P)
-print(hex(pq.x))
-print(hex(pq.y))
+p_add_q = Math._fromJacobian(Math._jacobianAdd(p, q, c.A, c.P), c.P)
+print(hex(p_add_q.x))
+print(hex(p_add_q.y))
+
+p_mul_q = Math._fromJacobian(Math._jacobianMultiply(p, 10, c.N, c.A, c.P), c.P)
+print(hex(p_mul_q.x))
+print(hex(p_mul_q.y))

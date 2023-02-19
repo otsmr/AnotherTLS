@@ -1,13 +1,15 @@
 use ibig::{ibig, IBig};
 use super::Point;
 
+
+#[derive(Clone)]
 pub struct Curve {
     pub name: String,
     pub p: IBig,
     pub a: IBig,
     pub b: IBig,
     pub n: IBig,
-    pub g: Point,
+    pub g: Point
 
 }
 
@@ -50,7 +52,6 @@ impl Curve {
         let a = self.a.clone();
         let b = self.b.clone();
 
-        // FIXME: use mod_pow
         let y_2 = p.y.pow(2) % self.p.clone();
         let x = (p.x.pow(3) + a * p.x.clone() + b) % self.p.clone();
 

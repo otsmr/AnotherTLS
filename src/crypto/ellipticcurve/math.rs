@@ -169,18 +169,41 @@ fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> Jacobian
 }
 
 
-// pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
-//     jacobian_multiply(
-//         &JacobianPoint::from_point(p.clone()),
-//         n,
-//         curve,
-//     )
-//     .to_point(&curve.p)
-// }
+pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
+    jacobian_multiply(
+        &JacobianPoint::from_point(p.clone()),
+        n,
+        curve,
+    )
+    .to_point(&curve.p)
+}
 
-// pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
+pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
 
-// }
+    if p.y == ibig!(0) || n == ibig!(0) {
+        return JacobianPoint::new(0, 0, 1);
+    }
+
+    if n == ibig!(1) {
+        return p.clone();
+    }
+
+    if n < ibig!(0) || n >= curve.n {
+        return jacobian_multiply(p, rem_euclid(&n, &curve.n), curve);
+    }
+
+    let q = jacobian_double(
+        &jacobian_multiply(p, n.clone()/2, curve),
+        curve
+    );
+
+    if rem_euclid(&n, &ibig!(2)) == ibig!(0) {
+        return q;
+    }
+
+    jacobian_add(&q, p, curve)
+
+}
 
 #[cfg(test)]
 mod tests {
@@ -220,5 +243,19 @@ mod tests {
         let point = result.to_point(&curve.p);
         assert!(point.x.eq(&ibig!(_aba09341535abbb6e7d8a93d6dd69c3251ab4eb0b62e5b6d5af96bf0c4c9950e base 16)));
         assert!(point.y.eq(&ibig!(_91da9e032e4165b8b7115c58251ce1620ebefd8dd221b73bd93ca14c3650e62c base 16)));
+    }
+
+    #[test]
+    fn test_jacobian_multiply() {
+        let curve = Curve::secp256r1();
+        let point = JacobianPoint::from_point(Point {
+            x: ibig!(_440c8c7d996adc6038090e43d8595c45381b840219ea7d376f1fe9cd833bbe61 base 16),
+            y: ibig!(_c5a285ff65319f8f3d8dcb12388457140c00a1887e18a0fe8da0f1b8c34670e3 base 16)
+        });
+        let result = math::jacobian_multiply(&point, ibig!(10), &curve);
+
+        let point = result.to_point(&curve.p);
+        assert!(point.x.eq(&ibig!(_38bfb2c88dd3dcfc1513aaef707fd37211b8f664625ed52edd1b365b534cfb55 base 16)));
+        assert!(point.y.eq(&ibig!(_5d1e3367bfc361ca6c7af6f46bd23e7ac8809d8364344558920b2f475278da52 base 16)));
     }
 }
