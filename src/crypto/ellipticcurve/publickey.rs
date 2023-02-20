@@ -2,8 +2,8 @@ use super::{Point, curve::Curve};
 
 
 pub struct PublicKey {
-    point: Point,
-    curve: Curve
+    pub point: Point,
+    pub curve: Curve
 }
 
 impl PublicKey {

@@ -10,6 +10,9 @@ pub struct Point {
 }
 
 impl Point {
+    pub fn new(x: IBig, y: IBig) -> Point {
+        Self { x, y }
+    }
     pub fn u32(x: u32, y: u32) -> Point {
         Self {
             x: IBig::from(x),

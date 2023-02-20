@@ -4,9 +4,10 @@ use ibig::IBig;
 
 // pub struct RecoveryId(u8);
 
+#[derive(Debug)]
 pub struct Signature {
-    s: IBig,
-    r: IBig,
+    pub s: IBig,
+    pub r: IBig,
     // recovery_id: RecoveryId,
 }
 
