@@ -104,9 +104,6 @@ impl Ecdsa {
             return false;
         }
 
-        println!("x={}", x);
-        println!("r={}", sign.r);
-
         if x != sign.r {
             return false;
         }
