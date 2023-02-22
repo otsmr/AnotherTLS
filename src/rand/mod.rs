@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 pub mod simplerng;
 pub mod urandom;
 

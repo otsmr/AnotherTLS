@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use crate::rand::RngCore;
 use crate::rand::SeedableRng;
 use ibig::{ibig, IBig};

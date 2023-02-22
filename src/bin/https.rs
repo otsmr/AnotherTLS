@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use anothertls::TlsConfig;
 use anothertls::net::TlsListener;
 use std::{

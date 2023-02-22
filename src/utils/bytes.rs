@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use ibig::{IBig, ibig};
 
 pub fn to_ibig_le(bytes: &[u8]) -> IBig {

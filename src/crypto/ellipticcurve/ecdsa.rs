@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use crate::utils::bytes;
 use ibig::{ibig, IBig};
 
