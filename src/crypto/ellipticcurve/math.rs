@@ -207,9 +207,7 @@ pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianP
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto::ellipticcurve::curve::Curve;
-    use crate::crypto::ellipticcurve::point::JacobianPoint;
-    use crate::crypto::ellipticcurve::{math, Point};
+    use crate::crypto::ellipticcurve::{Curve, JacobianPoint, math, Point};
     use ibig::ibig;
 
     #[test]

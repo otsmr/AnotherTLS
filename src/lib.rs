@@ -1,9 +1,8 @@
 pub mod crypto;
 pub mod net;
-mod base64;
-mod rand;
-mod hash;
-mod bytes;
+pub mod utils;
+pub mod rand;
+pub mod hash;
 
 
 pub struct TlsConfig {

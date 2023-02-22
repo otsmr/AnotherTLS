@@ -42,7 +42,7 @@ pub fn encode(input: &Vec<u8>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::base64;
+    use crate::utils::base64;
 
     #[test]
     fn test_sha1() {

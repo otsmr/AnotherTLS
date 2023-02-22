@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::TlsConfig;
 use std::{
     io::Read,
@@ -36,7 +38,7 @@ struct ClientHello {
     extensions: Extension,
 }
 impl ClientHello {
-    pub fn from_raw(buf: &[u8]) {
+    pub fn from_raw(_buf: &[u8]) {
 
 
 
@@ -63,14 +65,9 @@ impl<'a> TlsStream<'a> {
 
             println!("{:?}", &raw_buf[..n]);
 
-            let client_hello = ClientHello::from_raw(&raw_buf[..n]);
+            // let _client_hello = ClientHello::from_raw(&raw_buf[..n]);
 
             // println!("{:?}", client_hello);
-
-
-
-            panic!("");
-
 
             state = HandshakeState::Finished;
 
@@ -81,7 +78,7 @@ impl<'a> TlsStream<'a> {
 
     }
 
-    pub fn read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize> {
+    pub fn read<'b>(&'b mut self, _buf: &'b mut [u8]) -> Result<usize> {
 
         let mut raw_buf: [u8; 4096] = [0; 4096];
 
@@ -92,7 +89,7 @@ impl<'a> TlsStream<'a> {
 
     }
 
-    pub fn write<'b>(&'b mut self, src: &'b [u8]) {
+    pub fn write<'b>(&'b mut self, _src: &'b [u8]) {
 
     }
 

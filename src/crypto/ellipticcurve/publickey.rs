@@ -1,4 +1,4 @@
-use super::{Point, curve::Curve};
+use super::{Point, Curve};
 
 
 pub struct PublicKey {

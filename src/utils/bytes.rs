@@ -17,6 +17,7 @@ pub fn to_u64_le(bytes: &[u8]) -> u64 {
     res
 }
 
+#[allow(dead_code)]
 pub fn from_hex(s: &str) -> Option<Vec<u8>> {
     if s.len() % 2 == 0 {
         (0..s.len())

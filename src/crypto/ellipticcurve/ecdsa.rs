@@ -1,22 +1,19 @@
-use crate::bytes;
-use crate::rand::{CryptoRng, RngCore, SeedableRng, SimpleRng};
+use crate::utils::bytes;
 use ibig::{ibig, IBig};
 
-use super::Point;
-use super::math::rem_euclid;
-use super::publickey::PublicKey;
-use super::{math, privatekey::PrivateKey, signature::Signature};
+use crate::rand::{RngCore, SeedableRng, SimpleRng, URandomRng};
+
+use super::{math, Point, PrivateKey, PublicKey, Signature};
 
 pub struct Ecdsa {
     rng: Box<dyn RngCore<IBig>>,
 }
 
 impl Ecdsa {
-
     /// Panics if /dev/urandom can't be read correctly
     pub fn urandom() -> Self {
         Self {
-            rng: Box::new(CryptoRng::new()),
+            rng: Box::new(URandomRng::new()),
         }
     }
 
@@ -66,69 +63,65 @@ impl Ecdsa {
         Ok(Signature::new(s, r))
     }
 
-pub fn verify(pub_key: PublicKey, sign: Signature, hashed_message: &[u8]) -> bool {
+    pub fn verify(pub_key: PublicKey, sign: Signature, hashed_message: &[u8]) -> bool {
+        // Check Public Key
+        // 1.
+        if pub_key.point.x == ibig!(0) && pub_key.point.y == ibig!(0) {
+            return false;
+        }
+        // 2.
+        if !pub_key.curve.contains(&pub_key.point) {
+            return false;
+        }
+        // 3. n * pub_key.point == 0
+        // ??
 
-    // Check Public Key
-    // 1.
-    if pub_key.point.x == ibig!(0) && pub_key.point.y == ibig!(0) {
-        return false;
+        // Check Signature
+        if sign.s <= ibig!(0) || sign.s >= pub_key.curve.n {
+            return false;
+        }
+        if sign.r <= ibig!(0) || sign.r >= pub_key.curve.n {
+            return false;
+        }
+
+        let z = bytes::to_ibig_le(hashed_message);
+        let curve = pub_key.curve;
+
+        let s_inv = math::inv(&sign.s, &curve.n);
+
+        let u1 = math::rem_euclid(&(z * s_inv.clone()), &curve.n);
+        let u2 = math::rem_euclid(&(sign.r.clone() * s_inv), &curve.n);
+
+        let u = Point::new(u1, u2);
+
+        let res1 = math::multiply(&curve.g, u.x.clone(), &curve);
+        let res2 = math::multiply(&pub_key.point, u.y, &curve);
+        let res = math::add(res1, res2, &curve);
+        let x = math::rem_euclid(&res.x, &curve.n);
+        let y = math::rem_euclid(&res.y, &curve.n);
+
+        if x == ibig!(0) && y == ibig!(0) {
+            return false;
+        }
+
+        println!("x={}", x);
+        println!("r={}", sign.r);
+
+        if x != sign.r {
+            return false;
+        }
+
+        true
     }
-    // 2.
-    if !pub_key.curve.contains(&pub_key.point) {
-        return false;
-    }
-    // 3. n * pub_key.point == 0
-    // ??
-
-
-    // Check Signature
-    if sign.s <= ibig!(0) || sign.s >= pub_key.curve.n {
-        return false;
-    }
-    if sign.r <= ibig!(0) || sign.r >= pub_key.curve.n {
-        return false;
-    }
-
-    let z = bytes::to_ibig_le(hashed_message);
-    let curve = pub_key.curve;
-
-    let s_inv = math::inv(&sign.s, &curve.n);
-
-    let u1 = rem_euclid(&(z*s_inv.clone()), &curve.n);
-    let u2 = rem_euclid(&(sign.r.clone()*s_inv), &curve.n);
-
-    let u = Point::new(u1, u2);
-
-    let res1 = math::multiply(&curve.g, u.x.clone(), &curve);
-    let res2 = math::multiply(&pub_key.point, u.y, &curve);
-    let res = math::add(res1, res2, &curve);
-    let x = rem_euclid(&res.x, &curve.n);
-    let y = rem_euclid(&res.y, &curve.n);
-
-
-    if x == ibig!(0) && y == ibig!(0) {
-        return false;
-    }
-
-    println!("x={}", x);
-    println!("r={}", sign.r);
-
-    if x != sign.r {
-        return false;
-    }
-
-    true
-
-}
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::bytes;
+    use crate::utils::bytes;
     use ibig::ibig;
 
-    use crate::crypto::ellipticcurve::{curve::Curve, ecdsa::Ecdsa, privatekey::PrivateKey};
+    use crate::crypto::ellipticcurve::{Curve, Ecdsa, PrivateKey};
 
     #[test]
     fn test_sign() {
@@ -170,7 +163,10 @@ mod tests {
 
         let sign = ecdsa.sign(&priv_key, &hashed_message).unwrap();
 
-        assert!(Ecdsa::verify(priv_key.get_public_key(), sign, &hashed_message));
-
+        assert!(Ecdsa::verify(
+            priv_key.get_public_key(),
+            sign,
+            &hashed_message
+        ));
     }
 }
