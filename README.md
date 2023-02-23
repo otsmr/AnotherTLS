@@ -10,10 +10,9 @@ mistakes when implementing crypto, especially when using elliptic curves.
 ### already implemented
 - [SHA256](https://datatracker.ietf.org/doc/html/rfc6234)
 - [AES](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
-- TLS curves: [TLS: prime256v1]()
+- [ECDSA (P-256)]()
 ### work in progress
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446) (with [Modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS))
-- Certificate type: [TLS: ECDSA (P-256)]()
 - Cipher suite: [TLS: AES_256_GCM]()
 - Key exchange protocol: [TLS: X25519]()
 ### Maybe
