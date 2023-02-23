@@ -43,11 +43,9 @@ impl Ecdsa {
         loop {
             // 1. Select a cryptographically secure random integer
             let k = self.rng.between(ibig!(1), curve.p.clone() - 1);
-            println!("k={}", k);
 
             // 2. k * G
             let p = math::multiply(&curve.g, k.clone(), &curve);
-            println!("rand={:?}", p);
 
             // 3. r = p.x mod n, if r == 0, again
             r = math::rem_euclid(&p.x, &curve.n);
