@@ -9,16 +9,17 @@ mistakes when implementing crypto, especially when using elliptic curves.
 ## standards
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446) (with [Modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS))
 ### already implemented
-- [SHA256](https://datatracker.ietf.org/doc/html/rfc6234)
-- [AES](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
+- Hash: [SHA256](https://datatracker.ietf.org/doc/html/rfc6234)
+- Cipher: [AES](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
 - [ECDSA]()
-- TLS curves [prime256v1]()
+- TLS curves: [prime256v1]()
 ### work in progress
 - Certificate type: ECDSA (P-256)
-- Cipher suite: [TLS: AES_256_GCM]()
+- Cipher suite: [TLS_AES_128_GCM_SHA256]()
 ### Maybe
-- Cipher suite: [TLS: AES_128_GCM]()
-- Cipher suite: [TLS: HACHA20_POLY1305]()
+- Cipher suite: [TLS_AES_256_GCM_SHA384]()
+- Hash: [SHA384](https://datatracker.ietf.org/doc/html/rfc6234)
+- Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
 - [SHA384](https://datatracker.ietf.org/doc/html/rfc6234)
-- TLS curves: [TLS: secp384r1]()
-- TLS curves: [TLS: X25519]()
+- TLS curves: [secp384r1]()
+- TLS curves: [X25519]()
