@@ -8,7 +8,7 @@
 #![allow(non_snake_case)]
 
 use super::{Blocksize, AES};
-use crate::utils::bytes;
+use crate::utils::bytes::{self, to_hex};
 
 pub struct GCM {}
 
@@ -35,15 +35,12 @@ impl GCM {
         p.reverse_bits()
     }
 
-    pub fn encrypt(
-        key: &[u8],
-        iv: &[u8],
-        plaintext: &[u8],
-        additional_data: &[u8],
-    ) -> Result<(Vec<u8>, u128), String> {
+
+    fn gcm(key: &[u8], iv: &[u8], data: &[u8], additional_data: &[u8], encrypt: bool) -> Result<(Vec<u8>, u128), String> {
+
         let blocksize = Blocksize::new(key.len() * 8)?;
 
-        let mut ciphertext = Vec::new();
+        let mut output = Vec::new();
         let mut aes = AES::init(key, blocksize)?;
         let mut counter = 0u128;
         let mut X = 0u128; // for i == 0
@@ -80,7 +77,7 @@ impl GCM {
             X = GCM::gmult(X ^ bytes::to_u128_le(add), H);
         }
 
-        let n = plaintext.len();
+        let n = data.len();
         for i in (0..n).step_by(16) {
 
             counter = (counter + 1) % 0x100000000; // 2^32
@@ -91,28 +88,42 @@ impl GCM {
                 (Yi & !0xFFFFFFFF) | counter
             };
 
-            let ci_1 = aes.encrypt(bytes::to_bytes(Yi));
+            let Ek_Y = aes.encrypt(bytes::to_bytes(Yi));
 
-            let plain = if n > i + 16 {
-                &plaintext[i..i + 16]
+            let data_slice = if n > i + 16 {
+                &data[i..i + 16]
             } else {
-                &plaintext[i..]
+                &data[i..]
             };
 
-            let pi = bytes::to_u128_le(plain);
-            let overflow = (16 - plain.len()) * 8;
-            let ci = (pi ^ bytes::to_u128_le(&ci_1)) >> overflow;
+            let data_u128 = bytes::to_u128_le(data_slice);
+            let overflow = (16 - data_slice.len()) * 8;
+            let out_i = (data_u128 ^ bytes::to_u128_le(&Ek_Y)) >> overflow;
 
-            ciphertext.append(&mut bytes::to_bytes(ci).to_vec());
+            output.append(&mut bytes::to_bytes(out_i).to_vec());
 
-            X = GCM::gmult(X ^ (ci << overflow), H);
+            X = if encrypt {
+                GCM::gmult(X ^ (out_i << overflow), H)
+            } else {
+                GCM::gmult(X ^ (data_u128), H)
+            }
         }
 
         let len = ((m as u128 * 8) << 64) | (n as u128 * 8);
 
         auth_tag ^= GCM::gmult(X ^ len, H);
 
-        Ok((ciphertext, auth_tag))
+        Ok((output, auth_tag))
+
+    }
+
+    pub fn encrypt(
+        key: &[u8],
+        iv: &[u8],
+        plaintext: &[u8],
+        additional_data: &[u8],
+    ) -> Result<(Vec<u8>, u128), String> {
+        GCM::gcm(key, iv, plaintext, additional_data, true)
     }
 
     pub fn decrypt(
@@ -120,11 +131,17 @@ impl GCM {
         iv: &[u8],
         ciphertext: &[u8],
         additional_data: &[u8],
-        auth_tag: &[u8],
-    ) -> Result<Vec<u8>, ()> {
-        let plaintext = Vec::new();
+        auth_tag: u128,
+    ) -> Result<Vec<u8>, String> {
 
-        Ok(plaintext)
+        let (C, T) = GCM::gcm(key, iv, ciphertext, additional_data, false)?;
+
+        if T != auth_tag {
+            return Err("auth_tag is not correct".to_string());
+        }
+
+        Ok(C)
+
     }
 }
 
@@ -133,6 +150,20 @@ mod tests {
     use crate::utils::bytes::from_hex;
 
     use super::GCM;
+
+    #[test]
+    fn test_decrypt() {
+
+        let K = from_hex("feffe9928665731c6d6a8f9467308308").unwrap();
+        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255").unwrap();
+        let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
+        let A = from_hex("").unwrap();
+        let (C, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
+
+        let P1 = GCM::decrypt(&K, &IV, &C, &A, T).unwrap();
+        assert_eq!(P, P1);
+    }
 
     #[test]
     fn test_encrypt() {
