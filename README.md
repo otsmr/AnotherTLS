@@ -15,7 +15,7 @@ mistakes when implementing crypto, especially when using elliptic curves.
 - TLS curves: [prime256v1]()
 ### work in progress
 - Certificate type: ECDSA (P-256)
-- Cipher suite: [TLS_AES_128_GCM_SHA256]()
+- Cipher suite: [TLS_AES_128_GCM_SHA256](https://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf)
 ### Maybe
 - Cipher suite: [TLS_AES_256_GCM_SHA384]()
 - Hash: [SHA384](https://datatracker.ietf.org/doc/html/rfc6234)
