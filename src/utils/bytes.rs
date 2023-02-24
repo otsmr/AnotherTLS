@@ -3,7 +3,7 @@
  *
  */
 
-use ibig::{IBig, ibig};
+use ibig::{ibig, IBig};
 
 pub fn to_ibig_le(bytes: &[u8]) -> IBig {
     let mut res = ibig!(0);
@@ -14,12 +14,51 @@ pub fn to_ibig_le(bytes: &[u8]) -> IBig {
 
     res
 }
+pub fn to_bytes(num: u128) -> [u8; 16] {
+    let mut res = [0u8; 16];
+    for i in 0..16 {
+        res[i] = (num >> ((15 * 8) - i * 8)) as u8;
+    }
+    res
+}
+// pub fn to_u128_be(bytes: &[u8]) -> u128 {
+//     let mut res: u128 = 0;
+//     let bytes_iter = if bytes.len() > 16 {
+//         &bytes[..16]
+//     } else {
+//         bytes
+//     }.iter();
+//     for (i, byte) in bytes_iter.enumerate() {
+//         res += (*byte as u128) << (i * 8);
+//     }
+//     res
+// }
+pub fn to_u128_le(bytes: &[u8]) -> u128 {
+    let mut res: u128 = 0;
+    let bytes_iter = if bytes.len() > 16 {
+        &bytes[..16]
+    } else {
+        bytes
+    }
+    .iter();
+    for (i, byte) in bytes_iter.enumerate() {
+        res += (*byte as u128) << ((15 * 8) - i * 8);
+    }
+    res
+}
 pub fn to_u64_le(bytes: &[u8]) -> u64 {
     let mut res: u64 = 0;
     for (i, byte) in bytes[..8].iter().enumerate() {
         res += (*byte as u64) << ((7 * 8) - i * 8);
     }
     res
+}
+
+pub fn to_hex(b: Vec<u8>) -> String {
+    b.iter()
+        .map(|b| format!("{:02X}", b).to_string())
+        .collect::<Vec<String>>()
+        .join("")
 }
 
 #[allow(dead_code)]
