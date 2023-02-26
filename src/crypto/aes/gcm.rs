@@ -8,7 +8,7 @@
 #![allow(non_snake_case)]
 
 use super::{Blocksize, AES};
-use crate::utils::bytes::{self, to_hex};
+use crate::utils::bytes;
 
 pub struct GCM {}
 

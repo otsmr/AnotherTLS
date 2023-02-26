@@ -50,7 +50,7 @@ mod tests {
     use crate::utils::base64;
 
     #[test]
-    fn test_sha1() {
+    fn test_base64() {
         let test_strings = [
             ("", ""),
             ("f", "Zg=="),

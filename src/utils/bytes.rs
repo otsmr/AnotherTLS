@@ -16,8 +16,8 @@ pub fn to_ibig_le(bytes: &[u8]) -> IBig {
 }
 pub fn to_bytes(num: u128) -> [u8; 16] {
     let mut res = [0u8; 16];
-    for i in 0..16 {
-        res[i] = (num >> ((15 * 8) - i * 8)) as u8;
+    for (i, r) in res.iter_mut().enumerate() {
+        *r = (num >> ((15 * 8) - i * 8)) as u8;
     }
     res
 }
@@ -56,7 +56,7 @@ pub fn to_u64_le(bytes: &[u8]) -> u64 {
 
 pub fn to_hex(b: Vec<u8>) -> String {
     b.iter()
-        .map(|b| format!("{:02X}", b).to_string())
+        .map(|b| format!("{b:02X}"))
         .collect::<Vec<String>>()
         .join("")
 }
