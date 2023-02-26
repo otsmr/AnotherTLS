@@ -3,8 +3,7 @@
  *
  */
 
-use num_traits::One;
-use ibig::IBig;
+use ibig::{IBig, ibig};
 
 use super::math;
 
@@ -45,7 +44,7 @@ impl JacobianPoint {
         JacobianPoint {
             x: p.x,
             y: p.y,
-            z: One::one(),
+            z: ibig!(1),
         }
     }
 

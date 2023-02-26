@@ -28,6 +28,8 @@ impl HttpsServer {
             match self.listener.accept() {
                 Ok((mut socket, _addr)) => {
 
+                    log::debug!("Waiting for tls handshake");
+
                     if socket.connect_block().is_err() {
                         break;
                     }

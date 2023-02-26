@@ -8,7 +8,7 @@
 use crate::TlsConfig;
 use std::{
     io::Read,
-    net::{SocketAddr, TcpStream},
+    net::{SocketAddr, TcpStream}, process::exit,
 };
 use std::io::Result;
 
@@ -76,9 +76,12 @@ impl<'a> TlsStream<'a> {
 
             state = HandshakeState::Finished;
 
+
         }
 
-        Ok(())
+        exit(0);
+
+        // Ok(())
 
 
     }
