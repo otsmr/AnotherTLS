@@ -5,12 +5,14 @@
 
 #![allow(dead_code)]
 
-use crate::TlsConfig;
+use crate::{TlsConfig, net::{record::ContentType, handshake::Handshake}};
 use std::{
-    io::Read,
+    io::{Read, self, ErrorKind},
     net::{SocketAddr, TcpStream}, process::exit,
 };
-use std::io::Result;
+use std::io::{Result, Error};
+use super::handshake::ClientHello;
+use super::record::Record;
 
 
 #[derive(PartialEq)]
@@ -26,29 +28,7 @@ pub struct TlsStream<'a> {
     config: &'a TlsConfig
 }
 
-pub struct Extension {
 
-}
-
-pub struct CipherSuite {
-
-}
-
-struct ClientHello {
-    legacy_version: u16,
-    random: [u8; 32],
-    // legacy_session_id,
-    cipher_suites: [CipherSuite; 200], // FIXME: 2**16-2
-    legacy_compression_methods: [u8; 32],
-    extensions: Extension,
-}
-impl ClientHello {
-    pub fn from_raw(_buf: &[u8]) {
-
-
-
-    }
-}
 
 impl<'a> TlsStream<'a> {
 
@@ -69,9 +49,20 @@ impl<'a> TlsStream<'a> {
 
             println!("{:?}", &raw_buf[..n]);
 
-            // let _client_hello = ClientHello::from_raw(&raw_buf[..n]);
 
-            // println!("{:?}", client_hello);
+            let record = Record::from_raw(&raw_buf[..n]).unwrap();
+
+            if record.content_type != ContentType::Handshake {
+                return Err(Error::new(ErrorKind::InvalidData, "should get an handshake record"));
+            }
+
+            let handshake_message = Handshake::from_raw(record.fraqment).unwrap();
+
+            println!("{:?}", handshake_message.fraqment);
+
+            let client_hello = ClientHello::from_raw(handshake_message.fraqment).unwrap();
+
+            println!("{:?}", client_hello.cipher_suites);
 
             state = HandshakeState::Finished;
 
