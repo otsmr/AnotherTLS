@@ -3,8 +3,8 @@
  *
  */
 
-use anothertls::TlsConfig;
 use anothertls::net::TlsListener;
+use anothertls::TlsConfig;
 use std::{
     io,
     net::{TcpListener, ToSocketAddrs},
@@ -17,9 +17,7 @@ struct HttpsServer {
 impl HttpsServer {
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
         let listener = TcpListener::bind(addr)?;
-
         let listener = TlsListener::new(listener, TlsConfig {});
-
         Ok(Self { listener })
     }
 
@@ -27,10 +25,9 @@ impl HttpsServer {
         loop {
             match self.listener.accept() {
                 Ok((mut socket, _addr)) => {
-
                     log::debug!("Waiting for tls handshake");
 
-                    if socket.connect_block().is_err() {
+                    if socket.do_handshake_block().is_err() {
                         break;
                     }
 
@@ -39,17 +36,14 @@ impl HttpsServer {
                     let mut buf: [u8; 4096] = [0; 4096];
 
                     loop {
-
                         let n = match socket.read(&mut buf) {
                             Ok(n) => n,
                             _ => break,
                         };
 
                         log::info!("Read from socket: {}", n);
-
+                        socket.write(&buf[..n]);
                     }
-
-
                 }
                 Err(e) => log::error!("couldn't get client: {:?}", e),
             };
@@ -59,6 +53,5 @@ impl HttpsServer {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     HttpsServer::bind("127.0.0.1:4000")?.static_file_server("./");
-
     Ok(())
 }

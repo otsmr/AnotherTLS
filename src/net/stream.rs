@@ -57,7 +57,7 @@ impl<'a> TlsStream<'a> {
     }
 
 
-    pub fn connect_block(&mut self) -> Result<()> {
+    pub fn do_handshake_block(&mut self) -> Result<()> {
 
         let mut state = HandshakeState::WaitingForClientHello;
 
@@ -66,7 +66,6 @@ impl<'a> TlsStream<'a> {
             let mut raw_buf: [u8; 4096] = [0; 4096];
 
             let n = self.stream.read(&mut raw_buf)?;
-
 
             println!("{:?}", &raw_buf[..n]);
 
