@@ -138,16 +138,16 @@ pub fn sha256(message: Vec<u8>) -> [u8; 32] {
 mod tests {
     use crate::hash::sha256;
 
-    fn test_sha256(message: String, hash_expect: String)  {
+    fn test_sha256_do(message: String, hash_expect: String)  {
         let message = message.as_bytes().to_vec();
         let hash = sha256(message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
         assert_eq!(hash, hash_expect);
     }
 
     #[test]
-    fn test_sha1() {
-        test_sha256("".to_string(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string());
-        test_sha256("The quick brown fox jumps over the lazy dog".to_string(), "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_string());
-        test_sha256("The quick brown fox jumps over the lazy cog".to_string(), "e4c4d8f3bf76b692de791a173e05321150f7a345b46484fe427f6acc7ecc81be".to_string());
+    fn test_sha256() {
+        test_sha256_do("".to_string(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string());
+        test_sha256_do("The quick brown fox jumps over the lazy dog".to_string(), "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_string());
+        test_sha256_do("The quick brown fox jumps over the lazy cog".to_string(), "e4c4d8f3bf76b692de791a173e05321150f7a345b46484fe427f6acc7ecc81be".to_string());
     }
 }
