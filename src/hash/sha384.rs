@@ -164,6 +164,6 @@ mod tests {
     fn test_sha384() {
         test_sha384_do("".to_string(), "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b".to_string());
         test_sha384_do("The quick brown fox jumps over the lazy dog".to_string(), "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1".to_string());
-        test_sha384_do("The quick brown fox jumps over the lazy cog".to_string(), "e4c4d8f3bf76b692de791a173e05321150f7a345b46484fe427f6acc7ecc81be".to_string());
+        test_sha384_do("The quick brown fox jumps over the lazy cog".to_string(), "098cea620b0978caa5f0befba6ddcf22764bea977e1c70b3483edfdf1de25f4b40d6cea3cadf00f809d422feb1f0161b".to_string());
     }
 }

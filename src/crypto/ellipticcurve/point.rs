@@ -7,7 +7,7 @@ use ibig::{IBig, ibig};
 
 use super::math;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Point {
     pub x: IBig,
     pub y: IBig,

@@ -10,12 +10,32 @@ pub use client_hello::ClientHello;
 #[derive(PartialEq)]
 pub enum HandshakeType {
     ClientHello = 1,
+    ServerHello = 2,
+    NewSessionTicket = 4,
+    EndOfEarlyData = 5,
+    EncryptedExtensions = 8,
+    Certificate = 11,
+    CertificateRequest = 13,
+    CertificateVerify = 15,
+    Finished = 20,
+    KeyUpdate = 24,
+    MessageHash = 254,
 }
 
 impl HandshakeType {
     pub fn new(byte: u8) -> Option<HandshakeType> {
         Some(match byte {
             1 => HandshakeType::ClientHello,
+            2 => HandshakeType::ServerHello,
+            4 => HandshakeType::NewSessionTicket,
+            5 => HandshakeType::EndOfEarlyData,
+            8 => HandshakeType::EncryptedExtensions,
+            11 => HandshakeType::Certificate,
+            13 => HandshakeType::CertificateRequest,
+            15 => HandshakeType::CertificateVerify,
+            20 => HandshakeType::Finished,
+            24 => HandshakeType::KeyUpdate,
+            254 => HandshakeType::MessageHash,
             _ => return None,
         })
     }

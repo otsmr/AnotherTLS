@@ -3,8 +3,8 @@
  *
  */
 
-pub mod curve;
 pub mod ecdsa;
+pub mod curve;
 pub mod math;
 pub mod point;
 pub mod signature;

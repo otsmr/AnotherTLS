@@ -33,6 +33,16 @@ pub fn to_bytes(num: u128) -> [u8; 16] {
 //     }
 //     res
 // }
+
+pub fn to_u16(buf: &[u8]) -> u16 {
+    if buf.is_empty() {
+        return 0;
+    }
+    if buf.len() < 2 {
+        return buf[0] as u16;
+    }
+    ((buf[0] as u16) << 8) | buf[1] as u16
+}
 pub fn to_u128_le(bytes: &[u8]) -> u128 {
     let mut res: u128 = 0;
     let bytes_iter = if bytes.len() > 16 {
