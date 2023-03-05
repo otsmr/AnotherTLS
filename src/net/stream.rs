@@ -31,18 +31,27 @@ enum HandshakeState {
 
 #[derive(Debug, Copy, Clone)]
 pub enum TlsError {
-    InvalidHandshake,
-    InvalidHandshakeSize,
-    InvalidCipherSuiteLen,
-    ErrorParsingKeyShare,
-    Tls13NotSupportedByClient
+    UnexpectedMessage = 10,
+    HandshakeFailure = 40,
+    IllegalParameter = 47,
+    DecryptError = 50,
+    DecodeError = 51,
+    ProtocolVersion = 70,
+    InsufficientSecurity = 71,
+    InternalError = 80,
+    MissingExtension = 109,
 }
 
+
+pub struct TlsSessionContext {
+
+}
 
 pub struct TlsStream<'a> {
     stream: TcpStream,
     addr: SocketAddr,
     config: &'a TlsConfig,
+
 }
 
 impl<'a> TlsStream<'a> {
@@ -67,13 +76,13 @@ impl<'a> TlsStream<'a> {
 
             let n = match self.stream.read(&mut raw_buf) {
                 Ok(n) => n,
-                Err(_) => return Err(TlsError::InvalidHandshake)
+                Err(_) => return Err(TlsError::InternalError)
             };
 
             let record = Record::from_raw(&raw_buf[..n]).unwrap();
 
             if record.content_type != RecordType::Handshake {
-                return Err(TlsError::InvalidHandshake);
+                return Err(TlsError::UnexpectedMessage);
             }
 
             let handshake = Handshake::from_raw(record.fraqment).unwrap();
@@ -84,7 +93,7 @@ impl<'a> TlsStream<'a> {
                 HandshakeState::WaitingForClientHello => {
 
                     if handshake.handshake_type != HandshakeType::ClientHello {
-                        return Err(TlsError::InvalidHandshake);
+                        return Err(TlsError::UnexpectedMessage);
                     }
 
                     let client_hello = ClientHello::from_raw(handshake.fraqment)?;
@@ -113,7 +122,7 @@ impl<'a> TlsStream<'a> {
             }
 
             if self.stream.write_all(write_buffer.as_slice()).is_err() {
-                return Err(TlsError::InvalidHandshake)
+                return Err(TlsError::InternalError)
             };
 
         }

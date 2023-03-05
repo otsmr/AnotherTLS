@@ -35,7 +35,7 @@ fn add(x: u32, y: u32) -> u32 {
     z
 }
 
-pub fn sha256(message: Vec<u8>) -> [u8; 32] {
+pub fn sha256(message: &[u8]) -> [u8; 32] {
 
     let mut padding_length = 64 - (message.len() % 64);
     let mut padding: [u8; (64 + 5)] = [0; 69];
@@ -140,7 +140,7 @@ mod tests {
 
     fn test_sha256_do(message: String, hash_expect: String)  {
         let message = message.as_bytes().to_vec();
-        let hash = sha256(message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
+        let hash = sha256(&message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
         assert_eq!(hash, hash_expect);
     }
 

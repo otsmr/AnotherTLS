@@ -1,20 +1,27 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use ibig::{ibig, IBig};
+use std::result::Result;
 
 use crate::{
-    crypto::ellipticcurve::{Curve, PrivateKey},
+    crypto::{
+        ellipticcurve::{Curve, PrivateKey},
+        CipherSuite,
+    },
     net::{
         extensions::{
             ClientExtension, KeyShare, KeyShareEntry, ServerExtensions, SupportedVersions,
         },
-        handshake::client_hello::CipherSuite,
+        handshake::ClientHello,
         named_groups::NamedGroup,
         stream::TlsError,
         TlsContext,
     },
     utils::bytes,
 };
-use std::result::Result;
-use super::ClientHello;
 
 pub struct ServerHello<'a> {
     pub random: [u8; 32],
@@ -38,7 +45,7 @@ impl<'a> ServerHello<'a> {
             match ext {
                 ClientExtension::SupportedVersion(version) => {
                     if !version.tls13 {
-                        return Err(TlsError::Tls13NotSupportedByClient);
+                        return Err(TlsError::InsufficientSecurity);
                     }
                 }
                 ClientExtension::KeyShare(key_share) => {
@@ -66,15 +73,39 @@ impl<'a> ServerHello<'a> {
             true, false,
         )));
 
-        let cipher_suite = CipherSuite::TLS_AES_256_GCM_SHA384;
+        let mut cipher_suite_to_use = None;
+        for cs in client_hello.cipher_suites.iter() {
+            match cs {
+                CipherSuite::TLS_AES_256_GCM_SHA384 => {
+                    cipher_suite_to_use = Some(CipherSuite::TLS_AES_256_GCM_SHA384);
+                    break;
+                }
+                CipherSuite::TLS_AES_128_GCM_SHA256 => {
+                    cipher_suite_to_use = Some(CipherSuite::TLS_AES_128_GCM_SHA256)
+                }
+                _ => (),
+            }
+        }
+
+        let cipher_suite = match cipher_suite_to_use {
+            Some(cs) => cs,
+            None => return Err(TlsError::HandshakeFailure),
+        };
 
         let random = config
             .rng
             .between(IBig::from(2).pow(255), IBig::from(2).pow(256));
-        let random = bytes::ibig_to_bytes(random);
+        let mut random = bytes::ibig_to_bytes(random);
+
+        // Value is: DOWNGRD
+        let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
+
+        for (i, b) in downgrade_protection.iter().enumerate() {
+            random[(32 - 8) + i] = *b;
+        }
 
         if private_key.is_none() {
-            return Err(TlsError::InvalidHandshake);
+            return Err(TlsError::HandshakeFailure);
         }
 
         let private_key = private_key.unwrap();

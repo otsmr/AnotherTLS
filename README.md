@@ -25,8 +25,10 @@ anothertls v0.1.0
 - Cipher: [AES](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
 - Cipher suite: [TLS_AES_128_GCM_SHA256 and TLS_AES_256_GCM_SHA384](https://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf)
 - Hash: [SHA384](https://datatracker.ietf.org/doc/html/rfc6234)
-- TLS curves: [prime256v1]()
-- TLS curves: [X25519]()
+- TLS curves: [prime256v1](https://github.com/starkbank/ecdsa-python/)
+- TLS curves: [X25519](https://martin.kleppmann.com/papers/curve25519.pdf)
+- [HKDF](https://www.rfc-editor.org/rfc/rfc5869)
+- [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
 ### work in progress
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446) (with [Modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS))
 - Certificate type: X509

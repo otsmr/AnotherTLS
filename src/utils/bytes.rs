@@ -26,18 +26,6 @@ pub fn to_bytes(num: u128) -> [u8; 16] {
     }
     res
 }
-// pub fn to_u128_be(bytes: &[u8]) -> u128 {
-//     let mut res: u128 = 0;
-//     let bytes_iter = if bytes.len() > 16 {
-//         &bytes[..16]
-//     } else {
-//         bytes
-//     }.iter();
-//     for (i, byte) in bytes_iter.enumerate() {
-//         res += (*byte as u128) << (i * 8);
-//     }
-//     res
-// }
 
 pub fn to_u16(buf: &[u8]) -> u16 {
     if buf.is_empty() {
@@ -69,7 +57,7 @@ pub fn to_u64_le(bytes: &[u8]) -> u64 {
     res
 }
 
-pub fn to_hex(b: Vec<u8>) -> String {
+pub fn to_hex(b: &[u8]) -> String {
     b.iter()
         .map(|b| format!("{b:02X}"))
         .collect::<Vec<String>>()

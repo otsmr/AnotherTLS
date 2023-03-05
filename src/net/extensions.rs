@@ -80,7 +80,7 @@ impl<'a> KeyShareEntry<'a> {
         let group = bytes::to_u16(buf);
         let group = match NamedGroup::new(group) {
             Some(x) => x,
-            None => return Err(TlsError::ErrorParsingKeyShare),
+            None => return Err(TlsError::IllegalParameter),
         };
         let public_key_len = bytes::to_u16(&buf[2..]);
         Ok((

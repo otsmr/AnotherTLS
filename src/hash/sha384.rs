@@ -35,7 +35,7 @@ fn add(x: u64, y: u64) -> u64 {
     z
 }
 
-pub fn sha384(message: Vec<u8>) -> [u8; 48] {
+pub fn sha384(message: &[u8]) -> [u8; 48] {
 
     let mut padding_length = 128 - (message.len() % 128);
     let mut padding: [u8; (128 + 9)] = [0; 128 + 9];
@@ -156,7 +156,7 @@ mod tests {
 
     fn test_sha384_do(message: String, hash_expect: String)  {
         let message = message.as_bytes().to_vec();
-        let hash = sha384(message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
+        let hash = sha384(&message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
         assert_eq!(hash, hash_expect);
     }
 
