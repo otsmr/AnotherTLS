@@ -26,10 +26,10 @@ anothertls v0.1.0
 - Cipher suite: [TLS_AES_128_GCM_SHA256 and TLS_AES_256_GCM_SHA384](https://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf)
 - Hash: [SHA384](https://datatracker.ietf.org/doc/html/rfc6234)
 - TLS curves: [prime256v1]()
+- TLS curves: [X25519]()
 ### work in progress
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446) (with [Modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS))
-- Certificate type: ECDSA (P-256)
+- Certificate type: X509
 ### Maybe
 - Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
 - TLS curves: [secp384r1]()
-- TLS curves: [X25519]()
