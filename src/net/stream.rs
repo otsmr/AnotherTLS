@@ -98,6 +98,10 @@ impl<'a> TlsStream<'a> {
 
                     write_buffer.append(&mut record_raw);
 
+                    let mut server_change_cipher_spec = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01];
+
+                    write_buffer.append(&mut server_change_cipher_spec);
+
                     state = HandshakeState::WaitingForAuthTag;
 
                 }
