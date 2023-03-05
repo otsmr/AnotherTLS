@@ -21,3 +21,12 @@ pub enum HashType {
     SHA256 = 32,
     SHA384 = 48
 }
+
+
+pub fn sha_x(typ: HashType, data: &[u8]) -> Vec<u8> {
+    match typ {
+        HashType::SHA1 => sha1(data).to_vec(),
+        HashType::SHA256 => sha256(data).to_vec(),
+        HashType::SHA384 => sha384(data).to_vec()
+    }
+}

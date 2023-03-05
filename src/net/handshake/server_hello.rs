@@ -20,13 +20,14 @@ use crate::{
         stream::TlsError,
         TlsContext,
     },
-    utils::bytes,
+    utils::bytes, hash::HashType,
 };
 
 pub struct ServerHello<'a> {
     pub random: [u8; 32],
     pub legacy_session_id_echo: Option<&'a [u8]>,
     pub cipher_suite: CipherSuite,
+    pub hash: HashType,
     pub named_group: NamedGroup,
     pub private_key: PrivateKey,
     pub extensions: Vec<ServerExtensions<'a>>,
@@ -74,13 +75,16 @@ impl<'a> ServerHello<'a> {
         )));
 
         let mut cipher_suite_to_use = None;
+        let mut hash = None;
         for cs in client_hello.cipher_suites.iter() {
             match cs {
                 CipherSuite::TLS_AES_256_GCM_SHA384 => {
                     cipher_suite_to_use = Some(CipherSuite::TLS_AES_256_GCM_SHA384);
+                    hash = Some(HashType::SHA384);
                     break;
                 }
                 CipherSuite::TLS_AES_128_GCM_SHA256 => {
+                    hash = Some(HashType::SHA256);
                     cipher_suite_to_use = Some(CipherSuite::TLS_AES_128_GCM_SHA256)
                 }
                 _ => (),
@@ -91,6 +95,7 @@ impl<'a> ServerHello<'a> {
             Some(cs) => cs,
             None => return Err(TlsError::HandshakeFailure),
         };
+        let hash = hash.unwrap();
 
         let random = config
             .rng
@@ -104,11 +109,10 @@ impl<'a> ServerHello<'a> {
             random[(32 - 8) + i] = *b;
         }
 
-        if private_key.is_none() {
-            return Err(TlsError::HandshakeFailure);
-        }
-
-        let private_key = private_key.unwrap();
+        let private_key = match private_key {
+            Some(pk) => pk,
+            None => return Err(TlsError::HandshakeFailure),
+        };
 
         Ok(ServerHello {
             random,
@@ -116,6 +120,7 @@ impl<'a> ServerHello<'a> {
             named_group,
             private_key,
             cipher_suite,
+            hash,
             extensions,
         })
     }

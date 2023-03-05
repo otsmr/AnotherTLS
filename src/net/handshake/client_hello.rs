@@ -7,7 +7,7 @@
 use crate::{
     crypto::CipherSuite,
     net::{
-        extensions::{self, ClientExtension},
+        extensions::{self, ClientExtension, KeyShareEntry},
         stream::TlsError,
     },
 };
@@ -74,5 +74,16 @@ impl<'a> ClientHello<'a> {
             raw_client_hello,
             extensions,
         })
+    }
+
+    pub fn get_public_key_share(&self) -> Option<&KeyShareEntry> {
+        for ext in self.extensions.iter() {
+            if let ClientExtension::KeyShare(key_share) = ext {
+                if !key_share.0.is_empty() {
+                    return Some(&key_share.0[0]);
+                }
+            }
+        }
+        None
     }
 }

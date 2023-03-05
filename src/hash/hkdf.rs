@@ -5,24 +5,24 @@
  * https://www.rfc-editor.org/rfc/rfc5869
  */
 
-use crate::utils::bytes;
-
 use super::{hmac::HMAC, HashType};
 
 pub struct HKDF {
-    hash: HashType,
-    pseudo_random_key: Vec<u8>,
+    pub hash: HashType,
+    pub pseudo_random_key: Vec<u8>,
 }
 
 impl HKDF {
+
+    pub fn from_prk(hash: HashType, pseudo_random_key: Vec<u8>) -> Self {
+        Self { hash, pseudo_random_key }
+    }
+
     // 2.2 Step 1: Extract
     pub fn extract(hash: HashType, salt: &[u8], ikm: &[u8]) -> HKDF {
         let mut hmac = HMAC::new(hash, salt);
         hmac.update(ikm);
         let pseudo_random_key = hmac.result();
-
-        println!("pseudo_random_key={:?}", bytes::to_hex(&pseudo_random_key));
-
         Self {
             hash,
             pseudo_random_key,
@@ -30,7 +30,7 @@ impl HKDF {
     }
 
     // 2.3 Step 2: Expand
-    pub fn expand_label(&self, info: &[u8], out_len: usize) -> Option<Vec<u8>> {
+    pub fn expand(&self, info: &[u8], out_len: usize) -> Option<Vec<u8>> {
         let hash_len = self.hash as usize;
 
         if out_len > (hash_len * 255) {
@@ -119,7 +119,7 @@ mod tests {
 
             let hkdf = HKDF::extract(test_case.hash, &salt, &ikm);
 
-            let okm = hkdf.expand_label(&info, test_case.okm.len()/2).unwrap();
+            let okm = hkdf.expand(&info, test_case.okm.len()/2).unwrap();
             assert_eq!(okm_expected, okm);
         }
     }

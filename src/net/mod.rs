@@ -10,6 +10,7 @@ pub mod handshake;
 pub mod extensions;
 pub mod record;
 pub mod named_groups;
+pub mod key_schedule;
 
 pub use listener::TlsListener;
 pub use stream::TlsStream;

@@ -5,13 +5,14 @@
 
 #![allow(dead_code)]
 
-use super::TlsContext;
-use super::handshake::{ClientHello, ServerHello};
-use super::record::Record;
-use crate::net::record::RecordType;
-use crate::rand::URandomRng;
 use crate::{
-    net::handshake::{Handshake, HandshakeType},
+    net::{
+        handshake::{ClientHello, Handshake, HandshakeType, ServerHello},
+        record::{Record, RecordType},
+        TlsContext,
+        key_schedule::KeySchedule
+    },
+    rand::URandomRng,
     TlsConfig,
 };
 use std::io::Write;
@@ -42,16 +43,10 @@ pub enum TlsError {
     MissingExtension = 109,
 }
 
-
-pub struct TlsSessionContext {
-
-}
-
 pub struct TlsStream<'a> {
     stream: TcpStream,
     addr: SocketAddr,
     config: &'a TlsConfig,
-
 }
 
 impl<'a> TlsStream<'a> {
@@ -76,7 +71,7 @@ impl<'a> TlsStream<'a> {
 
             let n = match self.stream.read(&mut raw_buf) {
                 Ok(n) => n,
-                Err(_) => return Err(TlsError::InternalError)
+                Err(_) => return Err(TlsError::InternalError),
             };
 
             let record = Record::from_raw(&raw_buf[..n]).unwrap();
@@ -91,40 +86,38 @@ impl<'a> TlsStream<'a> {
 
             match state {
                 HandshakeState::WaitingForClientHello => {
-
                     if handshake.handshake_type != HandshakeType::ClientHello {
                         return Err(TlsError::UnexpectedMessage);
                     }
 
+                    let mut hello_raw = Vec::with_capacity(300);
+                    hello_raw.extend_from_slice(handshake.fraqment);
+
                     let client_hello = ClientHello::from_raw(handshake.fraqment)?;
 
-                    println!("{:?}", client_hello.cipher_suites);
-                    println!("{:?}", client_hello.extensions);
+                    let mut server_hello =
+                        ServerHello::from_client_hello(&client_hello, &mut context)?;
+                    let handshake_raw =
+                        Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
+                    hello_raw.extend_from_slice(&handshake_raw);
 
-                    let mut server_hello = ServerHello::from_client_hello(&client_hello, &mut context)?;
-                    let handshake_raw = Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
                     let mut record_raw = Record::to_raw(RecordType::Handshake, handshake_raw);
-
                     write_buffer.append(&mut record_raw);
 
                     let mut server_change_cipher_spec = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01];
-
                     write_buffer.append(&mut server_change_cipher_spec);
 
+                    let key_schedule = KeySchedule::from_handshake(&hello_raw, &client_hello, &server_hello);
+
                     state = HandshakeState::WaitingForAuthTag;
-
                 }
-                HandshakeState::WaitingForAuthTag => {
-
-                }
-                HandshakeState::Finished => break
-
+                HandshakeState::WaitingForAuthTag => {}
+                HandshakeState::Finished => break,
             }
 
             if self.stream.write_all(write_buffer.as_slice()).is_err() {
-                return Err(TlsError::InternalError)
+                return Err(TlsError::InternalError);
             };
-
         }
 
         exit(0);
