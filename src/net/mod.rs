@@ -14,3 +14,4 @@ pub mod named_groups;
 pub use listener::TlsListener;
 pub use stream::TlsStream;
 pub use config::TlsConfig;
+pub use config::TlsContext;

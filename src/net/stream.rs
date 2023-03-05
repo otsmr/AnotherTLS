@@ -5,12 +5,16 @@
 
 #![allow(dead_code)]
 
-use super::handshake::ClientHello;
+use super::TlsContext;
+use super::handshake::{ClientHello, ServerHello};
 use super::record::Record;
+use crate::net::record::RecordType;
+use crate::rand::URandomRng;
 use crate::{
-    net::{handshake::{Handshake, HandshakeType}, record::ContentType},
+    net::handshake::{Handshake, HandshakeType},
     TlsConfig,
 };
+use std::io::Write;
 use std::result::Result;
 use std::{
     io::Read,
@@ -21,13 +25,17 @@ use std::{
 #[derive(PartialEq)]
 enum HandshakeState {
     WaitingForClientHello,
-    SendServerHello,
+    WaitingForAuthTag,
     Finished,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum TlsError {
-    InvalidHandshake
+    InvalidHandshake,
+    InvalidHandshakeSize,
+    InvalidCipherSuiteLen,
+    ErrorParsingKeyShare,
+    Tls13NotSupportedByClient
 }
 
 
@@ -49,6 +57,11 @@ impl<'a> TlsStream<'a> {
     pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
         let mut state = HandshakeState::WaitingForClientHello;
 
+        let mut context = TlsContext {
+            config: self.config,
+            rng: Box::new(URandomRng::new()),
+        };
+
         loop {
             let mut raw_buf: [u8; 4096] = [0; 4096];
 
@@ -59,11 +72,13 @@ impl<'a> TlsStream<'a> {
 
             let record = Record::from_raw(&raw_buf[..n]).unwrap();
 
-            if record.content_type != ContentType::Handshake {
+            if record.content_type != RecordType::Handshake {
                 return Err(TlsError::InvalidHandshake);
             }
 
             let handshake = Handshake::from_raw(record.fraqment).unwrap();
+
+            let mut write_buffer = vec![];
 
             match state {
                 HandshakeState::WaitingForClientHello => {
@@ -72,23 +87,31 @@ impl<'a> TlsStream<'a> {
                         return Err(TlsError::InvalidHandshake);
                     }
 
-                    let client_hello = ClientHello::from_raw(handshake.fraqment).unwrap();
+                    let client_hello = ClientHello::from_raw(handshake.fraqment)?;
 
                     println!("{:?}", client_hello.cipher_suites);
                     println!("{:?}", client_hello.extensions);
 
+                    let mut server_hello = ServerHello::from_client_hello(&client_hello, &mut context)?;
+                    let handshake_raw = Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
+                    let mut record_raw = Record::to_raw(RecordType::Handshake, handshake_raw);
+
+                    write_buffer.append(&mut record_raw);
+
+                    state = HandshakeState::WaitingForAuthTag;
 
                 }
-                HandshakeState::SendServerHello => {
+                HandshakeState::WaitingForAuthTag => {
 
                 }
                 HandshakeState::Finished => break
 
             }
 
+            if self.stream.write_all(write_buffer.as_slice()).is_err() {
+                return Err(TlsError::InvalidHandshake)
+            };
 
-
-            state = HandshakeState::Finished;
         }
 
         exit(0);

@@ -27,7 +27,8 @@ impl HttpsServer {
                 Ok((mut socket, _addr)) => {
                     log::debug!("Waiting for tls handshake");
 
-                    if socket.do_handshake_block().is_err() {
+                    if let Err(e) = socket.do_handshake_block() {
+                        println!("Error parsing handshake: {:?}", e);
                         break;
                     }
 

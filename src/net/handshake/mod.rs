@@ -4,10 +4,12 @@
  */
 
 mod client_hello;
+mod server_hello;
 
 pub use client_hello::ClientHello;
+pub use server_hello::ServerHello;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum HandshakeType {
     ClientHello = 1,
     ServerHello = 2,
@@ -62,7 +64,12 @@ impl<'a> Handshake<'a> {
             fraqment: &buf[4..],
         })
     }
-
+    pub fn to_raw(typ: HandshakeType, mut data: Vec<u8>) -> Vec<u8> {
+        let len = data.len();
+        let mut t = vec![typ as u8, (len >> 16) as u8, (len >> 8) as u8, len as u8];
+        t.append(&mut data);
+        t
+    }
     pub fn is_full(&self) -> bool {
         self.len == self.fraqment.len() as u32
     }

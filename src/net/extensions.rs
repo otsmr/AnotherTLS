@@ -13,7 +13,7 @@ pub enum ExtensionType {
     SignatureAlgorithms = 0x0d,
     SupportedVersions = 0x2b,
     PSKKeyExchangeMode = 0x2d,
-    KeyShare = 0x33
+    KeyShare = 0x33,
 }
 
 impl ExtensionType {
@@ -36,11 +36,11 @@ impl ExtensionType {
 
 #[derive(Debug)]
 pub struct SupportedVersions {
-    tls13: bool,
-    tls12: bool
+    pub tls13: bool,
+    pub tls12: bool,
 }
 impl SupportedVersions {
-    fn new(tls13: bool, tls12: bool) -> SupportedVersions {
+    pub fn new(tls13: bool, tls12: bool) -> SupportedVersions {
         SupportedVersions { tls13, tls12 }
     }
     fn parse(buf: &[u8]) -> SupportedVersions {
@@ -51,7 +51,7 @@ impl SupportedVersions {
         let mut tls13 = false;
         let mut tls12 = false;
         for i in (0..len).step_by(2) {
-            match bytes::to_u16(&buf[(i+1)..(i+1+2)]) {
+            match bytes::to_u16(&buf[(i + 1)..(i + 1 + 2)]) {
                 0x0303 => tls12 = true,
                 0x0304 => tls13 = true,
                 _ => continue,
@@ -69,29 +69,82 @@ impl ServerName {
 }
 #[derive(Debug)]
 pub struct KeyShareEntry<'a> {
-    group: NamedGroup,
-    opaque: &'a [u8],
+    pub group: NamedGroup,
+    pub opaque: &'a [u8],
 }
 impl<'a> KeyShareEntry<'a> {
-    fn parse(buf: &'a [u8]) -> Result<KeyShareEntry, TlsError> {
-        let len = bytes::to_u16(buf);
-        let group = bytes::to_u16(&buf[2..]);
+    pub fn new(group: NamedGroup, opaque: &'a [u8]) -> KeyShareEntry {
+        KeyShareEntry { group, opaque }
+    }
+    fn parse(buf: &'a [u8]) -> Result<(usize, KeyShareEntry), TlsError> {
+        let group = bytes::to_u16(buf);
         let group = match NamedGroup::new(group) {
             Some(x) => x,
-            None => return Err(TlsError::InvalidHandshake)
+            None => return Err(TlsError::ErrorParsingKeyShare),
         };
-        Ok(KeyShareEntry {
-            group,
-            opaque: &buf[4..len as usize]
-        })
+        let public_key_len = bytes::to_u16(&buf[2..]);
+        Ok((
+            6 + public_key_len as usize,
+            KeyShareEntry {
+                group,
+                opaque: &buf[4..(public_key_len + 4) as usize],
+            },
+        ))
+    }
+    fn to_raw(&self) -> Vec<u8> {
+        let mut out = vec![];
+        match self.group {
+            NamedGroup::X25519 => {
+                out.append(&mut vec![0x00, 0x1d, 0x00, 0x20, ]);
+                out.extend_from_slice(self.opaque);
+            }
+            _ => todo!(),
+        }
+        out
     }
 }
 #[derive(Debug)]
-pub struct KeyShare<'a>(KeyShareEntry<'a>);
+/// https://www.rfc-editor.org/rfc/rfc8446#page-48
+pub struct KeyShare<'a>(pub Vec<KeyShareEntry<'a>>);
 impl<'a> KeyShare<'a> {
-    fn parse(buf: &'a [u8]) -> Result<KeyShare, TlsError> {
-        Ok(KeyShare(KeyShareEntry::parse(buf)?))
+    pub fn new(kse: KeyShareEntry<'a>) -> KeyShare<'a> {
+        KeyShare(vec![kse])
     }
+    fn parse(buf: &'a [u8]) -> Result<KeyShare, TlsError> {
+        let mut entries = vec![];
+        let mut consumed = 2;
+        let len = bytes::to_u16(buf) as usize;
+        loop {
+            let (used, entry) = KeyShareEntry::parse(&buf[consumed..])?;
+            if used <= 7 {
+                break;
+            }
+            entries.push(entry);
+            consumed += used;
+            if consumed >= len {
+                break;
+            }
+        }
+        Ok(KeyShare(entries))
+    }
+    pub fn to_raw(&self) -> Vec<u8> {
+        let mut out = vec![0x00, 0x33, 0, 0];
+        let mut total_len = 0;
+        for ext in self.0.iter() {
+            let mut raw = ext.to_raw();
+            total_len += raw.len();
+            out.append(&mut raw);
+        }
+        out[2] = (total_len >> 8) as u8;
+        out[3] = total_len as u8;
+        out
+    }
+}
+
+#[derive(Debug)]
+pub enum ServerExtensions<'a> {
+    SupportedVersion(SupportedVersions),
+    KeyShare(KeyShare<'a>),
 }
 
 #[derive(Debug)]
@@ -99,7 +152,7 @@ pub enum ClientExtension<'a> {
     SupportedVersion(SupportedVersions),
     KeyShare(KeyShare<'a>),
     ServerName(String),
-    PreSharedKey(u16)
+    PreSharedKey(u16),
 }
 
 pub fn from_client_hello(buf: &[u8]) -> Result<Vec<ClientExtension>, TlsError> {
@@ -107,9 +160,9 @@ pub fn from_client_hello(buf: &[u8]) -> Result<Vec<ClientExtension>, TlsError> {
     let mut extensions: Vec<ClientExtension> = vec![];
 
     while consumed < buf.len() {
-        let extension_type = bytes::to_u16(&buf[consumed..consumed+2]);
+        let extension_type = bytes::to_u16(&buf[consumed..consumed + 2]);
         let extension_type = ExtensionType::new(extension_type);
-        let size = bytes::to_u16(&buf[consumed+2..consumed+4]) as usize;
+        let size = bytes::to_u16(&buf[consumed + 2..consumed + 4]) as usize;
         consumed += 4;
         if extension_type.is_none() {
             consumed += size;
@@ -118,26 +171,23 @@ pub fn from_client_hello(buf: &[u8]) -> Result<Vec<ClientExtension>, TlsError> {
         let extension_type = extension_type.unwrap();
 
         let extension = match extension_type {
-            ExtensionType::ServerName => ClientExtension::ServerName(
-                ServerName::parse(&buf[consumed..consumed+size])
-            ),
-            ExtensionType::KeyShare => ClientExtension::KeyShare(
-                KeyShare::parse(&buf[consumed..consumed+size])?
-            ),
-            ExtensionType::SupportedVersions => ClientExtension::SupportedVersion(
-                SupportedVersions::parse(&buf[consumed..])
-            ),
+            ExtensionType::ServerName => {
+                ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size]))
+            }
+            ExtensionType::KeyShare => {
+                ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)
+            }
+            ExtensionType::SupportedVersions => {
+                ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..]))
+            }
             // ExtensionType::SupportedGroups => continue, // TODO
             // ExtensionType::PSKKeyExchangeMode => continue, // TODO
-            _ => continue
+            _ => continue,
         };
 
         consumed += size;
         extensions.push(extension);
-
     }
 
     Ok(extensions)
-
 }
-

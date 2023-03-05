@@ -1,6 +1,6 @@
 /// https://www.rfc-editor.org/rfc/rfc8446#section-5.1
 #[derive(PartialEq)]
-pub enum ContentType {
+pub enum RecordType {
     Invalid = 0,
     ChangeCipherSpec = 20,
     Alert = 21,
@@ -8,21 +8,21 @@ pub enum ContentType {
     ApplicationData = 23,
 }
 
-impl ContentType {
-    pub fn new(byte: u8) -> Option<ContentType> {
+impl RecordType {
+    pub fn new(byte: u8) -> Option<RecordType> {
         Some(match byte {
-            0 => ContentType::Invalid,
-            20 => ContentType::ChangeCipherSpec,
-            21 => ContentType::Alert,
-            22 => ContentType::Handshake,
-            23 => ContentType::ApplicationData,
+            0 => RecordType::Invalid,
+            20 => RecordType::ChangeCipherSpec,
+            21 => RecordType::Alert,
+            22 => RecordType::Handshake,
+            23 => RecordType::ApplicationData,
             _ => return None,
         })
     }
 }
 
 pub struct Record<'a> {
-    pub content_type: ContentType,
+    pub content_type: RecordType,
     pub version: u16,
     pub len: u16,
     pub fraqment: &'a [u8],
@@ -34,7 +34,7 @@ impl<'a> Record<'a> {
             return None;
         }
 
-        let content_type = ContentType::new(buf[0])?;
+        let content_type = RecordType::new(buf[0])?;
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
         let len = ((buf[3] as u16) << 8) | buf[4] as u16;
 
@@ -45,7 +45,12 @@ impl<'a> Record<'a> {
             fraqment: &buf[5..],
         })
     }
-
+    pub fn to_raw(typ: RecordType, mut data: Vec<u8>) -> Vec<u8> {
+        let len = data.len();
+        let mut t = vec![typ as u8, 0x3, 0x3, (len >> 8) as u8, len as u8];
+        t.append(&mut data);
+        t
+    }
     pub fn is_full(&self) -> bool {
         self.len == self.fraqment.len() as u16
     }

@@ -14,6 +14,11 @@ pub fn to_ibig_le(bytes: &[u8]) -> IBig {
 
     res
 }
+pub fn ibig_to_bytes(num: IBig) -> [u8; 32] {
+    let b = <ibig::UBig as std::convert::TryFrom<IBig>>::try_from(num).unwrap();
+    let b = b.to_le_bytes();
+    b.try_into().unwrap()
+}
 pub fn to_bytes(num: u128) -> [u8; 16] {
     let mut res = [0u8; 16];
     for (i, r) in res.iter_mut().enumerate() {
