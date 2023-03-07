@@ -62,7 +62,7 @@ impl<'a> ClientHello<'a> {
         consumed += 2;
 
         let extensions =
-            extensions::from_client_hello(&buf[consumed..(consumed + extensions_len)])?;
+            extensions::ClientExtension::from_client_hello(&buf[consumed..(consumed + extensions_len)])?;
 
         let raw_client_hello = &buf[..(consumed + extensions_len)];
 

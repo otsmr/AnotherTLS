@@ -7,6 +7,8 @@ mod curve25519;
 
 use ibig::{ibig, IBig};
 
+use crate::utils::bytes;
+
 use super::curve::Curve;
 use super::curve::Equation;
 use super::point::JacobianPoint;
@@ -204,12 +206,13 @@ fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> Jacobian
 pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     match curve.equation {
         Equation::Montgomery => {
-            // montgomery_ladder(p, &n, curve)
+            let n = rem_euclid(&n, &curve.p);
+            let mut a = bytes::ibig_to_bytes(n);
+            a.reverse();
             Point {
-                x: curve25519::scalarmult(p, &n),
+                x: curve25519::scalarmult(p, &a),
                 y: ibig!(0)
             }
-
         }
         Equation::ShortWeierstrass => {
             jacobian_multiply(&JacobianPoint::from_point(p.clone()), n, curve).to_point(&curve.p)
@@ -260,12 +263,27 @@ mod tests {
             .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
     }
 
+    // #[test]
+    // fn test_mondgomery_ladder_other() {
+    //     let curve = Curve::curve25519();
+    //     let p = curve.g.clone();
+    //     assert!(curve.contains(&p));
+    //     let scalar = ibig!(_c88717820fe23ddd322112c53404168d16821192cbedc06de4924c45d1bbc442 base 16);
+    //     let result = math::multiply(&p, scalar, &curve);
+    //     println!("{:#x}", result.x);
+    //     println!("{:#x}", rem_euclid(&result.x, &curve.n));
+    //     let expected = Point {
+    //         x: ibig!(_8914b3a922a3300fc47468b9ea9eb38afc49275ce3a1b0d5a9b18705d9056359 base 16),
+    //         y: ibig!(0)
+    //     };
+    //     assert!(result == expected);
+    // }
     #[test]
     fn test_mondgomery_ladder() {
         let curve = Curve::curve25519();
         let p = curve.g.clone();
         assert!(curve.contains(&p));
-        let result = math::multiply(&p, ibig!(4), &curve);
+        let result = math::multiply(&p, ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), &curve);
         println!("{:#x}", result.x);
         println!("{:#x}", result.y);
         let expected = Point {

@@ -100,7 +100,9 @@ impl GCM {
             let overflow = (16 - data_slice.len()) * 8;
             let out_i = (data_u128 ^ bytes::to_u128_le(&Ek_Y)) >> overflow;
 
-            output.append(&mut bytes::to_bytes(out_i).to_vec());
+            let out_i_bytes = &bytes::to_bytes(out_i)[16-data_slice.len()..];
+
+            output.append(&mut out_i_bytes.to_vec());
 
             X = if encrypt {
                 GCM::gmult(X ^ (out_i << overflow), H)

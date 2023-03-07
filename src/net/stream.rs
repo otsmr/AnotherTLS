@@ -8,25 +8,28 @@
 use crate::{
     net::{
         handshake::{ClientHello, Handshake, HandshakeType, ServerHello},
-        record::{Record, RecordType},
+        key_schedule::KeySchedule,
+        record::{Record, RecordPayloadProtection, RecordType},
         TlsContext,
-        key_schedule::KeySchedule
     },
     rand::URandomRng,
     TlsConfig,
 };
-use std::io::Write;
-use std::result::Result;
+
 use std::{
-    io::Read,
+    io::{Read, Write},
     net::{SocketAddr, TcpStream},
     process::exit,
+    result::Result,
 };
+
+use super::extensions::ServerExtensions;
 
 #[derive(PartialEq)]
 enum HandshakeState {
-    WaitingForClientHello,
-    WaitingForAuthTag,
+    KeyExchange,
+    ServerParameters,
+    Authentication,
     Finished,
 }
 
@@ -47,6 +50,7 @@ pub struct TlsStream<'a> {
     stream: TcpStream,
     addr: SocketAddr,
     config: &'a TlsConfig,
+    record_payload_protection: Option<RecordPayloadProtection>,
 }
 
 impl<'a> TlsStream<'a> {
@@ -55,37 +59,36 @@ impl<'a> TlsStream<'a> {
             stream,
             addr,
             config,
+            record_payload_protection: None,
         }
     }
 
     pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
-        let mut state = HandshakeState::WaitingForClientHello;
+        let mut state = HandshakeState::KeyExchange;
 
         let mut context = TlsContext {
             config: self.config,
             rng: Box::new(URandomRng::new()),
         };
+        let mut rx_buf: [u8; 4096] = [0; 4096];
+        let mut tx_buf = Vec::with_capacity(4096);
 
         loop {
-            let mut raw_buf: [u8; 4096] = [0; 4096];
-
-            let n = match self.stream.read(&mut raw_buf) {
+            let n = match self.stream.read(&mut rx_buf) {
                 Ok(n) => n,
                 Err(_) => return Err(TlsError::InternalError),
             };
 
-            let record = Record::from_raw(&raw_buf[..n]).unwrap();
+            let record = Record::from_raw(&rx_buf[..n]).unwrap();
 
             if record.content_type != RecordType::Handshake {
                 return Err(TlsError::UnexpectedMessage);
             }
 
-            let handshake = Handshake::from_raw(record.fraqment).unwrap();
-
-            let mut write_buffer = vec![];
+            let handshake = Handshake::from_raw(record.fraqment.as_ref()).unwrap();
 
             match state {
-                HandshakeState::WaitingForClientHello => {
+                HandshakeState::KeyExchange => {
                     if handshake.handshake_type != HandshakeType::ClientHello {
                         return Err(TlsError::UnexpectedMessage);
                     }
@@ -99,25 +102,50 @@ impl<'a> TlsStream<'a> {
                         ServerHello::from_client_hello(&client_hello, &mut context)?;
                     let handshake_raw =
                         Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
+
                     hello_raw.extend_from_slice(&handshake_raw);
 
-                    let mut record_raw = Record::to_raw(RecordType::Handshake, handshake_raw);
-                    write_buffer.append(&mut record_raw);
+                    let mut record_raw = Record::to_raw(RecordType::Handshake, &handshake_raw);
+                    tx_buf.append(&mut record_raw);
 
                     let mut server_change_cipher_spec = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01];
-                    write_buffer.append(&mut server_change_cipher_spec);
+                    tx_buf.append(&mut server_change_cipher_spec);
 
-                    let key_schedule = KeySchedule::from_handshake(&hello_raw, &client_hello, &server_hello);
+                    let key_schedule =
+                        KeySchedule::from_handshake(&hello_raw, &client_hello, &server_hello)?;
 
-                    state = HandshakeState::WaitingForAuthTag;
+                    self.record_payload_protection =
+                        RecordPayloadProtection::new(key_schedule);
+
+                    if self.record_payload_protection.is_none() {
+                        return Err(TlsError::InternalError);
+                    }
+
+                    // state = HandshakeState::ServerParameters;
+                    // -- ServerParameters --
+
+                    let encrypted_extensions = ServerExtensions::new();
+                    let encrypted_extensions_raw = encrypted_extensions.as_bytes();
+                    let handshake_raw = Handshake::to_raw(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
+                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let mut encrypted_record_raw = self.record_payload_protection.as_mut().unwrap().encrypt(record)?;
+                    tx_buf.append(&mut encrypted_record_raw);
+
                 }
-                HandshakeState::WaitingForAuthTag => {}
+                HandshakeState::ServerParameters => {
+
+                }
+                HandshakeState::Authentication => break,
                 HandshakeState::Finished => break,
             }
 
-            if self.stream.write_all(write_buffer.as_slice()).is_err() {
+            if self.stream.write_all(tx_buf.as_slice()).is_err() {
                 return Err(TlsError::InternalError);
             };
+
+            rx_buf.fill(0);
+            tx_buf.clear();
+            exit(0);
         }
 
         exit(0);

@@ -108,11 +108,11 @@ fn pack25519(input: &FieldElem) -> [u8; 32] {
 }
 
 
-pub fn scalarmult(point: &Point, scalar: &IBig) -> IBig
+pub fn scalarmult(point: &Point, scalar: &[u8; 32]) -> IBig
 {
     let mut clamped = [0_u8; 32];
     for (i, item) in clamped.iter_mut().enumerate() {
-        *item = (scalar >> (i*8)).to_f32() as u8;
+        *item = scalar[i];
     }
     clamped[0] &= 0xf8;
     clamped[31] = (clamped[31] & 0x7f) | 0x40;

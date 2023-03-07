@@ -95,7 +95,7 @@ impl<'a> KeyShareEntry<'a> {
         let mut out = vec![];
         match self.group {
             NamedGroup::X25519 => {
-                out.append(&mut vec![0x00, 0x1d, 0x00, 0x20, ]);
+                out.append(&mut vec![0x00, 0x1d, 0x00, 0x20]);
                 out.extend_from_slice(self.opaque);
             }
             _ => todo!(),
@@ -142,9 +142,37 @@ impl<'a> KeyShare<'a> {
 }
 
 #[derive(Debug)]
-pub enum ServerExtensions<'a> {
+pub enum ServerExtension<'a> {
     SupportedVersion(SupportedVersions),
     KeyShare(KeyShare<'a>),
+}
+
+pub struct ServerExtensions<'a>(Vec<ServerExtension<'a>>);
+
+impl<'a> ServerExtensions<'a> {
+
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn push(&mut self, ext: ServerExtension<'a>) {
+        self.0.push(ext)
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        if self.0.is_empty() {
+            return vec![0x00, 0x00]; // Length of the extension list (0 bytes)
+        }
+        // Needed for EncryptedExtensions -> currently always empty
+        todo!()
+    }
+
+}
+
+impl<'a> Default for ServerExtensions<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug)]
@@ -155,39 +183,41 @@ pub enum ClientExtension<'a> {
     PreSharedKey(u16),
 }
 
-pub fn from_client_hello(buf: &[u8]) -> Result<Vec<ClientExtension>, TlsError> {
-    let mut consumed = 0;
-    let mut extensions: Vec<ClientExtension> = vec![];
+impl<'a> ClientExtension<'a> {
+    pub fn from_client_hello(buf: &[u8]) -> Result<Vec<ClientExtension>, TlsError> {
+        let mut consumed = 0;
+        let mut extensions: Vec<ClientExtension> = vec![];
 
-    while consumed < buf.len() {
-        let extension_type = bytes::to_u16(&buf[consumed..consumed + 2]);
-        let extension_type = ExtensionType::new(extension_type);
-        let size = bytes::to_u16(&buf[consumed + 2..consumed + 4]) as usize;
-        consumed += 4;
-        if extension_type.is_none() {
+        while consumed < buf.len() {
+            let extension_type = bytes::to_u16(&buf[consumed..consumed + 2]);
+            let extension_type = ExtensionType::new(extension_type);
+            let size = bytes::to_u16(&buf[consumed + 2..consumed + 4]) as usize;
+            consumed += 4;
+            if extension_type.is_none() {
+                consumed += size;
+                continue;
+            }
+            let extension_type = extension_type.unwrap();
+
+            let extension = match extension_type {
+                ExtensionType::ServerName => {
+                    ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size]))
+                }
+                ExtensionType::KeyShare => {
+                    ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)
+                }
+                ExtensionType::SupportedVersions => {
+                    ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..]))
+                }
+                // ExtensionType::SupportedGroups => continue, // TODO
+                // ExtensionType::PSKKeyExchangeMode => continue, // TODO
+                _ => continue,
+            };
+
             consumed += size;
-            continue;
+            extensions.push(extension);
         }
-        let extension_type = extension_type.unwrap();
 
-        let extension = match extension_type {
-            ExtensionType::ServerName => {
-                ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size]))
-            }
-            ExtensionType::KeyShare => {
-                ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)
-            }
-            ExtensionType::SupportedVersions => {
-                ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..]))
-            }
-            // ExtensionType::SupportedGroups => continue, // TODO
-            // ExtensionType::PSKKeyExchangeMode => continue, // TODO
-            _ => continue,
-        };
-
-        consumed += size;
-        extensions.push(extension);
+        Ok(extensions)
     }
-
-    Ok(extensions)
 }

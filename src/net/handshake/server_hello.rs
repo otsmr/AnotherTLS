@@ -11,16 +11,18 @@ use crate::{
         ellipticcurve::{Curve, PrivateKey},
         CipherSuite,
     },
+    hash::HashType,
     net::{
         extensions::{
-            ClientExtension, KeyShare, KeyShareEntry, ServerExtensions, SupportedVersions,
+            ClientExtension, KeyShare, KeyShareEntry, ServerExtension, ServerExtensions,
+            SupportedVersions,
         },
         handshake::ClientHello,
         named_groups::NamedGroup,
         stream::TlsError,
         TlsContext,
     },
-    utils::bytes, hash::HashType,
+    utils::bytes,
 };
 
 pub struct ServerHello<'a> {
@@ -30,7 +32,7 @@ pub struct ServerHello<'a> {
     pub hash: HashType,
     pub named_group: NamedGroup,
     pub private_key: PrivateKey,
-    pub extensions: Vec<ServerExtensions<'a>>,
+    pub extensions: ServerExtensions<'a>,
 }
 
 impl<'a> ServerHello<'a> {
@@ -38,7 +40,7 @@ impl<'a> ServerHello<'a> {
         client_hello: &'a ClientHello,
         config: &mut TlsContext,
     ) -> Result<ServerHello<'a>, TlsError> {
-        let mut extensions: Vec<ServerExtensions<'a>> = vec![];
+        let mut extensions = ServerExtensions::new();
         let mut private_key = None;
         let mut named_group = NamedGroup::X25519;
 
@@ -54,8 +56,14 @@ impl<'a> ServerHello<'a> {
                         match key.group {
                             NamedGroup::X25519 => {
                                 let curve = Curve::curve25519();
-                                let secret = config.rng.between(ibig!(0), IBig::from(2).pow(256));
+                                // FIMXE: Remove hardcoded secret
+                                // let secret = config.rng.between(ibig!(0), IBig::from(2).pow(256));
+
+                                let secret = ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16);
+                                println!("secret={}", secret);
                                 let pk = PrivateKey::new(curve, secret);
+
+                                println!("pub={:#x}", pk.get_public_key().point.x);
                                 private_key = Some(pk);
                                 break;
                             }
@@ -70,7 +78,7 @@ impl<'a> ServerHello<'a> {
             }
         }
 
-        extensions.push(ServerExtensions::SupportedVersion(SupportedVersions::new(
+        extensions.push(ServerExtension::SupportedVersion(SupportedVersions::new(
             true, false,
         )));
 
@@ -102,12 +110,15 @@ impl<'a> ServerHello<'a> {
             .between(IBig::from(2).pow(255), IBig::from(2).pow(256));
         let mut random = bytes::ibig_to_bytes(random);
 
+
         // Value is: DOWNGRD
         let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
 
         for (i, b) in downgrade_protection.iter().enumerate() {
             random[(32 - 8) + i] = *b;
         }
+
+        let mut random = bytes::from_hex("707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f").unwrap().try_into().unwrap();
 
         let private_key = match private_key {
             Some(pk) => pk,
@@ -145,7 +156,10 @@ impl<'a> ServerHello<'a> {
         let key_share_data;
         let selected_key_share = match self.named_group {
             NamedGroup::X25519 => {
+
+                println!("{:#x}", self.private_key.get_public_key().point.x);
                 key_share_data = bytes::ibig_to_bytes(self.private_key.get_public_key().point.x);
+                println!("key_share_data={:?}", key_share_data);
                 KeyShareEntry::new(NamedGroup::X25519, &key_share_data)
             }
             _ => todo!(),

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use crate::hash::{sha_x, HashType};
 use crate::{
     crypto::ellipticcurve::{math, Point},
@@ -18,12 +23,13 @@ pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], len: usize) -> Vec<u8
 }
 
 pub struct Key {
-    key: [u8; 32],
+    pub key: [u8; 32],
     iv: [u8; 12],
+    sequence_number: u64
 }
 
 impl Key {
-    pub fn from_hkdf(hkdf: HKDF) -> Option<Key> {
+    pub fn from_hkdf(hkdf: &HKDF) -> Option<Key> {
         let empty_hash = sha_x(hkdf.hash, b"");
         let key_len = 32;
         let iv_len = 12;
@@ -34,43 +40,57 @@ impl Key {
         let key = key.try_into().unwrap();
         let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", &empty_hash, iv_len), iv_len)?;
         let iv = iv.try_into().unwrap();
-        Some(Key { key, iv })
+        Some(Key { key, iv, sequence_number: 0 })
+    }
+    pub fn get_per_record_nonce(&mut self) -> [u8; 12] {
+
+        let mut out = [0; 12];
+
+        for (i, b) in self.iv.iter().enumerate() {
+            out[i] = (((self.sequence_number as u128) >> ((11-i)*8)) as u8) ^ *b;
+        }
+        // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
+        // implementation would need to wrap a sequence number, it MUST either rekey (Section
+        // 4.6.3) or terminate the connection.
+        self.sequence_number += 1;
+        out
     }
 }
 
-pub struct HandshakeKeys {
-    server: Key,
-    client: Key,
+pub struct WriteKeys {
+    pub server: Key,
+    pub client: Key,
 }
 
-impl HandshakeKeys {
-    pub fn new(key_schedule: KeySchedule) -> Option<HandshakeKeys> {
-        let server = Key::from_hkdf(key_schedule.server_handshake_traffic_secret)?;
-        let client = Key::from_hkdf(key_schedule.client_handshake_traffic_secret)?;
-        Some(HandshakeKeys { server, client })
+impl WriteKeys {
+    pub fn handshake_keys(key_schedule: &KeySchedule) -> Option<Self> {
+        let server = Key::from_hkdf(&key_schedule.server_handshake_traffic_secret)?;
+        let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret)?;
+        Some(Self { server, client })
+    }
+    pub fn application_keys(key_schedule: &KeySchedule) -> Option<Self> {
+        todo!();
     }
 }
 
 // 7.3 Traffic Key Calculation
 pub struct KeySchedule {
-    // binder_key: HKDF,
-    // client_early_traffic_secret: HKDF,
-    // early_exporter_master_secret: HKDF,
+    // Early Secret
+    hkdf_early_secret: HKDF,
+    // Handshake Secret
     client_handshake_traffic_secret: HKDF,
     server_handshake_traffic_secret: HKDF,
-    // client_application_traffic_secret_0: HKDF,
-    // client_application_traffic_secret_0: HKDF,
-    // exporter_master_secret: HKDF,
-    // resumption_master_secret: HKDF
+    // Master Secret
+    hkdf_master_secret: HKDF,
 }
 
 impl KeySchedule {
-
     pub fn from_handshake(
         hello_raw: &[u8],
         client_hello: &ClientHello,
         server_hello: &ServerHello,
     ) -> Result<KeySchedule, TlsError> {
+        todo!("Falsche Schlüssel");
         let key_share_entry = match client_hello.get_public_key_share() {
             Some(kse) => kse,
             None => return Err(TlsError::HandshakeFailure),
@@ -101,6 +121,23 @@ impl KeySchedule {
         }
     }
 
+    pub fn _get_early_keys() {
+
+        // TODO: ext binder
+        // let binder_key = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        //     &get_hkdf_expand_label(b"res binder", client_hello_hash, hash_len),
+        //     hash_len,
+        // )?);
+        // let client_early_traffic_secret = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        //     &get_hkdf_expand_label(b"c e traffic", client_hello_hash, hash_len),
+        //     hash_len,
+        // )?);
+        // let early_exporter_master_secret = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        //     &get_hkdf_expand_label(b"e exp master", client_hello_hash, hash_len),
+        //     hash_len,
+        // )?);
+    }
+
     pub fn do_key_schedule(
         hash: HashType,
         hello_hash: &[u8],
@@ -110,8 +147,8 @@ impl KeySchedule {
         // 7.1 Key Schedule
 
         let psk = &[];
-
         let empty_hash = sha_x(hash, b"");
+
         // Early Secret
         let hkdf_early_secret = HKDF::extract(hash, &vec![0_u8; hash_len], psk);
 
@@ -122,26 +159,39 @@ impl KeySchedule {
 
         // Handshake Secret
         let hkdf_handshake_secret = HKDF::extract(hash, &derived_secret, shared_secret);
+        let client_handshake_traffic_secret = HKDF::from_prk(
+            hash,
+            hkdf_handshake_secret.expand(
+                &get_hkdf_expand_label(b"c hs traffic", hello_hash, hash_len),
+                hash_len,
+            )?,
+        );
+        let server_handshake_traffic_secret = HKDF::from_prk(
+            hash,
+            hkdf_handshake_secret.expand(
+                &get_hkdf_expand_label(b"s hs traffic", hello_hash, hash_len),
+                hash_len,
+            )?,
+        );
 
-        let client_handshake_traffic_secret = hkdf_handshake_secret.expand(
-            &get_hkdf_expand_label(b"c hs traffic", hello_hash, hash_len),
+        let derived_secret = hkdf_handshake_secret.expand(
+            &get_hkdf_expand_label(b"derived", &empty_hash, hash_len),
             hash_len,
         )?;
-        let client_handshake_traffic_secret = HKDF::from_prk(hash, client_handshake_traffic_secret);
 
-        let server_handshake_traffic_secret = hkdf_handshake_secret.expand(
-            &get_hkdf_expand_label(b"s hs traffic", hello_hash, hash_len),
-            hash_len,
-        )?;
-        let server_handshake_traffic_secret = HKDF::from_prk(hash, server_handshake_traffic_secret);
+        // Master Secret
+        let hkdf_master_secret = HKDF::extract(hash, &derived_secret, shared_secret);
 
         Some(KeySchedule {
+            hkdf_early_secret,
+            // Handshake Secret
             client_handshake_traffic_secret,
             server_handshake_traffic_secret,
+            // Master Secret
+            hkdf_master_secret,
         })
     }
 }
-
 
 #[cfg(test)]
 mod tests {
