@@ -16,7 +16,7 @@ use super::handshake::{ClientHello, ServerHello};
 use std::result::Result;
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], len: usize) -> Vec<u8> {
-    let mut out = vec![(len >> 8) as u8, len as u8, b't', b'l', b's', b'1', b'3'];
+    let mut out = vec![(len >> 8) as u8, len as u8, b't', b'l', b's', b'1', b'3', b' '];
     out.extend_from_slice(label);
     out.extend_from_slice(context);
     out
@@ -24,31 +24,36 @@ pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], len: usize) -> Vec<u8
 
 pub struct Key {
     pub key: [u8; 32],
-    iv: [u8; 12],
+    pub iv: [u8; 12],
     sequence_number: u64
 }
 
 impl Key {
     pub fn from_hkdf(hkdf: &HKDF) -> Option<Key> {
         let empty_hash = sha_x(hkdf.hash, b"");
-        let key_len = 32;
-        let iv_len = 12;
+        let (key_len, iv_len) = match hkdf.hash {
+            HashType::SHA256 => (16, 12),
+            HashType::SHA384 => (32, 12),
+            HashType::SHA1 => return None
+        };
         let key = hkdf.expand(
             &get_hkdf_expand_label(b"key", &empty_hash, key_len),
             key_len,
         )?;
         let key = key.try_into().unwrap();
         let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", &empty_hash, iv_len), iv_len)?;
+        println!("iv_={}", bytes::to_hex(&iv));
         let iv = iv.try_into().unwrap();
         Some(Key { key, iv, sequence_number: 0 })
     }
-    pub fn get_per_record_nonce(&mut self) -> [u8; 12] {
+    pub fn get_per_record_nonce(&mut self) -> Vec<u8> {
+        // 5.3.  Per-Record Nonce
+        let mut out = self.iv.to_vec();
 
-        let mut out = [0; 12];
-
-        for (i, b) in self.iv.iter().enumerate() {
-            out[i] = (((self.sequence_number as u128) >> ((11-i)*8)) as u8) ^ *b;
+        for i in 0..8 {
+            out[(self.iv.len() - 1) - (7-i)] ^= (self.sequence_number << i) as u8;
         }
+
         // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
         // implementation would need to wrap a sequence number, it MUST either rekey (Section
         // 4.6.3) or terminate the connection.
@@ -64,7 +69,9 @@ pub struct WriteKeys {
 
 impl WriteKeys {
     pub fn handshake_keys(key_schedule: &KeySchedule) -> Option<Self> {
+        println!("Get Sever");
         let server = Key::from_hkdf(&key_schedule.server_handshake_traffic_secret)?;
+        println!("Get Client");
         let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret)?;
         Some(Self { server, client })
     }
@@ -101,22 +108,15 @@ impl KeySchedule {
         }
 
         let client_public_key = bytes::to_ibig_le(key_share_entry.opaque);
-
-        println!("client_public_key={:#x}", client_public_key);
-        println!("server_private_key={:#x}", server_hello.private_key.secret);
-
         let client_public_key = Point::new(client_public_key, ibig!(0));
 
         let server_private_key = server_hello.private_key.secret.clone();
         let curve = &server_hello.private_key.curve;
 
         let shared_secret = math::multiply(&client_public_key, server_private_key, curve);
-        let shared_secret = shared_secret.x;
-        let shared_secret = bytes::ibig_to_32bytes(shared_secret, bytes::ByteOrder::Big);
+        let shared_secret = bytes::ibig_to_32bytes(shared_secret.x, bytes::ByteOrder::Big);
 
         let hello_hash = sha_x(server_hello.hash, hello_raw);
-        println!("hello_hash={}", bytes::to_hex(&hello_hash));
-        println!("shared_secret={}", bytes::to_hex(&shared_secret));
 
         match Self::do_key_schedule(server_hello.hash, &hello_hash, &shared_secret) {
             Some(keys) => Ok(keys),
@@ -146,11 +146,12 @@ impl KeySchedule {
         hello_hash: &[u8],
         shared_secret: &[u8],
     ) -> Option<KeySchedule> {
-        let hash_len = hash as usize;
+
         // 7.1 Key Schedule
 
         let psk = &[];
         let empty_hash = sha_x(hash, b"");
+        let hash_len = hash as usize;
 
         // Early Secret
         let hkdf_early_secret = HKDF::extract(hash, &vec![0_u8; hash_len], psk);
@@ -183,7 +184,7 @@ impl KeySchedule {
         )?;
 
         // Master Secret
-        let hkdf_master_secret = HKDF::extract(hash, &derived_secret, shared_secret);
+        let hkdf_master_secret = HKDF::extract(hash, &derived_secret, &vec![0_u8; hash_len]);
 
         Some(KeySchedule {
             hkdf_early_secret,

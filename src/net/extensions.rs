@@ -45,7 +45,6 @@ impl SupportedVersions {
     }
     fn parse(buf: &[u8]) -> SupportedVersions {
         let len = buf[0] as usize;
-        println!("len={len}");
         if len % 2 == 1 {
             return SupportedVersions::new(false, false);
         }

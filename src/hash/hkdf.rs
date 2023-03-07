@@ -5,6 +5,8 @@
  * https://www.rfc-editor.org/rfc/rfc5869
  */
 
+use crate::utils::bytes;
+
 use super::{hmac::HMAC, HashType};
 
 pub struct HKDF {
@@ -53,6 +55,8 @@ impl HKDF {
             last = hmac.result();
 
             let needed = std::cmp::min(out_len, okm.len() + hash_len) - okm.len();
+            println!("needed={}", needed);
+            println!("last={}", bytes::to_hex(&last));
 
             okm.extend(&last[..needed]);
             i += 1;

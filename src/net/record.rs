@@ -104,7 +104,7 @@ impl<'a> Record<'a> {
 pub struct RecordPayloadProtection {
     key_schedule: KeySchedule,
     handshake_keys: WriteKeys,
-    application_keys: WriteKeys
+    // application_keys: WriteKeys
 }
 
 impl RecordPayloadProtection {
@@ -113,7 +113,7 @@ impl RecordPayloadProtection {
         Some(Self {
             handshake_keys: WriteKeys::handshake_keys(&key_schedule)?,
             // FIMXE: use application_keys
-            application_keys: WriteKeys::handshake_keys(&key_schedule)?,
+            // application_keys: WriteKeys::handshake_keys(&key_schedule)?,
             key_schedule,
         })
     }
@@ -123,7 +123,8 @@ impl RecordPayloadProtection {
         let keys = if let RecordType::Handshake = record.content_type {
             &mut self.handshake_keys
         } else {
-            &mut self.application_keys
+            todo!();
+            // &mut self.application_keys
         };
 
         let mut inner_plaintext = record.fraqment.as_ref().to_vec();
@@ -140,6 +141,7 @@ impl RecordPayloadProtection {
         let nonce = keys.server.get_per_record_nonce();
 
         println!("nonce={:?}", bytes::to_hex(&nonce));
+        println!("server.iv={:?}", bytes::to_hex(&keys.server.iv));
         println!("inner_plaintext={:?}", bytes::to_hex(&inner_plaintext));
         println!("server.key={:?}", bytes::to_hex(&keys.server.key));
 

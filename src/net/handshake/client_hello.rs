@@ -64,7 +64,6 @@ impl<'a> ClientHello<'a> {
         let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
         consumed += 2;
 
-        println!("Ections");
         let extensions = extensions::ClientExtension::from_client_hello(
             &buf[consumed..(consumed + extensions_len)],
         )?;
