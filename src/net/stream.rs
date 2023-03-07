@@ -106,10 +106,10 @@ impl<'a> TlsStream<'a> {
                     hello_raw.extend_from_slice(&handshake_raw);
 
                     let mut record_raw = Record::to_raw(RecordType::Handshake, &handshake_raw);
-                    tx_buf.append(&mut record_raw);
+                    // tx_buf.append(&mut record_raw);
 
                     let mut server_change_cipher_spec = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01];
-                    tx_buf.append(&mut server_change_cipher_spec);
+                    // tx_buf.append(&mut server_change_cipher_spec);
 
                     let key_schedule =
                         KeySchedule::from_handshake(&hello_raw, &client_hello, &server_hello)?;

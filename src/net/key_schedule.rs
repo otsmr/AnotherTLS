@@ -90,7 +90,6 @@ impl KeySchedule {
         client_hello: &ClientHello,
         server_hello: &ServerHello,
     ) -> Result<KeySchedule, TlsError> {
-        todo!("Falsche Schlüssel");
         let key_share_entry = match client_hello.get_public_key_share() {
             Some(kse) => kse,
             None => return Err(TlsError::HandshakeFailure),

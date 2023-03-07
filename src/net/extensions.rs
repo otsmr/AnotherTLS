@@ -45,6 +45,7 @@ impl SupportedVersions {
     }
     fn parse(buf: &[u8]) -> SupportedVersions {
         let len = buf[0] as usize;
+        println!("len={len}");
         if len % 2 == 1 {
             return SupportedVersions::new(false, false);
         }
@@ -96,7 +97,10 @@ impl<'a> KeyShareEntry<'a> {
         match self.group {
             NamedGroup::X25519 => {
                 out.append(&mut vec![0x00, 0x1d, 0x00, 0x20]);
-                out.extend_from_slice(self.opaque);
+                // TODO: Bad :/
+                let mut t = self.opaque.to_vec();
+                t.reverse();
+                out.extend_from_slice(&t);
             }
             _ => todo!(),
         }

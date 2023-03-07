@@ -47,9 +47,12 @@ impl<'a> ClientHello<'a> {
         consumed += 2;
         let mut cipher_suites = vec![];
         for i in (consumed..(consumed + cipher_suites_len as usize)).step_by(2) {
-            cipher_suites.push(CipherSuite::new(
+            let cs = CipherSuite::new(
                 ((buf[i] as u16) << 8) | (buf[i + 1] as u16),
-            )?)
+            );
+            if let Ok(cs) = cs {
+                cipher_suites.push(cs);
+            }
         }
 
         consumed += cipher_suites_len as usize;
@@ -61,8 +64,10 @@ impl<'a> ClientHello<'a> {
         let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
         consumed += 2;
 
-        let extensions =
-            extensions::ClientExtension::from_client_hello(&buf[consumed..(consumed + extensions_len)])?;
+        println!("Ections");
+        let extensions = extensions::ClientExtension::from_client_hello(
+            &buf[consumed..(consumed + extensions_len)],
+        )?;
 
         let raw_client_hello = &buf[..(consumed + extensions_len)];
 

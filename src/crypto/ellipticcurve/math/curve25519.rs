@@ -112,7 +112,7 @@ pub fn scalarmult(point: &Point, scalar: &[u8; 32]) -> IBig
 {
     let mut clamped = [0_u8; 32];
     for (i, item) in clamped.iter_mut().enumerate() {
-        *item = scalar[i];
+        *item = scalar[31-i];
     }
     clamped[0] &= 0xf8;
     clamped[31] = (clamped[31] & 0x7f) | 0x40;

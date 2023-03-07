@@ -206,9 +206,7 @@ fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> Jacobian
 pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     match curve.equation {
         Equation::Montgomery => {
-            let n = rem_euclid(&n, &curve.p);
-            let mut a = bytes::ibig_to_bytes(n);
-            a.reverse();
+            let a = bytes::ibig_to_bytes(n);
             Point {
                 x: curve25519::scalarmult(p, &a),
                 y: ibig!(0)
@@ -263,31 +261,21 @@ mod tests {
             .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
     }
 
-    // #[test]
-    // fn test_mondgomery_ladder_other() {
-    //     let curve = Curve::curve25519();
-    //     let p = curve.g.clone();
-    //     assert!(curve.contains(&p));
-    //     let scalar = ibig!(_c88717820fe23ddd322112c53404168d16821192cbedc06de4924c45d1bbc442 base 16);
-    //     let result = math::multiply(&p, scalar, &curve);
-    //     println!("{:#x}", result.x);
-    //     println!("{:#x}", rem_euclid(&result.x, &curve.n));
-    //     let expected = Point {
-    //         x: ibig!(_8914b3a922a3300fc47468b9ea9eb38afc49275ce3a1b0d5a9b18705d9056359 base 16),
-    //         y: ibig!(0)
-    //     };
-    //     assert!(result == expected);
-    // }
     #[test]
     fn test_mondgomery_ladder() {
+
+        // openssl genpkey -algorithm x25519 -out x25519-priv.pem
+        // openssl pkey -noout -text < x25519-priv.pem
+        // pub.to_bytes(32, "little").hex()
+        // priv.to_bytes(32, "little").hex()
+
         let curve = Curve::curve25519();
         let p = curve.g.clone();
         assert!(curve.contains(&p));
-        let result = math::multiply(&p, ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), &curve);
-        println!("{:#x}", result.x);
-        println!("{:#x}", result.y);
+        let scalar = ibig!(_418bc27199c57eb4fa3c19563225adfc2e873a9eba088171a0c2707f1b58d808 base 16);
+        let result = math::multiply(&p, scalar, &curve);
         let expected = Point {
-            x: ibig!(_743bcb585f9990edc2cfc4af84f6ff300729bb5facda28154362cd47a37de52f base 16),
+            x: ibig!(_484e7553a4e4a69cbfc19e97e023b57d1d428e0a880916d74eb12350ef0b5000 base 16),
             y: ibig!(0)
         };
         assert!(result == expected);

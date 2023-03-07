@@ -57,13 +57,8 @@ impl<'a> ServerHello<'a> {
                             NamedGroup::X25519 => {
                                 let curve = Curve::curve25519();
                                 // FIMXE: Remove hardcoded secret
-                                // let secret = config.rng.between(ibig!(0), IBig::from(2).pow(256));
-
-                                let secret = ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16);
-                                println!("secret={}", secret);
+                                let secret = ibig!(_afaeadacabaaa9a8a7a6a5a4a3a2a1a09f9e9d9c9b9a99989796959493929190 base 16);
                                 let pk = PrivateKey::new(curve, secret);
-
-                                println!("pub={:#x}", pk.get_public_key().point.x);
                                 private_key = Some(pk);
                                 break;
                             }
@@ -118,7 +113,7 @@ impl<'a> ServerHello<'a> {
             random[(32 - 8) + i] = *b;
         }
 
-        let mut random = bytes::from_hex("707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f").unwrap().try_into().unwrap();
+        let random = bytes::from_hex("707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f").unwrap().try_into().unwrap();
 
         let private_key = match private_key {
             Some(pk) => pk,
