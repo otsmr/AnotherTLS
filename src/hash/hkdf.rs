@@ -42,8 +42,10 @@ impl HKDF {
         let mut okm: Vec<u8> = Vec::with_capacity(out_len);
         let mut last = vec![];
 
-        let mut i = 1;
+        let mut i = 0;
         while okm.len() < out_len {
+            i += 1;
+
             let mut hmac = HMAC::new(self.hash, &self.pseudo_random_key);
 
             // T(i) = HMAC-Hash(PRK, T(i-1), info, i);
@@ -55,11 +57,8 @@ impl HKDF {
             last = hmac.result();
 
             let needed = std::cmp::min(out_len, okm.len() + hash_len) - okm.len();
-            println!("needed={}", needed);
-            println!("last={}", bytes::to_hex(&last));
-
             okm.extend(&last[..needed]);
-            i += 1;
+
         }
 
         Some(okm)

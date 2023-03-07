@@ -135,12 +135,11 @@ impl RecordPayloadProtection {
         // inner_plaintext.resize(inner_plaintext.len() + add_padding, 0x00);
 
         // let len = record.fraqment.len() + 1 + add_padding + 16;
-        let len = record.fraqment.len() + 1 + 16;
+        let len = inner_plaintext.len() + 16; // 1 = Inner ContentType
         let mut tls_cipher_text = vec![RecordType::ApplicationData as u8, 0x03, 0x03, (len >> 8) as u8, len as u8];
 
         let nonce = keys.server.get_per_record_nonce();
 
-        println!("nonce={:?}", bytes::to_hex(&nonce));
         println!("server.iv={:?}", bytes::to_hex(&keys.server.iv));
         println!("inner_plaintext={:?}", bytes::to_hex(&inner_plaintext));
         println!("server.key={:?}", bytes::to_hex(&keys.server.key));

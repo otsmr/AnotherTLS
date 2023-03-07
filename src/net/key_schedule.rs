@@ -15,11 +15,15 @@ use ibig::ibig;
 use super::handshake::{ClientHello, ServerHello};
 use std::result::Result;
 
-pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], len: usize) -> Vec<u8> {
-    let mut out = vec![(len >> 8) as u8, len as u8, b't', b'l', b's', b'1', b'3', b' '];
-    out.extend_from_slice(label);
-    out.extend_from_slice(context);
-    out
+pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
+    // 3.4.  Vectors (variable-length vector) <3
+    let mut res = vec![(out_len >> 8) as u8, out_len as u8];
+    res.push((6 + label.len()) as u8);
+    res.extend_from_slice(b"tls13 ");
+    res.extend_from_slice(label);
+    res.push((context.len()) as u8);
+    res.extend_from_slice(context);
+    res
 }
 
 pub struct Key {
@@ -36,14 +40,18 @@ impl Key {
             HashType::SHA384 => (32, 12),
             HashType::SHA1 => return None
         };
+        println!("ERROR");
+        todo!();
+        println!("secret={}", bytes::to_hex(&hkdf.pseudo_random_key));
         let key = hkdf.expand(
             &get_hkdf_expand_label(b"key", &empty_hash, key_len),
             key_len,
         )?;
+        println!("key={}", bytes::to_hex(&key));
         let key = key.try_into().unwrap();
         let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", &empty_hash, iv_len), iv_len)?;
-        println!("iv_={}", bytes::to_hex(&iv));
-        let iv = iv.try_into().unwrap();
+        let iv: [u8; 12] = iv.try_into().unwrap();
+        println!("iv={}", bytes::to_hex(&iv));
         Some(Key { key, iv, sequence_number: 0 })
     }
     pub fn get_per_record_nonce(&mut self) -> Vec<u8> {
@@ -69,10 +77,11 @@ pub struct WriteKeys {
 
 impl WriteKeys {
     pub fn handshake_keys(key_schedule: &KeySchedule) -> Option<Self> {
-        println!("Get Sever");
+        println!("SERVER");
         let server = Key::from_hkdf(&key_schedule.server_handshake_traffic_secret)?;
-        println!("Get Client");
+        println!("CLIENT");
         let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret)?;
+        println!("----");
         Some(Self { server, client })
     }
     pub fn application_keys(key_schedule: &KeySchedule) -> Option<Self> {
@@ -149,12 +158,13 @@ impl KeySchedule {
 
         // 7.1 Key Schedule
 
-        let psk = &[];
-        let empty_hash = sha_x(hash, b"");
         let hash_len = hash as usize;
+        let empty_slice = &vec![0_u8; hash_len];
+        let empty_hash = sha_x(hash, b"");
 
+        println!("-------");
         // Early Secret
-        let hkdf_early_secret = HKDF::extract(hash, &vec![0_u8; hash_len], psk);
+        let hkdf_early_secret = HKDF::extract(hash, empty_slice, empty_slice);
 
         let derived_secret = hkdf_early_secret.expand(
             &get_hkdf_expand_label(b"derived", &empty_hash, hash_len),

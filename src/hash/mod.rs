@@ -15,7 +15,7 @@ pub use sha256::sha256;
 pub use sha384::sha384;
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HashType {
     SHA1 = 20,
     SHA256 = 32,

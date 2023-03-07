@@ -37,6 +37,10 @@ fn add(x: u64, y: u64) -> u64 {
 
 pub fn sha384(message: &[u8]) -> [u8; 48] {
 
+    // if message.is_empty() {
+    //     return "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b";
+    // }
+
     let mut padding_length = 128 - (message.len() % 128);
     let mut padding: [u8; (128 + 17)] = [0; 128 + 17];
 
