@@ -100,8 +100,10 @@ impl KeySchedule {
             return Err(TlsError::HandshakeFailure);
         }
 
-        let client_public_key = key_share_entry.opaque;
-        let client_public_key = bytes::to_ibig_le(client_public_key);
+        let client_public_key = bytes::to_ibig_le(key_share_entry.opaque);
+
+        println!("client_public_key={:#x}", client_public_key);
+        println!("server_private_key={:#x}", server_hello.private_key.secret);
 
         let client_public_key = Point::new(client_public_key, ibig!(0));
 
@@ -110,9 +112,11 @@ impl KeySchedule {
 
         let shared_secret = math::multiply(&client_public_key, server_private_key, curve);
         let shared_secret = shared_secret.x;
-        let shared_secret = bytes::ibig_to_bytes(shared_secret);
+        let shared_secret = bytes::ibig_to_32bytes(shared_secret, bytes::ByteOrder::Big);
 
         let hello_hash = sha_x(server_hello.hash, hello_raw);
+        println!("hello_hash={}", bytes::to_hex(&hello_hash));
+        println!("shared_secret={}", bytes::to_hex(&shared_secret));
 
         match Self::do_key_schedule(server_hello.hash, &hello_hash, &shared_secret) {
             Some(keys) => Ok(keys),

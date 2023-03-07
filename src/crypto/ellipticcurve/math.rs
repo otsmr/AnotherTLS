@@ -206,9 +206,11 @@ fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> Jacobian
 pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     match curve.equation {
         Equation::Montgomery => {
-            let a = bytes::ibig_to_bytes(n);
+            let a = bytes::ibig_to_32bytes(n, bytes::ByteOrder::Big);
+            let x = bytes::ibig_to_32bytes(p.x.clone(), bytes::ByteOrder::Big);
+            let res = curve25519::scalarmult(x, &a);
             Point {
-                x: curve25519::scalarmult(p, &a),
+                x: bytes::to_ibig_le(&res),
                 y: ibig!(0)
             }
         }
@@ -266,19 +268,26 @@ mod tests {
 
         // openssl genpkey -algorithm x25519 -out x25519-priv.pem
         // openssl pkey -noout -text < x25519-priv.pem
-        // pub.to_bytes(32, "little").hex()
-        // priv.to_bytes(32, "little").hex()
 
         let curve = Curve::curve25519();
         let p = curve.g.clone();
-        assert!(curve.contains(&p));
-        let scalar = ibig!(_418bc27199c57eb4fa3c19563225adfc2e873a9eba088171a0c2707f1b58d808 base 16);
-        let result = math::multiply(&p, scalar, &curve);
-        let expected = Point {
-            x: ibig!(_484e7553a4e4a69cbfc19e97e023b57d1d428e0a880916d74eb12350ef0b5000 base 16),
-            y: ibig!(0)
-        };
-        assert!(result == expected);
+
+        let test_cases = [
+            [ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16), ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16)],
+            [ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16)]
+        ];
+
+        for test_case in test_cases {
+            let scalar = test_case[0].clone();
+            let result = math::multiply(&p, scalar, &curve);
+            let expected = Point {
+                x: test_case[1].clone(),
+                y: ibig!(0)
+            };
+            assert!(result == expected);
+
+        }
+
     }
     #[test]
     fn test_weierstrass_add() {

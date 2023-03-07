@@ -108,12 +108,9 @@ fn pack25519(input: &FieldElem) -> [u8; 32] {
 }
 
 
-pub fn scalarmult(point: &Point, scalar: &[u8; 32]) -> IBig
+pub fn scalarmult(point_x: [u8; 32], scalar: &[u8; 32]) -> [u8; 32]
 {
-    let mut clamped = [0_u8; 32];
-    for (i, item) in clamped.iter_mut().enumerate() {
-        *item = scalar[31-i];
-    }
+    let mut clamped = *scalar;
     clamped[0] &= 0xf8;
     clamped[31] = (clamped[31] & 0x7f) | 0x40;
     // unpack25519(x, point);
@@ -124,10 +121,6 @@ pub fn scalarmult(point: &Point, scalar: &[u8; 32]) -> IBig
     let mut e: FieldElem;
     let mut f: FieldElem;
 
-    let mut point_x = [0_u8; 32];
-    for (i, item) in point_x.iter_mut().enumerate() {
-        *item = (point.x.clone() >> (i*8)).to_f32() as u8;
-    }
     let x = unpack25519(point_x);
     for i in 0..16 {
         b[i] = x[i];
@@ -166,12 +159,5 @@ pub fn scalarmult(point: &Point, scalar: &[u8; 32]) -> IBig
     }
     c = finverse(&c);
     a = fmul(&a, &c);
-    let mut out = ibig!(0);
-    let out2 = pack25519(&a);
-    for (i, item) in out2.iter().enumerate() {
-        let a = IBig::from(*item);
-        let a = a << (i*8);
-        out += a;
-    }
-    out
+    pack25519(&a)
 }

@@ -5,24 +5,38 @@
 
 use ibig::{ibig, IBig};
 
+pub fn to_ibig_be(bytes: &[u8]) -> IBig {
+    let mut res = ibig!(0);
+    for (i, byte) in bytes.iter().enumerate() {
+        res += IBig::from(*byte) << (i * 8);
+    }
+    res
+}
 pub fn to_ibig_le(bytes: &[u8]) -> IBig {
     let mut res = ibig!(0);
-
     for (i, byte) in bytes.iter().enumerate() {
         res += IBig::from(*byte) << (((bytes.len() - 1) * 8) - i * 8);
     }
-
     res
 }
-pub fn ibig_to_bytes(num: IBig) -> [u8; 32] {
+#[derive(PartialEq)]
+pub enum ByteOrder {
+    Little,
+    Big
+}
+pub fn ibig_to_32bytes(num: IBig, order: ByteOrder) -> [u8; 32] {
     let b = <ibig::UBig as std::convert::TryFrom<IBig>>::try_from(num).unwrap();
-    let b = b.to_le_bytes();
+    let b = if order == ByteOrder::Big {
+        b.to_be_bytes()
+    } else {
+        b.to_le_bytes()
+    };
     let mut c = [0; 32];
     for (i, d) in b.iter().enumerate() {
         if i >= 32 {
             break;
         }
-        c[31-i] = *d;
+        c[i] = *d;
     }
     c
 }
