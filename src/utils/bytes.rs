@@ -66,7 +66,7 @@ pub fn to_u64_le(bytes: &[u8]) -> u64 {
 
 pub fn to_hex(b: &[u8]) -> String {
     b.iter()
-        .map(|b| format!("{b:02X}"))
+        .map(|b| format!("{b:02x}"))
         .collect::<Vec<String>>()
         .join("")
 }

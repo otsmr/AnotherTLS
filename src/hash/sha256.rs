@@ -38,11 +38,11 @@ fn add(x: u32, y: u32) -> u32 {
 pub fn sha256(message: &[u8]) -> [u8; 32] {
 
     let mut padding_length = 64 - (message.len() % 64);
-    let mut padding: [u8; (64 + 5)] = [0; 69];
+    let mut padding: [u8; (64 + 9)] = [0; 64+9];
 
     // Message Padding
     if padding_length > 0 {
-        if padding_length < 5 {
+        if padding_length < 9 {
             // Padding: "1" + 0's + length (4*8 bits)
             padding_length += 64;
         }

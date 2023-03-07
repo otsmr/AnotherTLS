@@ -38,19 +38,19 @@ fn add(x: u64, y: u64) -> u64 {
 pub fn sha384(message: &[u8]) -> [u8; 48] {
 
     let mut padding_length = 128 - (message.len() % 128);
-    let mut padding: [u8; (128 + 9)] = [0; 128 + 9];
+    let mut padding: [u8; (128 + 17)] = [0; 128 + 17];
 
     // Message Padding
     if padding_length > 0 {
-        if padding_length < 9 {
+        if padding_length < 17 {
             // Padding: "1" + 0's + length (4*8 bits)
             padding_length += 128;
         }
 
         padding[0] = 0x80;
 
-        for i in 1..9 {
-            padding[padding_length - i] = ((message.len() * 8) >> ((i - 1) * 8)) as u8;
+        for i in 1..16 {
+            padding[padding_length - i] = ((message.len() as u128 * 8) >> ((i - 1) * 8)) as u8;
         } // 8-word representation of l
     }
 
@@ -152,7 +152,7 @@ pub fn sha384(message: &[u8]) -> [u8; 48] {
 
 #[cfg(test)]
 mod tests {
-    use crate::hash::sha384;
+    use crate::{hash::sha384, utils::bytes};
 
     fn test_sha384_do(message: String, hash_expect: String)  {
         let message = message.as_bytes().to_vec();
@@ -165,5 +165,10 @@ mod tests {
         test_sha384_do("".to_string(), "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b".to_string());
         test_sha384_do("The quick brown fox jumps over the lazy dog".to_string(), "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1".to_string());
         test_sha384_do("The quick brown fox jumps over the lazy cog".to_string(), "098cea620b0978caa5f0befba6ddcf22764bea977e1c70b3483edfdf1de25f4b40d6cea3cadf00f809d422feb1f0161b".to_string());
+
+        let message = bytes::from_hex("010000f40303000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000813021303130100ff010000a30000001800160000136578616d706c652e756c666865696d2e6e6574000b000403000102000a00160014001d0017001e0019001801000101010201030104002300000016000000170000000d001e001c040305030603080708080809080a080b080408050806040105010601002b0003020304002d00020101003300260024001d0020358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254020000760303707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f20e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff130200002e002b0002030400330024001d00209fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615").unwrap();
+        let hash = sha384(&message).iter().map(|x| format!("{:02x}", x)).collect::<String>();
+        let hash_expect = "e05f64fcd082bdb0dce473adf669c2769f257a1c75a51b7887468b5e0e7a7de4f4d34555112077f16e079019d5a845bd".to_string();
+        assert_eq!(hash, hash_expect);
     }
 }
