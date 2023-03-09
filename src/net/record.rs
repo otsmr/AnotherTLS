@@ -130,27 +130,15 @@ impl RecordPayloadProtection {
         let mut inner_plaintext = record.fraqment.as_ref().to_vec();
         inner_plaintext.push(record.content_type as u8);
 
-        // let add_padding = 16 - inner_plaintext.len() % 16;
-
-        // inner_plaintext.resize(inner_plaintext.len() + add_padding, 0x00);
-
-        // let len = record.fraqment.len() + 1 + add_padding + 16;
         let len = inner_plaintext.len() + 16; // 1 = Inner ContentType
         let mut tls_cipher_text = vec![RecordType::ApplicationData as u8, 0x03, 0x03, (len >> 8) as u8, len as u8];
 
         let nonce = keys.server.get_per_record_nonce();
 
-        println!("server.iv={:?}", bytes::to_hex(&keys.server.iv));
-        println!("inner_plaintext={:?}", bytes::to_hex(&inner_plaintext));
-        println!("server.key={:?}", bytes::to_hex(&keys.server.key));
-
-
         let (encrypted_record, ahead) = match GCM::encrypt(&keys.server.key, &nonce, &inner_plaintext, &tls_cipher_text) {
             Ok(e) => e,
             Err(_) => return Err(TlsError::InternalError)
         };
-
-        println!("encrypted_record={:?}", bytes::to_hex(&encrypted_record));
 
         tls_cipher_text.extend(encrypted_record);
         tls_cipher_text.extend(bytes::to_bytes(ahead));

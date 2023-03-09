@@ -5,8 +5,6 @@
  * https://www.rfc-editor.org/rfc/rfc5869
  */
 
-use crate::utils::bytes;
-
 use super::{hmac::HMAC, HashType};
 
 pub struct HKDF {

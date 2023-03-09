@@ -5,13 +5,12 @@
  *
  */
 
-use crate::utils::bytes;
 use super::{HashType, sha1, sha256, sha384};
 
 pub struct HMAC<'a> {
     hash: HashType,
     key: &'a [u8],
-    input: Vec<u8>
+    pub input: Vec<u8>
 }
 
 impl<'a> HMAC<'a> {

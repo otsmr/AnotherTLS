@@ -24,7 +24,6 @@ def check_peer_hello():
     # Change ...
     data = data[6:]
 
-
     # Encrypted Extension
     encrypted_extension = "17030300176be02f9da7c2dc9ddef56f2468b90adfa25101ab0344ae"
 

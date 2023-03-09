@@ -34,24 +34,18 @@ pub struct Key {
 
 impl Key {
     pub fn from_hkdf(hkdf: &HKDF) -> Option<Key> {
-        let empty_hash = sha_x(hkdf.hash, b"");
         let (key_len, iv_len) = match hkdf.hash {
             HashType::SHA256 => (16, 12),
             HashType::SHA384 => (32, 12),
             HashType::SHA1 => return None
         };
-        println!("ERROR");
-        todo!();
-        println!("secret={}", bytes::to_hex(&hkdf.pseudo_random_key));
         let key = hkdf.expand(
-            &get_hkdf_expand_label(b"key", &empty_hash, key_len),
+            &get_hkdf_expand_label(b"key", b"", key_len),
             key_len,
         )?;
-        println!("key={}", bytes::to_hex(&key));
         let key = key.try_into().unwrap();
-        let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", &empty_hash, iv_len), iv_len)?;
+        let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", b"", iv_len), iv_len)?;
         let iv: [u8; 12] = iv.try_into().unwrap();
-        println!("iv={}", bytes::to_hex(&iv));
         Some(Key { key, iv, sequence_number: 0 })
     }
     pub fn get_per_record_nonce(&mut self) -> Vec<u8> {
@@ -77,11 +71,8 @@ pub struct WriteKeys {
 
 impl WriteKeys {
     pub fn handshake_keys(key_schedule: &KeySchedule) -> Option<Self> {
-        println!("SERVER");
         let server = Key::from_hkdf(&key_schedule.server_handshake_traffic_secret)?;
-        println!("CLIENT");
         let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret)?;
-        println!("----");
         Some(Self { server, client })
     }
     pub fn application_keys(key_schedule: &KeySchedule) -> Option<Self> {
@@ -162,7 +153,6 @@ impl KeySchedule {
         let empty_slice = &vec![0_u8; hash_len];
         let empty_hash = sha_x(hash, b"");
 
-        println!("-------");
         // Early Secret
         let hkdf_early_secret = HKDF::extract(hash, empty_slice, empty_slice);
 
