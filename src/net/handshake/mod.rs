@@ -72,7 +72,7 @@ impl<'a> Handshake<'a> {
         t.append(&mut data);
         t
     }
-    pub fn is_full(&self) -> bool {
-        self.len == self.fraqment.len() as u32
-    }
+    // pub fn is_full(&self) -> bool {
+    //     self.len == self.fraqment.len() as u32
+    // }
 }

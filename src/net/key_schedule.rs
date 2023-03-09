@@ -3,7 +3,7 @@
  *
  */
 
-use crate::hash::{sha_x, HashType};
+use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
     hash::hkdf::HKDF,
@@ -53,7 +53,7 @@ impl Key {
         let mut out = self.iv.to_vec();
 
         for i in 0..8 {
-            out[(self.iv.len() - 1) - (7-i)] ^= (self.sequence_number << i) as u8;
+            out[(self.iv.len() - 1) - i] ^= (self.sequence_number << (i*8)) as u8;
         }
 
         // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
@@ -93,7 +93,7 @@ pub struct KeySchedule {
 
 impl KeySchedule {
     pub fn from_handshake(
-        hello_raw: &[u8],
+        ts_hash: &dyn TranscriptHash,
         client_hello: &ClientHello,
         server_hello: &ServerHello,
     ) -> Result<KeySchedule, TlsError> {
@@ -116,7 +116,7 @@ impl KeySchedule {
         let shared_secret = math::multiply(&client_public_key, server_private_key, curve);
         let shared_secret = bytes::ibig_to_32bytes(shared_secret.x, bytes::ByteOrder::Big);
 
-        let hello_hash = sha_x(server_hello.hash, hello_raw);
+        let hello_hash = ts_hash.clone().finalize();
 
         match Self::do_key_schedule(server_hello.hash, &hello_hash, &shared_secret) {
             Some(keys) => Ok(keys),

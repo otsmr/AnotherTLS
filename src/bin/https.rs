@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = TlsConfigBuilder::new()
         .add_cert_pem("../anothertls/src/bin/config/anothertls.local.cert".to_string())
         .add_privkey_pem("../anothertls/src/bin/config/priv.key".to_string())
-        .build();
+        .build().unwrap();
 
     HttpsServer::bind("127.0.0.1:4000", config)?.static_file_server("./");
     Ok(())

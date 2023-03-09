@@ -32,7 +32,7 @@ pub struct ServerHello<'a> {
     pub hash: HashType,
     pub named_group: NamedGroup,
     pub private_key: PrivateKey,
-    pub extensions: ServerExtensions<'a>,
+    pub extensions: ServerExtensions,
 }
 
 impl<'a> ServerHello<'a> {
@@ -132,7 +132,7 @@ impl<'a> ServerHello<'a> {
         })
     }
 
-    pub fn to_raw(&mut self) -> Vec<u8> {
+    pub fn to_raw(&self) -> Vec<u8> {
         let mut out = vec![0x3, 0x3];
         out.extend_from_slice(&self.random);
 

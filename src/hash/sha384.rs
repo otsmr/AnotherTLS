@@ -138,7 +138,7 @@ impl Sha384 {
     }
 }
 
-impl TranscriptHash<48> for Sha384 {
+impl TranscriptHash for Sha384 {
     fn new() -> Self {
         Self {
             input: [0; 128],
@@ -163,18 +163,26 @@ impl TranscriptHash<48> for Sha384 {
         }
     }
 
-    fn finalize(&mut self) -> [u8; 48] {
+    fn finalize(&mut self) -> Vec<u8> {
         self.padd_input();
-
         let mut out: [u8; 48] = [0; 48];
         for i in 0u8..48u8 {
             out[i as usize] = (self.state[(i >> 3) as usize] >> (8 * (7 - (i & 7))) as u64) as u8;
         }
-        out
+        out.to_vec()
+    }
+
+    fn clone(&self) -> Box<dyn TranscriptHash> {
+        Box::new(Self {
+            input: self.input,
+            input_len: self.input_len,
+            state: self.state,
+            length: self.length
+        })
     }
 }
 
-pub fn sha384(message: &[u8]) -> [u8; 48] {
+pub fn sha384(message: &[u8]) -> Vec<u8> {
     let mut sha = Sha384::new();
     sha.update(message);
     sha.finalize()

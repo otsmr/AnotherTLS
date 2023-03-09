@@ -13,7 +13,6 @@ use super::{math, Point, PrivateKey, PublicKey, Signature};
 pub struct Ecdsa {
     rng: Box<dyn RngCore<IBig>>,
 }
-
 impl Ecdsa {
     /// Panics if /dev/urandom can't be read correctly
     pub fn urandom() -> Self {

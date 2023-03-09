@@ -4,6 +4,7 @@
  */
 
 
+use crate::hash::TranscriptHash;
 use super::handshake::Certificate;
 use ibig::IBig;
 
@@ -15,12 +16,13 @@ pub struct TlsConfig {
 
     // openssl ecparam -out pk_server.pem -name prime256v1 -genkey
     // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
-    pub(crate) cert: Option<Certificate>,
-    pub(crate) privkey: Option<PrivateKey>,
+    pub(crate) cert: Certificate,
+    pub(crate) privkey: PrivateKey,
 }
 
 pub struct TlsConfigBuilder {
-    config: TlsConfig
+    cert: Option<Certificate>,
+    privkey: Option<PrivateKey>,
 
 }
 impl Default for TlsConfigBuilder {
@@ -33,32 +35,38 @@ impl TlsConfigBuilder {
 
     pub fn new () -> Self {
         TlsConfigBuilder {
-            config: TlsConfig {
-                cert: None,
-                privkey: None
-            }
+            cert: None,
+            privkey: None
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
-        self.config.cert = Certificate::from_pem(filepath);
-        if self.config.cert.is_none() {
+        self.cert = Certificate::from_pem(filepath);
+        if self.cert.is_none() {
             panic!("Error reading or parsing certificate");
         }
         self
     }
     pub fn add_privkey_pem(mut self, filepath: String) -> Self {
-        self.config.privkey = PrivateKey::from_pem(filepath);
-        if self.config.privkey.is_none() {
+        self.privkey = PrivateKey::from_pem(filepath);
+        // TODO: Validate priv key against the cert
+        if self.privkey.is_none() {
             panic!("Error reading or parsing private key");
         }
         self
     }
-    pub fn build (self) -> TlsConfig {
-        self.config
+    pub fn build (self) -> std::result::Result<TlsConfig, String> {
+        if self.cert.is_none() {
+            return Err("No cert provided".to_string());
+        }
+        if self.privkey.is_none() {
+            return Err("No privkey for cert provided".to_string());
+        }
+        Ok(TlsConfig { cert: self.cert.unwrap(), privkey: self.privkey.unwrap() })
     }
 }
 
 pub struct TlsContext<'a> {
     pub config: &'a TlsConfig,
-    pub rng: Box<dyn RngCore<IBig>>
+    pub rng: Box<dyn RngCore<IBig>>,
+    pub ts_hash: Option<Box<dyn TranscriptHash>>
 }

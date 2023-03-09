@@ -130,7 +130,8 @@ impl RecordPayloadProtection {
         let mut inner_plaintext = record.fraqment.as_ref().to_vec();
         inner_plaintext.push(record.content_type as u8);
 
-        let len = inner_plaintext.len() + 16; // 1 = Inner ContentType
+        let len_ahead = 16;
+        let len = inner_plaintext.len() + len_ahead; // 1 = Inner ContentType
         let mut tls_cipher_text = vec![RecordType::ApplicationData as u8, 0x03, 0x03, (len >> 8) as u8, len as u8];
 
         let nonce = keys.server.get_per_record_nonce();

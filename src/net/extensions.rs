@@ -5,14 +5,14 @@ use super::{named_groups::NamedGroup, stream::TlsError};
 #[derive(PartialEq, Debug)]
 pub enum ExtensionType {
     ServerName = 0x00,
-    ECPointFormats = 0x0b,
-    SupportedGroups = 0x0a,
-    SessionTicket = 0x23,
-    EncryptThenMac = 0x16,
-    ExtendedMasterSecret = 0x17,
-    SignatureAlgorithms = 0x0d,
+    // ECPointFormats = 0x0b,
+    // SupportedGroups = 0x0a,
+    // SessionTicket = 0x23,
+    // EncryptThenMac = 0x16,
+    // ExtendedMasterSecret = 0x17,
+    // SignatureAlgorithms = 0x0d,
     SupportedVersions = 0x2b,
-    PSKKeyExchangeMode = 0x2d,
+    // PSKKeyExchangeMode = 0x2d,
     KeyShare = 0x33,
 }
 
@@ -145,20 +145,20 @@ impl<'a> KeyShare<'a> {
 }
 
 #[derive(Debug)]
-pub enum ServerExtension<'a> {
+pub enum ServerExtension {
     SupportedVersion(SupportedVersions),
-    KeyShare(KeyShare<'a>),
+    // KeyShare(KeyShare>),
 }
 
-pub struct ServerExtensions<'a>(Vec<ServerExtension<'a>>);
+pub struct ServerExtensions(Vec<ServerExtension>);
 
-impl<'a> ServerExtensions<'a> {
+impl ServerExtensions {
 
     pub fn new() -> Self {
         Self(vec![])
     }
 
-    pub fn push(&mut self, ext: ServerExtension<'a>) {
+    pub fn push(&mut self, ext: ServerExtension) {
         self.0.push(ext)
     }
 
@@ -172,7 +172,7 @@ impl<'a> ServerExtensions<'a> {
 
 }
 
-impl<'a> Default for ServerExtensions<'a> {
+impl Default for ServerExtensions {
     fn default() -> Self {
         Self::new()
     }
@@ -183,7 +183,7 @@ pub enum ClientExtension<'a> {
     SupportedVersion(SupportedVersions),
     KeyShare(KeyShare<'a>),
     ServerName(String),
-    PreSharedKey(u16),
+    // PreSharedKey(u16),
 }
 
 impl<'a> ClientExtension<'a> {
@@ -214,7 +214,7 @@ impl<'a> ClientExtension<'a> {
                 }
                 // ExtensionType::SupportedGroups => continue, // TODO
                 // ExtensionType::PSKKeyExchangeMode => continue, // TODO
-                _ => continue,
+                // _ => continue,
             };
 
             consumed += size;
