@@ -3,7 +3,7 @@
  *
  */
 
-use anothertls::net::TlsListener;
+use anothertls::net::{config::TlsConfigBuilder, TlsListener};
 use anothertls::TlsConfig;
 use std::{
     io,
@@ -15,9 +15,9 @@ struct HttpsServer {
 }
 
 impl HttpsServer {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+    pub fn bind<A: ToSocketAddrs>(addr: A, config: TlsConfig) -> io::Result<Self> {
         let listener = TcpListener::bind(addr)?;
-        let listener = TlsListener::new(listener, TlsConfig {});
+        let listener = TlsListener::new(listener, config);
         Ok(Self { listener })
     }
 
@@ -53,6 +53,12 @@ impl HttpsServer {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    HttpsServer::bind("127.0.0.1:4000")?.static_file_server("./");
+    println!("HTTPS Server");
+    let config = TlsConfigBuilder::new()
+        .add_cert_pem("../anothertls/src/bin/config/anothertls.local.cert".to_string())
+        .add_privkey_pem("../anothertls/src/bin/config/priv.key".to_string())
+        .build();
+
+    HttpsServer::bind("127.0.0.1:4000", config)?.static_file_server("./");
     Ok(())
 }

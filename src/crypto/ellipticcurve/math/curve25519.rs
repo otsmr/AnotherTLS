@@ -1,9 +1,6 @@
 // FROM https://martin.kleppmann.com/papers/curve25519.pdf
 
 
-use ibig::{IBig, ibig};
-use crate::crypto::ellipticcurve::Point;
-
 type FieldElem = [i64; 16];
 
 fn unpack25519(input: [u8; 32]) -> FieldElem {

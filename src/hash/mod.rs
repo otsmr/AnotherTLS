@@ -22,6 +22,11 @@ pub enum HashType {
     SHA384 = 48
 }
 
+trait TranscriptHash<const S: usize> {
+    fn new() -> Self;
+    fn update(&mut self, buf: &[u8]);
+    fn finalize(&mut self) -> [u8; S];
+}
 
 pub fn sha_x(typ: HashType, data: &[u8]) -> Vec<u8> {
     match typ {

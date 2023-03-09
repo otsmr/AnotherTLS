@@ -6,13 +6,13 @@
 pub mod listener;
 pub mod stream;
 pub mod config;
-pub mod handshake;
-pub mod extensions;
-pub mod record;
-pub mod named_groups;
-pub mod key_schedule;
+pub(crate) mod handshake;
+pub(crate) mod extensions;
+pub(crate) mod record;
+pub(crate) mod named_groups;
+pub(crate) mod key_schedule;
 
 pub use listener::TlsListener;
 pub use stream::TlsStream;
 pub use config::TlsConfig;
-pub use config::TlsContext;
+pub(crate) use config::TlsContext;

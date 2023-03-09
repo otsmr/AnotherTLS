@@ -13,7 +13,7 @@ use crate::{
         TlsContext,
     },
     rand::URandomRng,
-    TlsConfig, utils::bytes,
+    TlsConfig,
 };
 
 use std::{
@@ -94,11 +94,10 @@ impl<'a> TlsStream<'a> {
                     }
 
                     let mut hello_raw = Vec::with_capacity(300);
-
                     hello_raw.extend_from_slice(record.fraqment.as_ref());
-
                     let client_hello = ClientHello::from_raw(handshake.fraqment)?;
 
+                    // -- Server Hello --
                     let mut server_hello =
                         ServerHello::from_client_hello(&client_hello, &mut context)?;
                     let handshake_raw =
@@ -109,33 +108,58 @@ impl<'a> TlsStream<'a> {
                     let mut record_raw = Record::to_raw(RecordType::Handshake, &handshake_raw);
                     tx_buf.append(&mut record_raw);
 
+                    // -- Change Cipher Spec --
                     let mut server_change_cipher_spec = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01];
                     tx_buf.append(&mut server_change_cipher_spec);
 
+                    // -- Handshake Keys Calc --
                     let key_schedule =
                         KeySchedule::from_handshake(&hello_raw, &client_hello, &server_hello)?;
 
-                    self.record_payload_protection =
-                        RecordPayloadProtection::new(key_schedule);
+                    self.record_payload_protection = RecordPayloadProtection::new(key_schedule);
 
                     if self.record_payload_protection.is_none() {
                         return Err(TlsError::InternalError);
                     }
 
-                    // state = HandshakeState::ServerParameters;
+                    let protect = self.record_payload_protection.as_mut().unwrap();
+
                     // -- ServerParameters --
 
                     let encrypted_extensions = ServerExtensions::new();
                     let encrypted_extensions_raw = encrypted_extensions.as_bytes();
-                    let handshake_raw = Handshake::to_raw(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
+                    let handshake_raw = Handshake::to_raw(
+                        HandshakeType::EncryptedExtensions,
+                        encrypted_extensions_raw,
+                    );
                     let record = Record::new(RecordType::Handshake, &handshake_raw);
-                    let mut encrypted_record_raw = self.record_payload_protection.as_mut().unwrap().encrypt(record)?;
+                    let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
 
-                }
-                HandshakeState::ServerParameters => {
+                    // -- Server Certificate --
 
+                    let certificate = match &self.config.cert {
+                        Some(e) => e,
+                        None => return Err(TlsError::InternalError)
+                    };
+                    let certificate_raw = certificate.get_certificate_for_handshake();
+
+                    let handshake_raw = Handshake::to_raw(HandshakeType::Certificate, certificate_raw);
+                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let mut encrypted_record_raw = protect.encrypt(record)?;
+                    tx_buf.append(&mut encrypted_record_raw);
+
+                    // -- Server Certificate Verify --
+
+
+                    let certificate_verify_raw = vec![];
+
+                    let handshake_raw = Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
+                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let mut encrypted_record_raw = protect.encrypt(record)?;
+                    tx_buf.append(&mut encrypted_record_raw);
                 }
+                HandshakeState::ServerParameters => {}
                 HandshakeState::Authentication => break,
                 HandshakeState::Finished => break,
             }
