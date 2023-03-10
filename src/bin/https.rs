@@ -54,7 +54,9 @@ impl HttpsServer {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("HTTPS Server");
+    // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
     let config = TlsConfigBuilder::new()
+        .set_keylog_path("/Users/privat/Documents/projekte/webrocket-secured/anothertls/keylog.txt".to_string())
         .add_cert_pem("../anothertls/src/bin/config/anothertls.local.cert".to_string())
         .add_privkey_pem("../anothertls/src/bin/config/priv.key".to_string())
         .build().unwrap();

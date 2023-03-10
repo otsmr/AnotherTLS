@@ -127,6 +127,10 @@ impl<'a> TlsStream<'a> {
                     let key_schedule =
                         KeySchedule::from_handshake(&ts_hash, &client_hello, &server_hello)?;
 
+                    if let Some(filepath) = &self.config.keylog {
+                        key_schedule.create_keylog_file(filepath, client_hello.random);
+                    }
+
                     self.record_payload_protection = RecordPayloadProtection::new(key_schedule);
 
                     if self.record_payload_protection.is_none() {

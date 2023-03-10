@@ -18,11 +18,13 @@ pub struct TlsConfig {
     // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
     pub(crate) cert: Certificate,
     pub(crate) privkey: PrivateKey,
+    pub(crate) keylog: Option<String>
 }
 
 pub struct TlsConfigBuilder {
     cert: Option<Certificate>,
     privkey: Option<PrivateKey>,
+    keylog: Option<String>
 
 }
 impl Default for TlsConfigBuilder {
@@ -36,7 +38,8 @@ impl TlsConfigBuilder {
     pub fn new () -> Self {
         TlsConfigBuilder {
             cert: None,
-            privkey: None
+            privkey: None,
+            keylog: None
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
@@ -54,6 +57,14 @@ impl TlsConfigBuilder {
         }
         self
     }
+    pub fn set_keylog_path(mut self, filepath: String) -> Self {
+        self.keylog = Some(filepath);
+        self
+    }
+    pub fn enable_keylog(mut self) -> Self {
+        self.keylog = Some("keylog.txt".to_string());
+        self
+    }
     pub fn build (self) -> std::result::Result<TlsConfig, String> {
         if self.cert.is_none() {
             return Err("No cert provided".to_string());
@@ -61,7 +72,7 @@ impl TlsConfigBuilder {
         if self.privkey.is_none() {
             return Err("No privkey for cert provided".to_string());
         }
-        Ok(TlsConfig { cert: self.cert.unwrap(), privkey: self.privkey.unwrap() })
+        Ok(TlsConfig { cert: self.cert.unwrap(), privkey: self.privkey.unwrap(), keylog: self.keylog })
     }
 }
 

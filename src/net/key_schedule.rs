@@ -3,6 +3,7 @@
  *
  */
 
+use std::io::Write;
 use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
@@ -13,7 +14,9 @@ use crate::{
 use ibig::ibig;
 
 use super::handshake::{ClientHello, ServerHello};
+use std::fs::{self, OpenOptions};
 use std::result::Result;
+
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
     // 3.4.  Vectors (variable-length vector) <3
@@ -29,7 +32,7 @@ pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Ve
 pub struct Key {
     pub key: [u8; 32],
     pub iv: [u8; 12],
-    sequence_number: u64
+    sequence_number: u64,
 }
 
 impl Key {
@@ -37,23 +40,24 @@ impl Key {
         let (key_len, iv_len) = match hkdf.hash {
             HashType::SHA256 => (16, 12),
             HashType::SHA384 => (32, 12),
-            HashType::SHA1 => return None
+            HashType::SHA1 => return None,
         };
-        let key = hkdf.expand(
-            &get_hkdf_expand_label(b"key", b"", key_len),
-            key_len,
-        )?;
+        let key = hkdf.expand(&get_hkdf_expand_label(b"key", b"", key_len), key_len)?;
         let key = key.try_into().unwrap();
         let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", b"", iv_len), iv_len)?;
         let iv: [u8; 12] = iv.try_into().unwrap();
-        Some(Key { key, iv, sequence_number: 0 })
+        Some(Key {
+            key,
+            iv,
+            sequence_number: 0,
+        })
     }
     pub fn get_per_record_nonce(&mut self) -> Vec<u8> {
         // 5.3.  Per-Record Nonce
         let mut out = self.iv.to_vec();
 
         for i in 0..8 {
-            out[(self.iv.len() - 1) - i] ^= (self.sequence_number << (i*8)) as u8;
+            out[(self.iv.len() - 1) - i] ^= (self.sequence_number << (i * 8)) as u8;
         }
 
         // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
@@ -146,7 +150,6 @@ impl KeySchedule {
         hello_hash: &[u8],
         shared_secret: &[u8],
     ) -> Option<KeySchedule> {
-
         // 7.1 Key Schedule
 
         let hash_len = hash as usize;
@@ -194,6 +197,39 @@ impl KeySchedule {
             // Master Secret
             hkdf_master_secret,
         })
+    }
+    pub fn create_keylog_file(&self, filepath: &str, client_random: &[u8]) {
+        let mut content = String::new();
+
+        let client_random = bytes::to_hex(client_random);
+
+        content += "SERVER_HANDSHAKE_TRAFFIC_SECRET ";
+        content += &client_random;
+        content += " ";
+        content += &bytes::to_hex(&self.server_handshake_traffic_secret.pseudo_random_key);
+        content += "\n";
+
+        content += "CLIENT_HANDSHAKE_TRAFFIC_SECRET ";
+        content += &client_random;
+        content += " ";
+        content += &bytes::to_hex(&self.client_handshake_traffic_secret.pseudo_random_key);
+        // content += "\n";
+
+        // content += "EXPORTER_SECRET ";
+        // content += &client_random;
+        // content += " ";
+        // content += &bytes::to_hex(&self.hkdf_early_secret.pseudo_random_key);
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open(filepath)
+            .unwrap_or_else(|_| panic!("Couldn't open or create file {}", filepath));
+
+        if let Err(e) = writeln!(file, "{}", content) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
     }
 }
 
