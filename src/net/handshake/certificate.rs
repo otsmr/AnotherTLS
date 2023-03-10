@@ -1,8 +1,8 @@
 use crate::{
     crypto::ellipticcurve::{Ecdsa, PrivateKey},
-    hash::{sha_x, HashType, TranscriptHash},
+    hash::{sha256, TranscriptHash},
     net::stream::TlsError,
-    utils::{bytes, pem::get_pem_content_from_file},
+    utils::pem::get_pem_content_from_file,
 };
 
 pub struct Certificate {
@@ -40,7 +40,6 @@ impl Certificate {
 
     pub fn get_certificate_verify_for_handshake(
         &self,
-        hash_type: HashType,
         privkey: &PrivateKey,
         ts_hash: &dyn TranscriptHash,
     ) -> std::result::Result<Vec<u8>, TlsError> {
@@ -52,7 +51,7 @@ impl Certificate {
         content.push(0x00);
         content.extend(ts_hash.clone().finalize());
 
-        let hash = sha_x(hash_type, &content);
+        let hash = sha256(&content);
 
         let mut ecdsa = Ecdsa::urandom();
         let signature = match ecdsa.sign(privkey, &hash) {
@@ -65,4 +64,5 @@ impl Certificate {
         Ok(res)
     }
 }
+
 

@@ -95,26 +95,26 @@ impl<'a> Record<'a> {
         t.extend_from_slice(data);
         t
     }
-    pub fn is_full(&self) -> bool {
-        self.len == self.fraqment.len() as u16
-    }
+    // pub fn is_full(&self) -> bool {
+    //     self.len == self.fraqment.len() as u16
+    // }
 }
 
 
 pub struct RecordPayloadProtection {
-    key_schedule: KeySchedule,
+    // key_schedule: KeySchedule,
     handshake_keys: WriteKeys,
     // application_keys: WriteKeys
 }
 
 impl RecordPayloadProtection {
 
-    pub fn new (key_schedule: KeySchedule) -> Option<Self> {
+    pub fn new (key_schedule: &KeySchedule) -> Option<Self> {
         Some(Self {
-            handshake_keys: WriteKeys::handshake_keys(&key_schedule)?,
+            handshake_keys: WriteKeys::handshake_keys(key_schedule)?,
             // FIMXE: use application_keys
             // application_keys: WriteKeys::handshake_keys(&key_schedule)?,
-            key_schedule,
+            // key_schedule,
         })
     }
 

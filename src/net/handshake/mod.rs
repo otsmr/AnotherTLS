@@ -6,10 +6,12 @@
 mod client_hello;
 mod server_hello;
 mod certificate;
+mod finished;
 
 pub use client_hello::ClientHello;
 pub use server_hello::ServerHello;
 pub use certificate::Certificate;
+pub use finished::get_finished_handshake;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum HandshakeType {

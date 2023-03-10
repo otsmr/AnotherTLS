@@ -7,15 +7,15 @@
 
 use crate::hash::TranscriptHash;
 use crate::{
+    crypto::CipherSuite,
+    hash::sha384::Sha384,
     net::{
-        handshake::{ClientHello, Handshake, HandshakeType, ServerHello},
+        extensions::ServerExtensions,
+        handshake::{get_finished_handshake, ClientHello, Handshake, HandshakeType, ServerHello},
         key_schedule::KeySchedule,
         record::{Record, RecordPayloadProtection, RecordType},
         TlsContext,
-        extensions::ServerExtensions,
     },
-    crypto::CipherSuite,
-    hash::sha384::Sha384,
     rand::URandomRng,
     TlsConfig,
 };
@@ -26,7 +26,6 @@ use std::{
     process::exit,
     result::Result,
 };
-
 
 #[derive(PartialEq)]
 enum HandshakeState {
@@ -72,7 +71,7 @@ impl<'a> TlsStream<'a> {
         let mut context = TlsContext {
             config: self.config,
             rng: Box::new(URandomRng::new()),
-            ts_hash: None
+            ts_hash: None,
         };
         let mut rx_buf: [u8; 4096] = [0; 4096];
         let mut tx_buf = Vec::with_capacity(4096);
@@ -100,8 +99,7 @@ impl<'a> TlsStream<'a> {
                     let client_hello = ClientHello::from_raw(handshake.fraqment)?;
 
                     // -- Server Hello --
-                    let server_hello =
-                        ServerHello::from_client_hello(&client_hello, &mut context)?;
+                    let server_hello = ServerHello::from_client_hello(&client_hello, &mut context)?;
                     let handshake_raw =
                         Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
 
@@ -109,7 +107,7 @@ impl<'a> TlsStream<'a> {
                         CipherSuite::TLS_AES_256_GCM_SHA384 => Sha384::new(),
                         CipherSuite::TLS_AES_128_GCM_SHA256 => todo!(),
                         CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => todo!(),
-                        _ => return Err(TlsError::InsufficientSecurity)
+                        _ => return Err(TlsError::InsufficientSecurity),
                     };
 
                     // Add ClientHello
@@ -131,7 +129,7 @@ impl<'a> TlsStream<'a> {
                         key_schedule.create_keylog_file(filepath, client_hello.random);
                     }
 
-                    self.record_payload_protection = RecordPayloadProtection::new(key_schedule);
+                    self.record_payload_protection = RecordPayloadProtection::new(&key_schedule);
 
                     if self.record_payload_protection.is_none() {
                         return Err(TlsError::InternalError);
@@ -157,23 +155,41 @@ impl<'a> TlsStream<'a> {
 
                     let certificate_raw = self.config.cert.get_certificate_for_handshake();
 
-                    let handshake_raw = Handshake::to_raw(HandshakeType::Certificate, certificate_raw);
+                    let handshake_raw =
+                        Handshake::to_raw(HandshakeType::Certificate, certificate_raw);
+
                     ts_hash.update(&handshake_raw);
                     let record = Record::new(RecordType::Handshake, &handshake_raw);
                     let mut encrypted_record_raw = protect.encrypt(record)?;
-                    // ts_hash.update(&encrypted_record_raw[5..]);
                     tx_buf.append(&mut encrypted_record_raw);
 
                     // -- Server Certificate Verify --
 
-                    let certificate_verify_raw = self.config.cert.get_certificate_verify_for_handshake(server_hello.hash, &self.config.privkey, &ts_hash)?;
+                    let certificate_verify_raw = self
+                        .config
+                        .cert
+                        .get_certificate_verify_for_handshake(&self.config.privkey, &ts_hash)?;
 
-                    let handshake_raw = Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
+                    let handshake_raw =
+                        Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
+
                     ts_hash.update(&handshake_raw);
                     let record = Record::new(RecordType::Handshake, &handshake_raw);
                     let mut encrypted_record_raw = protect.encrypt(record)?;
-                    // tx_buf.append(&mut encrypted_record_raw);
+                    tx_buf.append(&mut encrypted_record_raw);
 
+                    // -- FINISHED --
+
+                    let handshake_raw = get_finished_handshake(
+                        server_hello.hash,
+                        &key_schedule.server_handshake_traffic_secret,
+                        &ts_hash,
+                    )?;
+
+                    ts_hash.update(&handshake_raw);
+                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let mut encrypted_record_raw = protect.encrypt(record)?;
+                    tx_buf.append(&mut encrypted_record_raw);
                 }
                 HandshakeState::ServerParameters => {}
                 HandshakeState::Authentication => break,

@@ -16,7 +16,7 @@ anothertls v0.1.0
 │   ├── cfg-if v1.0.0
 │   └── static_assertions v1.1.0
 └── log v0.4.17
-└── cfg-if v1.0.0
+    └── cfg-if v1.0.0
 ```
 
 ## standards
@@ -29,9 +29,9 @@ anothertls v0.1.0
 - TLS curves: [X25519](https://martin.kleppmann.com/papers/curve25519.pdf)
 - [HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
+- Certificate type: X509 (not really :^))
 ### work in progress
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446) (with [Modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS))
-- Certificate type: X509
 ### Maybe
 - Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
 - TLS curves: [secp384r1]()

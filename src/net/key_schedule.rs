@@ -90,7 +90,7 @@ pub struct KeySchedule {
     hkdf_early_secret: HKDF,
     // Handshake Secret
     client_handshake_traffic_secret: HKDF,
-    server_handshake_traffic_secret: HKDF,
+    pub(crate) server_handshake_traffic_secret: HKDF,
     // Master Secret
     hkdf_master_secret: HKDF,
 }
