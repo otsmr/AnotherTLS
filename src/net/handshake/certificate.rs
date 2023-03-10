@@ -23,12 +23,12 @@ impl Certificate {
         let mut certificate_raw = vec![
             0x00,
             // CertificateS Length + Extensions
-            (lens << 16) as u8,
-            (lens << 8) as u8,
+            (lens >> 16) as u8,
+            (lens >> 8) as u8,
             (lens as u8),
             // Certificate Length
-            (len << 16) as u8,
-            (len << 8) as u8,
+            (len >> 16) as u8,
+            (len >> 8) as u8,
             (len as u8),
         ];
         certificate_raw.extend_from_slice(&self.raw);
