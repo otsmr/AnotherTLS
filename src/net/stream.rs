@@ -29,9 +29,7 @@ use std::{
 
 #[derive(PartialEq)]
 enum HandshakeState {
-    KeyExchange,
-    ServerParameters,
-    Authentication,
+    ClientHello,
     Finished,
 }
 
@@ -66,7 +64,7 @@ impl<'a> TlsStream<'a> {
     }
 
     pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
-        let state = HandshakeState::KeyExchange;
+        let mut state = HandshakeState::ClientHello;
 
         let mut context = TlsContext {
             config: self.config,
@@ -91,7 +89,7 @@ impl<'a> TlsStream<'a> {
             let handshake = Handshake::from_raw(record.fraqment.as_ref()).unwrap();
 
             match state {
-                HandshakeState::KeyExchange => {
+                HandshakeState::ClientHello => {
                     if handshake.handshake_type != HandshakeType::ClientHello {
                         return Err(TlsError::UnexpectedMessage);
                     }
@@ -148,7 +146,6 @@ impl<'a> TlsStream<'a> {
                     ts_hash.update(&handshake_raw);
                     let record = Record::new(RecordType::Handshake, &handshake_raw);
                     let mut encrypted_record_raw = protect.encrypt(record)?;
-                    // ts_hash.update(&encrypted_record_raw[5..]);
                     tx_buf.append(&mut encrypted_record_raw);
 
                     // -- Server Certificate --
@@ -190,24 +187,26 @@ impl<'a> TlsStream<'a> {
                     let record = Record::new(RecordType::Handshake, &handshake_raw);
                     let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
+
+                    state = HandshakeState::Finished;
+
                 }
-                HandshakeState::ServerParameters => {}
-                HandshakeState::Authentication => break,
-                HandshakeState::Finished => break,
+                HandshakeState::Finished => {
+                    break;
+                },
             }
 
+            // Send buffer
             if self.stream.write_all(tx_buf.as_slice()).is_err() {
                 return Err(TlsError::InternalError);
             };
 
             rx_buf.fill(0);
             tx_buf.clear();
-            exit(0);
+
         }
 
-        exit(0);
-
-        // Ok(())
+        Ok(())
     }
 
     pub fn read<'b>(&'b mut self, _buf: &'b mut [u8]) -> std::io::Result<usize> {
