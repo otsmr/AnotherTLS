@@ -12,8 +12,11 @@ pub use client_hello::ClientHello;
 pub use server_hello::ServerHello;
 pub use certificate::Certificate;
 pub use finished::get_finished_handshake;
+pub use finished::get_verify_client_finished;
 
-#[derive(PartialEq, Copy, Clone)]
+use super::stream::TlsError;
+
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum HandshakeType {
     ClientHello = 1,
     ServerHello = 2,
@@ -54,15 +57,17 @@ pub struct Handshake<'a> {
 }
 
 impl<'a> Handshake<'a> {
-    pub fn from_raw(buf: &[u8]) -> Option<Handshake> {
+    pub fn from_raw(buf: &[u8]) -> Result<Handshake, TlsError> {
         if buf.len() < 4 {
-            return None;
+            return Err(TlsError::DecodeError);
         }
+        let handshake_type = match HandshakeType::new(buf[0]) {
+            Some(a) => a,
+            None => return Err(TlsError::DecodeError)
 
-        let handshake_type = HandshakeType::new(buf[0])?;
+        };
         let len = ((buf[1] as u32) << 16) | ((buf[2] as u32) << 8) | buf[3] as u32;
-
-        Some(Handshake {
+        Ok(Handshake {
             handshake_type,
             len,
             fraqment: &buf[4..],

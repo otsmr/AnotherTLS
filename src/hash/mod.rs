@@ -26,6 +26,7 @@ pub trait TranscriptHash {
     fn new() -> Self where Self: Sized;
     fn update(&mut self, buf: &[u8]);
     fn finalize(&mut self) -> Vec<u8>;
+    fn get_type(&self) -> HashType;
     fn clone(&self) -> Box<dyn TranscriptHash>;
 }
 

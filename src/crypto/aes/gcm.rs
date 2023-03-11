@@ -136,13 +136,13 @@ impl GCM {
         auth_tag: u128,
     ) -> Result<Vec<u8>, String> {
 
-        let (C, T) = GCM::gcm(key, iv, ciphertext, additional_data, false)?;
+        let (P, T) = GCM::gcm(key, iv, ciphertext, additional_data, false)?;
 
         if T != auth_tag {
             return Err("auth_tag is not correct".to_string());
         }
 
-        Ok(C)
+        Ok(P)
 
     }
 }

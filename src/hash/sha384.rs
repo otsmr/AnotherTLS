@@ -180,6 +180,11 @@ impl TranscriptHash for Sha384 {
             length: self.length
         })
     }
+
+    fn get_type(&self) -> super::HashType {
+        super::HashType::SHA384
+    }
+
 }
 
 pub fn sha384(message: &[u8]) -> Vec<u8> {

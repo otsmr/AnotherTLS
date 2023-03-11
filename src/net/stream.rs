@@ -11,9 +11,12 @@ use crate::{
     hash::sha384::Sha384,
     net::{
         extensions::ServerExtensions,
-        handshake::{get_finished_handshake, ClientHello, Handshake, HandshakeType, ServerHello},
+        handshake::{
+            get_finished_handshake, get_verify_client_finished, ClientHello, Handshake,
+            HandshakeType, ServerHello,
+        },
         key_schedule::KeySchedule,
-        record::{Record, RecordPayloadProtection, RecordType},
+        record::{Record, RecordPayloadProtection, RecordType, Value},
         TlsContext,
     },
     rand::URandomRng,
@@ -23,7 +26,6 @@ use crate::{
 use std::{
     io::{Read, Write},
     net::{SocketAddr, TcpStream},
-    process::exit,
     result::Result,
 };
 
@@ -73,6 +75,7 @@ impl<'a> TlsStream<'a> {
         };
         let mut rx_buf: [u8; 4096] = [0; 4096];
         let mut tx_buf = Vec::with_capacity(4096);
+        let mut ts_hash_handshake = None;
 
         loop {
             let n = match self.stream.read(&mut rx_buf) {
@@ -80,16 +83,16 @@ impl<'a> TlsStream<'a> {
                 Err(_) => return Err(TlsError::InternalError),
             };
 
-            let record = Record::from_raw(&rx_buf[..n]).unwrap();
-
-            if record.content_type != RecordType::Handshake {
-                return Err(TlsError::UnexpectedMessage);
-            }
-
-            let handshake = Handshake::from_raw(record.fraqment.as_ref()).unwrap();
-
             match state {
                 HandshakeState::ClientHello => {
+                    let record = Record::from_raw(&rx_buf[..n]).unwrap();
+
+                    if record.content_type != RecordType::Handshake {
+                        return Err(TlsError::UnexpectedMessage);
+                    }
+
+                    let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
+
                     if handshake.handshake_type != HandshakeType::ClientHello {
                         return Err(TlsError::UnexpectedMessage);
                     }
@@ -127,7 +130,7 @@ impl<'a> TlsStream<'a> {
                         key_schedule.create_keylog_file(filepath, client_hello.random);
                     }
 
-                    self.record_payload_protection = RecordPayloadProtection::new(&key_schedule);
+                    self.record_payload_protection = RecordPayloadProtection::new(key_schedule);
 
                     if self.record_payload_protection.is_none() {
                         return Err(TlsError::InternalError);
@@ -144,7 +147,7 @@ impl<'a> TlsStream<'a> {
                         encrypted_extensions_raw,
                     );
                     ts_hash.update(&handshake_raw);
-                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                     let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
 
@@ -156,7 +159,7 @@ impl<'a> TlsStream<'a> {
                         Handshake::to_raw(HandshakeType::Certificate, certificate_raw);
 
                     ts_hash.update(&handshake_raw);
-                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                     let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
 
@@ -171,7 +174,7 @@ impl<'a> TlsStream<'a> {
                         Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
 
                     ts_hash.update(&handshake_raw);
-                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                     let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
 
@@ -179,21 +182,58 @@ impl<'a> TlsStream<'a> {
 
                     let handshake_raw = get_finished_handshake(
                         server_hello.hash,
-                        &key_schedule.server_handshake_traffic_secret,
+                        &protect.key_schedule.server_handshake_traffic_secret,
                         &ts_hash,
                     )?;
 
                     ts_hash.update(&handshake_raw);
-                    let record = Record::new(RecordType::Handshake, &handshake_raw);
+                    let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                     let mut encrypted_record_raw = protect.encrypt(record)?;
                     tx_buf.append(&mut encrypted_record_raw);
 
                     state = HandshakeState::Finished;
-
+                    ts_hash_handshake = Some(ts_hash);
                 }
                 HandshakeState::Finished => {
-                    break;
-                },
+                    let change_cipher_spec = match Record::from_raw(&rx_buf[..n]) {
+                        Some(e) => e,
+                        None => return Err(TlsError::DecodeError),
+                    };
+
+                    let finished_start = 5 + change_cipher_spec.len as usize;
+
+                    let finished = match Record::from_raw(&rx_buf[finished_start..n]) {
+                        Some(e) => e,
+                        None => return Err(TlsError::DecodeError),
+                    };
+
+                    if finished.content_type != RecordType::ApplicationData {
+                        return Err(TlsError::UnexpectedMessage);
+                    }
+
+                    if let Some(protect) = &mut self.record_payload_protection {
+                        let ts_hash = ts_hash_handshake.as_ref().unwrap();
+                        let verify_data = get_verify_client_finished(
+                            &protect.key_schedule.client_handshake_traffic_secret,
+                            ts_hash,
+                        )?;
+                        let record = protect.decrypt(finished).unwrap();
+
+                        if record.content_type != RecordType::Handshake {
+                            return Err(TlsError::UnexpectedMessage);
+                        }
+
+                        let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
+
+                        if handshake.fraqment != verify_data {
+                            return Err(TlsError::DecryptError);
+                        }
+                        protect.generate_application_keys(ts_hash)?;
+                        break;
+                    }
+
+                    return Err(TlsError::InternalError);
+                }
             }
 
             // Send buffer
@@ -203,7 +243,6 @@ impl<'a> TlsStream<'a> {
 
             rx_buf.fill(0);
             tx_buf.clear();
-
         }
 
         Ok(())
