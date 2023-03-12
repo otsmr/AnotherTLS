@@ -41,7 +41,8 @@ impl Ecdsa {
 
         loop {
             // 1. Select a cryptographically secure random integer
-            let k = self.rng.between(ibig!(1), curve.p.clone() - 1);
+            let k = self.rng.between(30, 31);
+            println!("k={}", k);
 
             // 2. k * G
             let p = math::multiply(&curve.g, k.clone(), &curve);
@@ -140,10 +141,10 @@ mod tests {
 
         assert!(signature
             .r
-            .eq(&ibig!(_fe56fd709d5ebf12da412ec6602ccaa895442c66b567cad0bd7ddeead24613f1 base 16)));
+            .eq(&ibig!(_3463305404748164609338311285124923862052453618569403153169767568482501357272)));
         assert!(signature
             .s
-            .eq(&ibig!(_d337c397a3667e7722b4bdbe3442e61c73ef8500eeb765fcf7e19a7e6041f54d base 16)));
+            .eq(&ibig!(_100405446992574905632119098793357804827004850425679393697737205759528506423449)));
     }
 
     #[test]

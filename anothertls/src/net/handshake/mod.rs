@@ -8,11 +8,11 @@ mod server_hello;
 mod certificate;
 mod finished;
 
-pub use client_hello::ClientHello;
-pub use server_hello::ServerHello;
-pub use certificate::Certificate;
-pub use finished::get_finished_handshake;
-pub use finished::get_verify_client_finished;
+pub(crate) use client_hello::ClientHello;
+pub(crate) use server_hello::ServerHello;
+pub(crate) use certificate::Certificate;
+pub(crate) use finished::get_finished_handshake;
+pub(crate) use finished::get_verify_client_finished;
 
 use super::alert::TlsError;
 

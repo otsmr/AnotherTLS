@@ -7,19 +7,17 @@
 use crate::{
     crypto::CipherSuite,
     net::{
-        extensions::{self, ClientExtension, KeyShareEntry},
+        extensions::{self, ClientExtension, client::KeyShareEntry},
         alert::TlsError,
     },
 };
 use std::result::Result;
 
-pub struct ClientHello<'a> {
-    pub legacy_version: u16,
+pub(crate) struct ClientHello<'a> {
     pub random: &'a [u8],
     pub cipher_suites: Vec<CipherSuite>,
     pub legacy_session_id_echo: Option<&'a [u8]>,
-    pub extensions: Vec<ClientExtension<'a>>,
-    pub raw_client_hello: &'a [u8],
+    pub extensions: Vec<ClientExtension>,
 }
 impl<'a> ClientHello<'a> {
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
@@ -29,6 +27,10 @@ impl<'a> ClientHello<'a> {
         }
 
         let legacy_version = ((buf[0] as u16) << 8) | buf[1] as u16;
+        if legacy_version != 0x0303 {
+            return Err(TlsError::ProtocolVersion);
+        }
+
         let random = buf[2..34].try_into().unwrap();
         let session_id_length = buf[35];
         let mut consumed = 35;
@@ -68,14 +70,10 @@ impl<'a> ClientHello<'a> {
             &buf[consumed..(consumed + extensions_len)],
         )?;
 
-        let raw_client_hello = &buf[..(consumed + extensions_len)];
-
         Ok(ClientHello {
-            legacy_version,
             random,
             cipher_suites,
             legacy_session_id_echo,
-            raw_client_hello,
             extensions,
         })
     }

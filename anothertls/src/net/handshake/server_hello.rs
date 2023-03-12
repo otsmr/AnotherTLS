@@ -3,7 +3,6 @@
  *
  */
 
-use ibig::{ibig, IBig};
 use std::result::Result;
 
 use crate::{
@@ -13,24 +12,23 @@ use crate::{
     },
     hash::HashType,
     net::{
+        alert::TlsError,
         extensions::{
-            ClientExtension, KeyShare, KeyShareEntry, ServerExtension, ServerExtensions,
-            SupportedVersions,
+            client::KeyShare, client::KeyShareEntry, server::ServerExtension, ClientExtension,
+            ServerExtensions, SupportedVersions,
         },
         handshake::ClientHello,
         named_groups::NamedGroup,
-        alert::TlsError,
         TlsContext,
     },
     utils::bytes::{self, ByteOrder},
 };
 
-pub struct ServerHello<'a> {
+pub(crate) struct ServerHello<'a> {
     pub random: [u8; 32],
     pub legacy_session_id_echo: Option<&'a [u8]>,
     pub cipher_suite: CipherSuite,
     pub hash: HashType,
-    pub named_group: NamedGroup,
     pub private_key: PrivateKey,
     pub extensions: ServerExtensions,
 }
@@ -42,12 +40,21 @@ impl<'a> ServerHello<'a> {
     ) -> Result<ServerHello<'a>, TlsError> {
         let mut extensions = ServerExtensions::new();
         let mut private_key = None;
-        let mut named_group = NamedGroup::X25519;
+        let mut named_group = None;
+
+        let mut random: [u8; 32] = config.rng.between_bytes(32).try_into().unwrap();
+
+        // Value is: DOWNGRD
+        let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
+
+        for (i, b) in downgrade_protection.iter().enumerate() {
+            random[(32 - 8) + i] = *b;
+        }
 
         for ext in client_hello.extensions.iter() {
             match ext {
                 ClientExtension::SupportedVersion(version) => {
-                    if !version.tls13 {
+                    if !version.tls13_is_supported() {
                         return Err(TlsError::InsufficientSecurity);
                     }
                 }
@@ -55,15 +62,22 @@ impl<'a> ServerHello<'a> {
                     for key in key_share.0.iter() {
                         match key.group {
                             NamedGroup::X25519 => {
-                                let curve = Curve::curve25519();
-                                // FIMXE: Remove hardcoded secret
-                                let secret = ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16);
-                                let pk = PrivateKey::new(curve, secret);
+                                let secret = config.rng.between(1, 32);
+                                let pk = PrivateKey::new(Curve::curve25519(), secret);
+                                let key_share_data = bytes::ibig_to_32bytes(
+                                    pk.get_public_key().point.x,
+                                    ByteOrder::Little,
+                                );
                                 private_key = Some(pk);
+                                let kse =
+                                    KeyShareEntry::new(NamedGroup::X25519, key_share_data.to_vec());
+                                extensions.push(ServerExtension::KeyShare(KeyShare::new(kse)));
+                                named_group = Some(NamedGroup::X25519);
                                 break;
                             }
                             NamedGroup::Secp256r1 => {
-                                named_group = NamedGroup::Secp256r1;
+                                named_group = Some(NamedGroup::Secp256r1);
+                                // todo!("Add support for secp256 key exchange");
                             }
                             _ => {}
                         }
@@ -73,8 +87,12 @@ impl<'a> ServerHello<'a> {
             }
         }
 
+        if named_group.is_none() {
+            todo!("No supporet group -> HelloRetry");
+        }
+
         extensions.push(ServerExtension::SupportedVersion(SupportedVersions::new(
-            true, false,
+            true,
         )));
 
         let mut cipher_suite_to_use = None;
@@ -100,22 +118,6 @@ impl<'a> ServerHello<'a> {
         };
         let hash = hash.unwrap();
 
-        let random = config
-            .rng
-            .between(IBig::from(2).pow(255), IBig::from(2).pow(256));
-        let mut random = bytes::ibig_to_32bytes(random, ByteOrder::Little);
-
-
-        // Value is: DOWNGRD
-        let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
-
-        for (i, b) in downgrade_protection.iter().enumerate() {
-            random[(32 - 8) + i] = *b;
-        }
-
-        // FIMXE: REMOVE hardcoded random
-        let random = bytes::from_hex("707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f").unwrap().try_into().unwrap();
-
         let private_key = match private_key {
             Some(pk) => pk,
             None => return Err(TlsError::HandshakeFailure),
@@ -124,7 +126,6 @@ impl<'a> ServerHello<'a> {
         Ok(ServerHello {
             random,
             legacy_session_id_echo: client_hello.legacy_session_id_echo,
-            named_group,
             private_key,
             cipher_suite,
             hash,
@@ -149,24 +150,8 @@ impl<'a> ServerHello<'a> {
 
         out.push(00); // Compression Method
 
-        let key_share_data;
-        let selected_key_share = match self.named_group {
-            NamedGroup::X25519 => {
-                key_share_data = bytes::ibig_to_32bytes(self.private_key.get_public_key().point.x, ByteOrder::Little);
-                KeyShareEntry::new(NamedGroup::X25519, &key_share_data)
-            }
-            _ => todo!(),
-        };
-        let key_share = KeyShare::new(selected_key_share);
-        let key_share_raw = key_share.to_raw();
-        let supported_version_raw = vec![0x00, 0x2b, 0x00, 0x02, 0x03, 0x04];
-
-        let extension_len = key_share_raw.len() + supported_version_raw.len();
-        out.push((extension_len >> 8) as u8);
-        out.push(extension_len as u8);
-
-        out.extend_from_slice(&supported_version_raw);
-        out.extend_from_slice(&key_share_raw);
+        let server_extensions_raw = self.extensions.to_raw();
+        out.extend(server_extensions_raw);
 
         out
     }

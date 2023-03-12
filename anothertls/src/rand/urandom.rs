@@ -6,10 +6,10 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use ibig::IBig;
+use ibig::{IBig, ibig};
 
-use crate::utils::bytes;
 use crate::rand::RngCore;
+use crate::utils::bytes;
 
 pub struct URandomRng();
 
@@ -35,7 +35,6 @@ impl Default for URandomRng {
     }
 }
 
-
 impl RngCore<IBig> for URandomRng {
     fn next(&mut self) -> IBig {
         let rand_bytes = self.read_from_urandom();
@@ -44,7 +43,14 @@ impl RngCore<IBig> for URandomRng {
         bytes::to_ibig_le(&rand_bytes[8..size])
     }
 
-    fn between(&mut self, min: IBig, max: IBig) -> IBig {
+    fn between(&mut self, min: usize, max: usize) -> IBig {
+        let min = ibig!(2).pow(min);
+        let max = ibig!(2).pow(max);
+
         self.next() % (max - min.clone()) + min
+    }
+    fn between_bytes(&mut self, size: usize) -> Vec<u8> {
+        let rand_bytes = self.read_from_urandom();
+        rand_bytes[..size].to_owned()
     }
 }

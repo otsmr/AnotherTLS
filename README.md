@@ -27,7 +27,7 @@ anothertls v0.1.0
   4.1.3. Server Hello ✓
   4.1.4. Hello Retry Request
  4.2. Extension
-  4.2.1. Supported Versions (✓)
+  4.2.1. Supported Versions ✓
   4.2.2. Cookie
   4.2.3. Signature Algorithms (✓)
   4.2.4. Certificate Authoritie

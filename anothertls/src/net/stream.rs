@@ -171,7 +171,7 @@ impl<'a> TlsStream<'a> {
                 // -- ServerParameters --
 
                 let encrypted_extensions = ServerExtensions::new();
-                let encrypted_extensions_raw = encrypted_extensions.as_bytes();
+                let encrypted_extensions_raw = encrypted_extensions.to_raw();
                 let handshake_raw =
                     Handshake::to_raw(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
                 ts_hash.update(&handshake_raw);

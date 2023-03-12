@@ -11,7 +11,9 @@ pub use urandom::URandomRng;
 
 pub trait RngCore<T> {
     fn next(&mut self) -> T;
-    fn between(&mut self, min: T, max: T) -> T;
+    fn between(&mut self, min: usize, max: usize) -> T;
+    // fn between_ibig(&mut self, min: usize, max: usize) -> Vec<u8>;
+    fn between_bytes(&mut self, size: usize) -> Vec<u8>;
 }
 
 pub trait SeedableRng<T> {
