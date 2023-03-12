@@ -114,7 +114,7 @@ impl<'a> Record<'a> {
 pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
     handshake_keys: WriteKeys,
-    application_keys: Option<WriteKeys>,
+    pub(crate) application_keys: Option<WriteKeys>,
 }
 
 impl RecordPayloadProtection {

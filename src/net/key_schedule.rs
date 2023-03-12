@@ -3,7 +3,6 @@
  *
  */
 
-use std::io::Write;
 use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
@@ -14,7 +13,6 @@ use crate::{
 use ibig::ibig;
 
 use super::handshake::{ClientHello, ServerHello};
-use std::fs::OpenOptions;
 use std::result::Result;
 
 
@@ -31,6 +29,7 @@ pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Ve
 
 #[derive(Debug)]
 pub struct Key {
+    pub traffic_secret: Vec<u8>,
     pub key: [u8; 32],
     pub iv: [u8; 12],
     sequence_number: u64,
@@ -48,6 +47,7 @@ impl Key {
         let iv = hkdf.expand(&get_hkdf_expand_label(b"iv", b"", iv_len), iv_len)?;
         let iv: [u8; 12] = iv.try_into().unwrap();
         Some(Key {
+            traffic_secret: hkdf.pseudo_random_key.to_owned(),
             key,
             iv,
             sequence_number: 0,
@@ -217,39 +217,6 @@ impl KeySchedule {
             // Master Secret
             hkdf_master_secret,
         })
-    }
-    pub fn create_keylog_file(&self, filepath: &str, client_random: &[u8]) {
-        let mut content = String::new();
-
-        let client_random = bytes::to_hex(client_random);
-
-        content += "SERVER_HANDSHAKE_TRAFFIC_SECRET ";
-        content += &client_random;
-        content += " ";
-        content += &bytes::to_hex(&self.server_handshake_traffic_secret.pseudo_random_key);
-        content += "\n";
-
-        content += "CLIENT_HANDSHAKE_TRAFFIC_SECRET ";
-        content += &client_random;
-        content += " ";
-        content += &bytes::to_hex(&self.client_handshake_traffic_secret.pseudo_random_key);
-        // content += "\n";
-
-        // content += "EXPORTER_SECRET ";
-        // content += &client_random;
-        // content += " ";
-        // content += &bytes::to_hex(&self.hkdf_early_secret.pseudo_random_key);
-
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(true)
-            .open(filepath)
-            .unwrap_or_else(|_| panic!("Couldn't open or create file {}", filepath));
-
-        if let Err(e) = writeln!(file, "{}", content) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
     }
 }
 

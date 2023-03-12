@@ -6,6 +6,7 @@
 pub mod listener;
 pub mod stream;
 pub mod config;
+pub(crate) mod alert;
 pub(crate) mod handshake;
 pub(crate) mod extensions;
 pub(crate) mod record;

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use super::Handshake;
 use crate::net::key_schedule::get_hkdf_expand_label;
 use crate::{

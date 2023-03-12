@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 ibig = { version = "0.3.6", default-features = false }
-log = "0.4.17"
 
+# log = {version = "0.4.17", optional = true }
+# [features]
+# debug = ["dep:log"]

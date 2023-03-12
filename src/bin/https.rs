@@ -3,6 +3,8 @@
  *
  */
 
+// #![cfg(feature = "debug")]
+
 use anothertls::net::{config::TlsConfigBuilder, TlsListener};
 use anothertls::TlsConfig;
 use std::{
@@ -23,31 +25,48 @@ impl HttpsServer {
 
     pub fn static_file_server(&self, _http_root: &str) {
         loop {
-            match self.listener.accept() {
-                Ok((mut socket, _addr)) => {
-                    log::debug!("Waiting for tls handshake");
+            let client = self.listener.accept();
+            if let Ok((mut socket, _addr)) = client {
+                println!("Waiting for tls handshake");
 
-                    if let Err(e) = socket.do_handshake_block() {
-                        println!("Error parsing handshake: {:?}", e);
+                if let Err(e) = socket.do_handshake_block() {
+                    println!("Error parsing handshake: {:?}", e);
+                    break;
+                }
+
+                println!("New secure connection");
+
+                let mut buf: [u8; 4096] = [0; 4096];
+
+                if let Ok(n) = socket.read(&mut buf) {
+                    println!(
+                        "--- Request --- \n{}",
+                        String::from_utf8(buf[..n].to_vec()).unwrap()
+                    );
+                    let not_found = b"\
+HTTP/1.1 404 Not Found\r\n\
+Server: AnotherTls/1.0\r\n\
+Content-Type: text/html; charset=utf-8\r\n\
+Content-Length: 118\r\n\
+\r\n\
+<!DOCTYPE html>\r\n\
+<html>\r\n\
+    <head>\r\n\
+        <title>404 Not Found</title>\r\n\
+    </head>\r\n\
+    <body>\r\n\
+        <h1>Not Found</h1>\r\n\
+    </body>\r\n\
+</html>\r\n";
+                    if let Err(e) = socket.write_all(not_found) {
+                        println!("Error write_all: {:?}", e);
                         break;
                     }
-
-                    log::debug!("New Connection");
-
-                    let mut buf: [u8; 4096] = [0; 4096];
-
-                    loop {
-                        let n = match socket.read(&mut buf) {
-                            Ok(n) => n,
-                            _ => break,
-                        };
-
-                        log::info!("Read from socket: {}", n);
-                        socket.write(&buf[..n]);
-                    }
                 }
-                Err(e) => log::error!("couldn't get client: {:?}", e),
-            };
+                // socket.read_to_end();
+            } else if let Err(e) = client {
+                println!("Couldn't get client: {:?}", e);
+            }
         }
     }
 }
@@ -56,11 +75,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("HTTPS Server");
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
     let config = TlsConfigBuilder::new()
-        .set_keylog_path("/Users/privat/Documents/projekte/webrocket-secured/anothertls/keylog.txt".to_string())
+        .set_keylog_path(
+            "/Users/privat/Documents/projekte/webrocket-secured/anothertls/keylog.txt".to_string(),
+        )
         .add_cert_pem("../anothertls/src/bin/config/anothertls.local.cert".to_string())
         .add_privkey_pem("../anothertls/src/bin/config/priv.key".to_string())
-        .build().unwrap();
+        .build()
+        .unwrap();
 
-    HttpsServer::bind("127.0.0.1:4000", config)?.static_file_server("./");
+    HttpsServer::bind("127.0.0.1:4000", config)?.static_file_server("~/");
     Ok(())
 }
