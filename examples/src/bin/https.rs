@@ -76,10 +76,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
     let config = TlsConfigBuilder::new()
         .set_keylog_path(
-            "/Users/privat/Documents/projekte/webrocket-secured/anothertls/keylog.txt".to_string(),
+            "./examples/src/bin/config/keylog.txt".to_string(),
         )
-        .add_cert_pem("../anothertls/src/bin/config/server.cert".to_string())
-        .add_privkey_pem("../anothertls/src/bin/config/server.key".to_string())
+        .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
+        .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
         .build()
         .unwrap();
 

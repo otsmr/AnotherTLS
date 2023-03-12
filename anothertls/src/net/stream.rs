@@ -256,7 +256,7 @@ impl<'a> TlsStream<'a> {
                     }
                     protect.generate_application_keys(ts_hash)?;
                     if let Some(k) = key_log {
-                        k.append_handshake_traffic_secrets(
+                        k.append_application_traffic_secrets(
                             &protect
                                 .application_keys
                                 .as_ref()
