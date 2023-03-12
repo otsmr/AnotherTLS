@@ -27,5 +27,6 @@ pub enum TlsError {
     InsufficientSecurity = 71,
     InternalError = 80,
     MissingExtension = 109,
+    BrokenPipe = 254 // Not official
 }
 

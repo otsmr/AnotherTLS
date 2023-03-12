@@ -68,7 +68,7 @@ impl<'a> TlsStream<'a> {
         };
 
         if self.stream.write_all(&record_raw).is_err() {
-            return Err(TlsError::InternalError);
+            return Err(TlsError::BrokenPipe);
         };
 
         Ok(())
@@ -243,7 +243,7 @@ impl<'a> TlsStream<'a> {
                         &protect.key_schedule.client_handshake_traffic_secret,
                         ts_hash.as_ref(),
                     )?;
-                    let record = protect.decrypt(finished).unwrap();
+                    let record = protect.decrypt(finished)?;
 
                     if record.content_type != RecordType::Handshake {
                         return Err(TlsError::UnexpectedMessage);
@@ -279,7 +279,7 @@ impl<'a> TlsStream<'a> {
 
             // Send buffer
             if self.stream.write_all(tx_buf.as_slice()).is_err() {
-                return Err(TlsError::InternalError);
+                return Err(TlsError::BrokenPipe);
             };
 
             rx_buf.fill(0);
@@ -294,7 +294,7 @@ impl<'a> TlsStream<'a> {
 
         let n = match self.stream.read(&mut rx_buf) {
             Ok(n) => n,
-            Err(_) => return Err(TlsError::InternalError),
+            Err(_) => return Err(TlsError::BrokenPipe),
         };
 
         let record = match Record::from_raw(&rx_buf[..n]) {
@@ -334,7 +334,7 @@ impl<'a> TlsStream<'a> {
             .encrypt(record)?;
 
         if self.stream.write_all(&record).is_err() {
-            return Err(TlsError::InternalError);
+            return Err(TlsError::BrokenPipe);
         };
 
         Ok(())

@@ -31,7 +31,7 @@ impl HttpsServer {
 
                 if let Err(e) = socket.do_handshake_block() {
                     println!("Error parsing handshake: {:?}", e);
-                    break;
+                    continue;
                 }
 
                 println!("New secure connection");
