@@ -84,7 +84,7 @@ impl<'a> KeyShareEntry<'a> {
         };
         let public_key_len = bytes::to_u16(&buf[2..]);
         Ok((
-            6 + public_key_len as usize,
+            4 + public_key_len as usize,
             KeyShareEntry {
                 group,
                 opaque: &buf[4..(public_key_len + 4) as usize],
