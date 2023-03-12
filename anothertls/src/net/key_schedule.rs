@@ -7,14 +7,13 @@ use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
     hash::hkdf::HKDF,
-    net::{named_groups::NamedGroup, alert::TlsError},
+    net::{alert::TlsError, named_groups::NamedGroup},
     utils::bytes,
 };
 use ibig::ibig;
 
 use super::handshake::{ClientHello, ServerHello};
 use std::result::Result;
-
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
     // 3.4.  Vectors (variable-length vector) <3
@@ -40,7 +39,6 @@ impl Key {
         let (key_len, iv_len) = match hkdf.hash {
             HashType::SHA256 => (16, 12),
             HashType::SHA384 => (32, 12),
-            HashType::SHA1 => return None,
         };
         let key = hkdf.expand(&get_hkdf_expand_label(b"key", b"", key_len), key_len)?;
         let key = key.try_into().unwrap();
@@ -80,7 +78,10 @@ impl WriteKeys {
         let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret)?;
         Some(Self { server, client })
     }
-    pub fn application_keys_from_master_secret(hkdf_master_secret: &HKDF, handshake_hash: &[u8]) -> Option<Self> {
+    pub fn application_keys_from_master_secret(
+        hkdf_master_secret: &HKDF,
+        handshake_hash: &[u8],
+    ) -> Option<Self> {
         let hash = hkdf_master_secret.hash;
         let hash_len = hash as usize;
 

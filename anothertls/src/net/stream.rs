@@ -7,7 +7,7 @@
 
 use crate::{
     crypto::CipherSuite,
-    hash::{sha384::Sha384, TranscriptHash},
+    hash::{sha384::Sha384, TranscriptHash, sha256::Sha256},
     net::{
         alert::{AlertLevel, TlsError},
         extensions::ServerExtensions,
@@ -94,7 +94,7 @@ impl<'a> TlsStream<'a> {
         };
         let mut rx_buf: [u8; 4096] = [0; 4096];
         let mut tx_buf = Vec::with_capacity(4096);
-        let mut ts_hash_handshake = None;
+        let mut ts_hash_handshake: Option<Box<dyn TranscriptHash>> = None;
         let mut key_log = None;
 
         loop {
@@ -126,9 +126,9 @@ impl<'a> TlsStream<'a> {
                 let handshake_raw =
                     Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
 
-                let mut ts_hash = match server_hello.cipher_suite {
-                    CipherSuite::TLS_AES_256_GCM_SHA384 => Sha384::new(),
-                    CipherSuite::TLS_AES_128_GCM_SHA256 => todo!(),
+                let mut ts_hash: Box<dyn TranscriptHash> = match server_hello.cipher_suite {
+                    CipherSuite::TLS_AES_256_GCM_SHA384 => Box::new(Sha384::new()),
+                    CipherSuite::TLS_AES_128_GCM_SHA256 => Box::new(Sha256::new()),
                     CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => todo!(),
                     _ => return Err(TlsError::InsufficientSecurity),
                 };
@@ -146,7 +146,7 @@ impl<'a> TlsStream<'a> {
 
                 // -- Handshake Keys Calc --
                 let key_schedule =
-                    KeySchedule::from_handshake(&ts_hash, &client_hello, &server_hello)?;
+                    KeySchedule::from_handshake(ts_hash.as_ref(), &client_hello, &server_hello)?;
 
                 if let Some(filepath) = &self.config.keylog {
                     key_log = Some(KeyLog::new(filepath.to_owned(), client_hello.random));
@@ -195,7 +195,7 @@ impl<'a> TlsStream<'a> {
                 let certificate_verify_raw = self
                     .config
                     .cert
-                    .get_certificate_verify_for_handshake(&self.config.privkey, &ts_hash)?;
+                    .get_certificate_verify_for_handshake(&self.config.privkey, ts_hash.as_ref())?;
 
                 let handshake_raw =
                     Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
@@ -210,7 +210,7 @@ impl<'a> TlsStream<'a> {
                 let handshake_raw = get_finished_handshake(
                     server_hello.hash,
                     &protect.key_schedule.server_handshake_traffic_secret,
-                    &ts_hash,
+                    ts_hash.as_ref(),
                 )?;
 
                 ts_hash.update(&handshake_raw);
@@ -241,7 +241,7 @@ impl<'a> TlsStream<'a> {
                     let ts_hash = ts_hash_handshake.as_ref().unwrap();
                     let verify_data = get_verify_client_finished(
                         &protect.key_schedule.client_handshake_traffic_secret,
-                        ts_hash,
+                        ts_hash.as_ref(),
                     )?;
                     let record = protect.decrypt(finished).unwrap();
 
@@ -254,7 +254,7 @@ impl<'a> TlsStream<'a> {
                     if handshake.fraqment != verify_data {
                         return Err(TlsError::DecryptError);
                     }
-                    protect.generate_application_keys(ts_hash)?;
+                    protect.generate_application_keys(ts_hash.as_ref())?;
                     if let Some(k) = key_log {
                         k.append_application_traffic_secrets(
                             &protect

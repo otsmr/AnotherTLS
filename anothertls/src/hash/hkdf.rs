@@ -102,13 +102,6 @@ mod tests {
                  info: "",
                  okm: "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8",
              },
-             TestCase {
-                 hash: HashType::SHA1,
-                 ikm: "0b0b0b0b0b0b0b0b0b0b0b",
-                 salt: "000102030405060708090a0b0c",
-                 info: "f0f1f2f3f4f5f6f7f8f9",
-                 okm: "085a01ea1b10f36933068b56efa5ad81a4f14b822f5b091568a9cdd4f155fda2c22e422478d305f3f896",
-             },
         ];
 
         for (i, test_case) in test_cases.iter().enumerate() {
