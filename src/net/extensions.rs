@@ -1,6 +1,6 @@
 use crate::utils::bytes;
 
-use super::{named_groups::NamedGroup, stream::TlsError};
+use super::{named_groups::NamedGroup, alert::TlsError};
 
 #[derive(PartialEq, Debug)]
 pub enum ExtensionType {

@@ -19,7 +19,7 @@ use crate::{
         },
         handshake::ClientHello,
         named_groups::NamedGroup,
-        stream::TlsError,
+        alert::TlsError,
         TlsContext,
     },
     utils::bytes::{self, ByteOrder},

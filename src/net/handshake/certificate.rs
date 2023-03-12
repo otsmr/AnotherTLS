@@ -1,7 +1,12 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use crate::{
     crypto::ellipticcurve::{Ecdsa, PrivateKey},
     hash::{sha256, TranscriptHash},
-    net::stream::TlsError,
+    net::alert::TlsError,
     utils::pem::get_pem_content_from_file,
 };
 

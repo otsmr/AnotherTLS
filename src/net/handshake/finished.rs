@@ -3,11 +3,9 @@
  *
  */
 
-use super::Handshake;
-use crate::net::key_schedule::get_hkdf_expand_label;
 use crate::{
     hash::{hkdf::HKDF, hmac::HMAC, HashType, TranscriptHash},
-    net::stream::TlsError,
+    net::{alert::TlsError, handshake::Handshake, key_schedule::get_hkdf_expand_label},
 };
 use std::result::Result;
 

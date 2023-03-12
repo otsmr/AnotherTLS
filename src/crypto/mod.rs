@@ -7,7 +7,7 @@
 
 pub mod aes;
 pub mod ellipticcurve;
-use crate::net::stream::TlsError;
+use crate::net::alert::TlsError;
 
 #[derive(Debug, Clone, Copy)]
 pub enum CipherSuite {

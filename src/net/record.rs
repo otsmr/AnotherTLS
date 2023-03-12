@@ -11,7 +11,7 @@ use crate::{
     utils::bytes,
 };
 
-use super::{key_schedule::WriteKeys, stream::TlsError};
+use super::{key_schedule::WriteKeys, alert::TlsError};
 #[derive(PartialEq, Clone, Copy)]
 pub enum RecordType {
     Invalid = 0,
@@ -97,9 +97,9 @@ impl<'a> Record<'a> {
             fraqment: Value::Ref(&buf[5..]),
         })
     }
-    // pub fn as_bytes(&self) -> Vec<u8> {
-    //     Record::to_raw(self.content_type, self.fraqment)
-    // }
+    pub fn as_bytes(&self) -> Vec<u8> {
+        Record::to_raw(self.content_type, self.fraqment.as_ref())
+    }
     pub fn to_raw(typ: RecordType, data: &[u8]) -> Vec<u8> {
         let len = data.len();
         let mut t = vec![typ as u8, 0x3, 0x3, (len >> 8) as u8, len as u8];

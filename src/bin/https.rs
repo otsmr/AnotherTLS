@@ -72,7 +72,7 @@ Content-Length: 118\r\n\
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("HTTPS Server");
+    println!("Starting HTTPS Server");
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
     let config = TlsConfigBuilder::new()
         .set_keylog_path(

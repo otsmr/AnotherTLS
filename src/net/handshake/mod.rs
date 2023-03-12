@@ -14,7 +14,7 @@ pub use certificate::Certificate;
 pub use finished::get_finished_handshake;
 pub use finished::get_verify_client_finished;
 
-use super::stream::TlsError;
+use super::alert::TlsError;
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum HandshakeType {

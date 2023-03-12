@@ -5,12 +5,11 @@
 
 #![allow(dead_code)]
 
-use crate::hash::TranscriptHash;
-use crate::utils::keylog::KeyLog;
 use crate::{
     crypto::CipherSuite,
-    hash::sha384::Sha384,
+    hash::{sha384::Sha384, TranscriptHash},
     net::{
+        alert::{AlertLevel, TlsError},
         extensions::ServerExtensions,
         handshake::{
             get_finished_handshake, get_verify_client_finished, ClientHello, Handshake,
@@ -21,6 +20,7 @@ use crate::{
         TlsContext,
     },
     rand::URandomRng,
+    utils::keylog::KeyLog,
     TlsConfig,
 };
 
@@ -30,25 +30,10 @@ use std::{
     result::Result,
 };
 
-use super::alert::{AlertDescription, AlertLevel};
-
 #[derive(PartialEq)]
 enum HandshakeState {
     ClientHello,
     Finished,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum TlsError {
-    UnexpectedMessage = 10,
-    HandshakeFailure = 40,
-    IllegalParameter = 47,
-    DecryptError = 50,
-    DecodeError = 51,
-    ProtocolVersion = 70,
-    InsufficientSecurity = 71,
-    InternalError = 80,
-    MissingExtension = 109,
 }
 
 pub struct TlsStream<'a> {
@@ -67,29 +52,39 @@ impl<'a> TlsStream<'a> {
             record_payload_protection: None,
         }
     }
-
     pub fn read_to_end(&mut self) -> Result<(), TlsError> {
-
         // TODO: Read to end xD
-
-        let data = vec![AlertLevel::Warning as u8, AlertDescription::CloseNotify as u8];
+        self.write_alert(TlsError::CloseNotify)
+    }
+    pub fn write_alert(&mut self, err: TlsError) -> Result<(), TlsError> {
+        let data = vec![AlertLevel::get_from_error(err) as u8, err as u8];
 
         let record = Record::new(RecordType::Alert, Value::Owned(data));
 
-        let record = self
-            .record_payload_protection
-            .as_mut()
-            .unwrap()
-            .encrypt(record)?;
+        let record_raw = if let Some(protect) = self.record_payload_protection.as_mut() {
+            protect.encrypt(record)?
+        } else {
+            record.as_bytes()
+        };
 
-        if self.stream.write_all(&record).is_err() {
+        if self.stream.write_all(&record_raw).is_err() {
             return Err(TlsError::InternalError);
         };
 
         Ok(())
+    }
+
+    pub fn do_handshake_block (&mut self) -> Result<(), TlsError> {
+
+        if let Err(err) = self.do_handshake() {
+            self.write_alert(err)?;
+            return Err(err);
+        }
+
+        Ok(())
 
     }
-    pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
+    fn do_handshake(&mut self) -> Result<(), TlsError> {
         let mut state = HandshakeState::ClientHello;
 
         let mut context = TlsContext {
@@ -105,11 +100,14 @@ impl<'a> TlsStream<'a> {
         loop {
             let n = match self.stream.read(&mut rx_buf) {
                 Ok(n) => n,
-                Err(_) => return Err(TlsError::InternalError),
+                Err(_) => return Err(TlsError::DecodeError),
             };
 
             if let HandshakeState::ClientHello = state {
-                let record = Record::from_raw(&rx_buf[..n]).unwrap();
+                let record = match Record::from_raw(&rx_buf[..n]) {
+                    Some(r) => r,
+                    None => return Err(TlsError::DecodeError),
+                };
 
                 if record.content_type != RecordType::Handshake {
                     return Err(TlsError::UnexpectedMessage);

@@ -8,7 +8,7 @@ use crate::{
     crypto::CipherSuite,
     net::{
         extensions::{self, ClientExtension, KeyShareEntry},
-        stream::TlsError,
+        alert::TlsError,
     },
 };
 use std::result::Result;
