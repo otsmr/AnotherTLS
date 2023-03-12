@@ -303,7 +303,7 @@ impl<'a> TlsStream<'a> {
         };
 
         if record.len as usize != record.fraqment.len() {
-            todo!();
+            return Err(TlsError::DecodeError);
         }
 
         let record = self
