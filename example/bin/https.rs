@@ -78,8 +78,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_keylog_path(
             "/Users/privat/Documents/projekte/webrocket-secured/anothertls/keylog.txt".to_string(),
         )
-        .add_cert_pem("../anothertls/src/bin/config/anothertls.local.cert".to_string())
-        .add_privkey_pem("../anothertls/src/bin/config/priv.key".to_string())
+        .add_cert_pem("../anothertls/src/bin/config/server.cert".to_string())
+        .add_privkey_pem("../anothertls/src/bin/config/server.key".to_string())
         .build()
         .unwrap();
 

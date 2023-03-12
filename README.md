@@ -91,3 +91,9 @@ anothertls v0.1.0
 ### maybe
 - Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
 - TLS curves: [secp384r1]()
+
+
+## Example
+```bash
+/opt/homebrew/opt/curl/bin/curl --tlsv1.3 -iv --insecure https://localhost:4000/
+```
