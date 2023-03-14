@@ -34,13 +34,15 @@ impl RngCore<u32> for SimpleRng<u32> {
             res.push(self.next() as u8)
         }
         res
-
     }
 }
 
 impl RngCore<IBig> for SimpleRng<IBig> {
     fn next(&mut self) -> IBig {
-        let mut a = SimpleRng::<u32>::from_seed(bytes::to_u128_le(&bytes::ibig_to_32bytes(self.0.clone(), bytes::ByteOrder::Little)) as u32);
+        let mut a = SimpleRng::<u32>::from_seed(bytes::to_u128_le(&bytes::ibig_to_32bytes(
+            self.0.clone(),
+            bytes::ByteOrder::Little,
+        )) as u32);
         self.0 = self.0.clone() + ibig!(10);
         let mut b = ibig!(1);
         for _ in 0..10 {
@@ -58,7 +60,10 @@ impl RngCore<IBig> for SimpleRng<IBig> {
     fn between_bytes(&mut self, size: usize) -> Vec<u8> {
         let mut res = vec![];
         while res.len() >= size {
-            res.extend_from_slice(&bytes::ibig_to_32bytes(self.next(), bytes::ByteOrder::Little));
+            res.extend_from_slice(&bytes::ibig_to_32bytes(
+                self.next(),
+                bytes::ByteOrder::Little,
+            ));
         }
         res
     }
@@ -67,7 +72,7 @@ impl RngCore<IBig> for SimpleRng<IBig> {
 #[cfg(test)]
 mod tests {
 
-    use super::{RngCore, SimpleRng, SeedableRng};
+    use super::{RngCore, SeedableRng, SimpleRng};
 
     #[test]
     fn test_rand() {

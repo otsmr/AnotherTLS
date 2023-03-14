@@ -3,12 +3,11 @@
  *
  */
 
-
-use crate::hash::TranscriptHash;
 use super::handshake::Certificate;
+use crate::hash::TranscriptHash;
 use ibig::IBig;
 
-use crate::{rand::RngCore, crypto::ellipticcurve::PrivateKey};
+use crate::{crypto::ellipticcurve::PrivateKey, rand::RngCore};
 
 pub struct TlsConfig {
     // pub server_name: Option<String>,
@@ -18,14 +17,15 @@ pub struct TlsConfig {
     // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
     pub(crate) cert: Certificate,
     pub(crate) privkey: PrivateKey,
-    pub(crate) keylog: Option<String>
+    pub(crate) keylog: Option<String>,
+    pub(crate) server_name: Option<String>,
 }
 
 pub struct TlsConfigBuilder {
     cert: Option<Certificate>,
     privkey: Option<PrivateKey>,
-    keylog: Option<String>
-
+    keylog: Option<String>,
+    server_name: Option<String>,
 }
 impl Default for TlsConfigBuilder {
     fn default() -> Self {
@@ -34,12 +34,12 @@ impl Default for TlsConfigBuilder {
 }
 
 impl TlsConfigBuilder {
-
-    pub fn new () -> Self {
+    pub fn new() -> Self {
         TlsConfigBuilder {
             cert: None,
             privkey: None,
-            keylog: None
+            keylog: None,
+            server_name: None,
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
@@ -65,19 +65,28 @@ impl TlsConfigBuilder {
         self.keylog = Some("keylog.txt".to_string());
         self
     }
-    pub fn build (self) -> std::result::Result<TlsConfig, String> {
+    pub fn set_server_name(mut self, server_name: String) -> Self {
+        self.server_name = Some(server_name);
+        self
+    }
+    pub fn build(self) -> std::result::Result<TlsConfig, String> {
         if self.cert.is_none() {
             return Err("No cert provided".to_string());
         }
         if self.privkey.is_none() {
             return Err("No privkey for cert provided".to_string());
         }
-        Ok(TlsConfig { cert: self.cert.unwrap(), privkey: self.privkey.unwrap(), keylog: self.keylog })
+        Ok(TlsConfig {
+            cert: self.cert.unwrap(),
+            privkey: self.privkey.unwrap(),
+            keylog: self.keylog,
+            server_name: self.server_name
+        })
     }
 }
 
 pub struct TlsContext<'a> {
     pub config: &'a TlsConfig,
     pub rng: Box<dyn RngCore<IBig>>,
-    pub ts_hash: Option<Box<dyn TranscriptHash>>
+    pub ts_hash: Option<Box<dyn TranscriptHash>>,
 }

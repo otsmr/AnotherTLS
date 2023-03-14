@@ -83,7 +83,14 @@ impl<'a> ServerHello<'a> {
                         }
                     }
                 }
-                _ => (),
+                ClientExtension::ServerName(server_name) => {
+                    if let Some(expected_server_name) = &config.config.server_name {
+                        if expected_server_name != server_name.get() {
+                            return Err(TlsError::UnrecognizedName);
+                        }
+
+                    }
+                }
             }
         }
 

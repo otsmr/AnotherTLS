@@ -40,8 +40,8 @@ impl HttpsServer {
 
                 if let Ok(n) = socket.read(&mut buf) {
                     println!(
-                        "--- Request --- \n{}",
-                        String::from_utf8(buf[..n].to_vec()).unwrap()
+                        "--- Request --- \n{}\n---------------",
+                        String::from_utf8(buf[..n-4].to_vec()).unwrap()
                     );
                     let not_found = b"\
 HTTP/1.1 404 Not Found\r\n\
@@ -60,13 +60,14 @@ Content-Length: 118\r\n\
 </html>\r\n";
                     if let Err(e) = socket.write_all(not_found) {
                         println!("Error write_all: {:?}", e);
-                        break;
+                        continue;
                     }
                 }
                 // socket.read_to_end();
             } else if let Err(e) = client {
                 println!("Couldn't get client: {:?}", e);
             }
+            // break;
         }
     }
 }

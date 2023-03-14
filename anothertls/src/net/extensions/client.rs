@@ -10,10 +10,29 @@ use crate::utils::bytes;
 use crate::net::{named_groups::NamedGroup, alert::TlsError};
 
 #[derive(Debug)]
-pub struct ServerName {}
+pub struct ServerName(String);
 impl ServerName {
-    fn parse(_buf: &[u8]) -> String {
-        String::new()
+    pub fn get(&self) -> &str {
+        &self.0
+    }
+    fn parse(buf: &[u8]) -> Result<Self, TlsError>  {
+        let server_name_list_len = bytes::to_u16(buf);
+        let mut consumed = 2;
+        let mut server_name = String::new();
+        if server_name_list_len > 0 {
+            let name_type = buf[consumed];
+            consumed += 1;
+            if name_type != 0 {
+                return Err(TlsError::DecodeError);
+            }
+            let server_name_len = bytes::to_u16(&buf[consumed..]) as usize;
+            consumed += 2;
+            server_name = match String::from_utf8(buf[consumed..server_name_len+consumed].to_vec()) {
+                Ok(a) => a,
+                Err(_) => return Err(TlsError::DecodeError)
+            };
+        }
+        Ok(ServerName(server_name))
     }
 }
 
@@ -98,7 +117,7 @@ impl KeyShare {
 pub(crate) enum ClientExtension {
     SupportedVersion(SupportedVersions),
     KeyShare(KeyShare),
-    ServerName(String),
+    ServerName(ServerName),
     // SignatureAlgorithms()
     // PreSharedKey(u16),
 }
@@ -121,7 +140,7 @@ impl ClientExtension {
 
             let extension = match extension_type {
                 ExtensionType::ServerName => {
-                    ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size]))
+                    ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size])?)
                 }
                 ExtensionType::KeyShare => {
                     ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)

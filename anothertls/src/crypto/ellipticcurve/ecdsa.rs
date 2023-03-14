@@ -42,7 +42,6 @@ impl Ecdsa {
         loop {
             // 1. Select a cryptographically secure random integer
             let k = self.rng.between(30, 31);
-            println!("k={}", k);
 
             // 2. k * G
             let p = math::multiply(&curve.g, k.clone(), &curve);
