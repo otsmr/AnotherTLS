@@ -4,7 +4,9 @@
  */
 
 mod curve25519;
+mod jacobian;
 
+use jacobian::{jacobian_multiply, jacobian_add, jacobian_double};
 use ibig::{ibig, IBig};
 
 use crate::utils::bytes;
@@ -15,26 +17,6 @@ use super::point::JacobianPoint;
 use super::Point;
 
 /// Calculates the modular inverse of `x` with respect to `n` using the Extended Euclidean Algorithm.
-///
-/// # Arguments
-///
-/// * `x` - Divisor
-/// * `n` - Mod for division
-///
-/// # Returns
-///
-/// A value representing the division of `1/x` modulo `n`.
-///
-/// # Examples
-///
-/// ```
-/// # use ibig::{ibig, IBig};
-/// # use anothertls::crypto::ellipticcurve::math::inv;
-/// let x = ibig!(7);
-/// let n = ibig!(11);
-///
-/// assert_eq!(inv(&x, &n), ibig!(8));
-/// ```
 ///
 /// ```
 /// # use ibig::{ibig, IBig};
@@ -77,14 +59,6 @@ pub fn inv(x: &IBig, n: &IBig) -> IBig {
 ///
 /// assert_eq!(rem_euclid(&x, &n), ibig!(1));
 /// ````
-/// ````
-/// # use ibig::{ibig, IBig};
-/// # use anothertls::crypto::ellipticcurve::math::rem_euclid;
-/// let x = ibig!(-5);
-/// let n = ibig!(11);
-///
-/// assert_eq!(rem_euclid(&x, &n), ibig!(6));
-/// ````
 pub fn rem_euclid(x: &IBig, v: &IBig) -> IBig {
     let r = x % v;
     if r < ibig!(0) {
@@ -109,35 +83,6 @@ pub fn double(p: Point, curve: &Curve) -> Point {
     }
 }
 
-fn jacobian_double(p: &JacobianPoint, curve: &Curve) -> JacobianPoint {
-    let a = curve.a.clone();
-    let prime = &curve.p;
-
-    if p.y == ibig!(0) {
-        return JacobianPoint {
-            x: ibig!(0),
-            y: ibig!(0),
-            z: ibig!(0),
-        };
-    }
-
-    let ysq = p.y.pow(2);
-    let s = rem_euclid(&(p.x.clone() * &ibig!(4) * ysq.clone()), prime);
-    let m = rem_euclid(
-        &(p.x.clone().pow(2) * &ibig!(3) + a * p.z.clone().pow(4)),
-        prime,
-    );
-    let nx = rem_euclid(&(m.pow(2) - &ibig!(2) * s.clone()), prime);
-    let ny = rem_euclid(&(m * (s - nx.clone()) - &ibig!(8) * ysq.pow(2)), prime);
-    let nz = rem_euclid(&(p.y.clone() * p.z.clone() * &ibig!(2)), prime);
-
-    JacobianPoint {
-        x: nx,
-        y: ny,
-        z: nz,
-    }
-}
-
 pub fn add(p: Point, q: Point, curve: &Curve) -> Point {
     match curve.equation {
         Equation::ShortWeierstrass => jacobian_add(
@@ -146,62 +91,10 @@ pub fn add(p: Point, q: Point, curve: &Curve) -> Point {
             curve,
         )
         .to_point(&curve.p),
-        Equation::Montgomery => montgomery_add(&p, &q, curve),
+        Equation::Montgomery => todo!(),
     }
 }
 
-fn montgomery_add(p: &Point, q: &Point, curve: &Curve) -> Point {
-
-    let λ = (q.y.clone() - p.y.clone()) * inv(&(q.x.clone() - p.x.clone()), &curve.n);
-
-    let x = λ.pow(2) - curve.a.clone() - p.x.clone() - q.x.clone();
-
-    let mut y = 2 * p.x.clone() + q.x.clone() + curve.a.clone();
-    y *= q.y.clone() - p.y.clone();
-    y *= inv(&(q.x.clone() - p.x.clone()), &curve.n);
-    y -= &curve.b.clone() * λ.pow(3);
-    y -= p.y.clone();
-
-    Point {
-        x: rem_euclid(&x, &curve.p),
-        y: rem_euclid(&y, &curve.p),
-    }
-}
-
-fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> JacobianPoint {
-    if p.y == ibig!(0) {
-        return q.clone();
-    }
-    if q.y == ibig!(0) {
-        return p.clone();
-    }
-
-    let u1 = rem_euclid(&(p.x.clone() * q.z.pow(2)), &curve.p);
-    let u2 = rem_euclid(&(q.x.clone() * p.z.pow(2)), &curve.p);
-    let s1 = rem_euclid(&(p.y.clone() * q.z.pow(3)), &curve.p);
-    let s2 = rem_euclid(&(q.y.clone() * p.z.pow(3)), &curve.p);
-
-    if u1 == u2 {
-        if s1 != s2 {
-            return JacobianPoint::new(0, 0, 1);
-        }
-        return jacobian_double(p, curve);
-    }
-
-    let h = rem_euclid(&(u2 - u1.clone()), &curve.p);
-    let r = rem_euclid(&(s2 - s1.clone()), &curve.p);
-    let h2 = rem_euclid(&(h.clone() * h.clone()), &curve.p);
-    let h3 = rem_euclid(&(h.clone() * h2.clone()), &curve.p);
-    let u1_h2 = rem_euclid(&(u1 * h2), &curve.p);
-    let x = rem_euclid(
-        &(r.pow(2) - h3.clone() - IBig::from(2) * u1_h2.clone()),
-        &curve.p,
-    );
-    let y = rem_euclid(&(r * (u1_h2 - &x) - s1 * h3), &curve.p);
-    let z = rem_euclid(&(h * p.z.clone() * q.z.clone()), &curve.p);
-
-    JacobianPoint { x, y, z }
-}
 
 pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     match curve.equation {
@@ -220,32 +113,32 @@ pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     }
 }
 
-pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
-    if p.y == ibig!(0) || n == ibig!(0) {
-        return JacobianPoint::new(0, 0, 1);
-    }
-
-    if n == ibig!(1) {
-        return p.clone();
-    }
-
-    if n < ibig!(0) || n >= curve.n {
-        return jacobian_multiply(p, rem_euclid(&n, &curve.n), curve);
-    }
-
-    let q = jacobian_double(&jacobian_multiply(p, n.clone() / 2, curve), curve);
-
-    if rem_euclid(&n, &ibig!(2)) == ibig!(0) {
-        return q;
-    }
-
-    jacobian_add(&q, p, curve)
-}
 
 #[cfg(test)]
 mod tests {
     use crate::crypto::ellipticcurve::{math, Curve, Point};
     use ibig::ibig;
+
+    #[test]
+    fn test_curve25519() {
+        // openssl genpkey -algorithm x25519 -out x25519-priv.pem
+        // openssl pkey -noout -text < x25519-priv.pem
+        let curve = Curve::curve25519();
+        let p = curve.g.clone();
+        let test_cases = [
+            [ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16), ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16)],
+            [ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16)]
+        ];
+        for test_case in test_cases {
+            let scalar = test_case[0].clone();
+            let result = math::multiply(&p, scalar, &curve);
+            let expected = Point {
+                x: test_case[1].clone(),
+                y: ibig!(0)
+            };
+            assert!(result == expected);
+        }
+    }
 
     #[test]
     fn test_weierstrass_double() {
@@ -263,32 +156,7 @@ mod tests {
             .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
     }
 
-    #[test]
-    fn test_mondgomery_ladder() {
 
-        // openssl genpkey -algorithm x25519 -out x25519-priv.pem
-        // openssl pkey -noout -text < x25519-priv.pem
-
-        let curve = Curve::curve25519();
-        let p = curve.g.clone();
-
-        let test_cases = [
-            [ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16), ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16)],
-            [ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16)]
-        ];
-
-        for test_case in test_cases {
-            let scalar = test_case[0].clone();
-            let result = math::multiply(&p, scalar, &curve);
-            let expected = Point {
-                x: test_case[1].clone(),
-                y: ibig!(0)
-            };
-            assert!(result == expected);
-
-        }
-
-    }
     #[test]
     fn test_weierstrass_add() {
         let curve = Curve::secp256r1();

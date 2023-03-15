@@ -67,7 +67,7 @@ Content-Length: 118\r\n\
             } else if let Err(e) = client {
                 println!("Couldn't get client: {:?}", e);
             }
-            // break;
+            break;
         }
     }
 }
