@@ -104,10 +104,7 @@ impl<'a> TlsStream<'a> {
             };
 
             if let HandshakeState::ClientHello = state {
-                let record = match Record::from_raw(&rx_buf[..n]) {
-                    Some(r) => r,
-                    None => return Err(TlsError::DecodeError),
-                };
+                let record = Record::from_raw(&rx_buf[..n])?;
 
                 if record.content_type != RecordType::Handshake {
                     return Err(TlsError::UnexpectedMessage);
@@ -170,6 +167,7 @@ impl<'a> TlsStream<'a> {
 
                 // -- ServerParameters --
 
+                // > EncryptedExtensions
                 let encrypted_extensions = ServerExtensions::new();
                 let encrypted_extensions_raw = encrypted_extensions.to_raw();
                 let handshake_raw =
@@ -178,6 +176,14 @@ impl<'a> TlsStream<'a> {
                 let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                 let mut encrypted_record_raw = protect.encrypt(record)?;
                 tx_buf.append(&mut encrypted_record_raw);
+
+                // > Certificate Request
+
+                if let Some(client_cert_ca) = &self.config.client_cert_ca {
+
+                    println!("Send Certificate Request");
+
+                }
 
                 // -- Server Certificate --
 
@@ -218,20 +224,16 @@ impl<'a> TlsStream<'a> {
                 let mut encrypted_record_raw = protect.encrypt(record)?;
                 tx_buf.append(&mut encrypted_record_raw);
 
+
                 state = HandshakeState::Finished;
                 ts_hash_handshake = Some(ts_hash);
             } else if state == HandshakeState::Finished {
-                let change_cipher_spec = match Record::from_raw(&rx_buf[..n]) {
-                    Some(e) => e,
-                    None => return Err(TlsError::DecodeError),
-                };
+                let change_cipher_spec = Record::from_raw(&rx_buf[..n])?;
 
                 let finished_start = 5 + change_cipher_spec.len as usize;
 
-                let finished = match Record::from_raw(&rx_buf[finished_start..n]) {
-                    Some(e) => e,
-                    None => return Err(TlsError::DecodeError),
-                };
+                let finished = Record::from_raw(&rx_buf[finished_start..n])?;
+
 
                 if finished.content_type != RecordType::ApplicationData {
                     return Err(TlsError::UnexpectedMessage);
@@ -297,10 +299,7 @@ impl<'a> TlsStream<'a> {
             Err(_) => return Err(TlsError::BrokenPipe),
         };
 
-        let record = match Record::from_raw(&rx_buf[..n]) {
-            Some(e) => e,
-            None => return Err(TlsError::DecodeError),
-        };
+        let record = Record::from_raw(&rx_buf[..n])?;
 
         if record.len as usize != record.fraqment.len() {
             return Err(TlsError::DecodeError);

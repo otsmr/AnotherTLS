@@ -15,7 +15,7 @@ impl AlertLevel {
         }
     }
 }
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum TlsError {
     CloseNotify = 0,
     UnexpectedMessage = 10,
@@ -28,6 +28,7 @@ pub enum TlsError {
     InternalError = 80,
     MissingExtension = 109,
     UnrecognizedName = 112,
+    GotAlert = 253, // Not official
     BrokenPipe = 254 // Not official
 }
 

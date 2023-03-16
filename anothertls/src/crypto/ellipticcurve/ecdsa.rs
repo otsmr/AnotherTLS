@@ -41,8 +41,8 @@ impl Ecdsa {
 
         loop {
             // 1. Select a cryptographically secure random integer
-            // let k = self.rng.between(30, 31);
             let k = self.rng.between(1, 31);
+            // let k = self.rng.between(1, 10);
 
             // 2. k * G
             let p = math::multiply(&curve.g, k.clone(), &curve);
@@ -124,31 +124,7 @@ mod tests {
     use crate::crypto::ellipticcurve::{Curve, Ecdsa, PrivateKey};
 
     #[test]
-    fn test_sign() {
-        let curve = Curve::secp256r1();
-        let priv_key = PrivateKey::new(
-            curve,
-            ibig!(_4d5ecf8ab34b18233241976eb09b14b2507ba2f60ed6c0330b7c2230c806f208 base 16),
-        );
-
-        let hashed_message: Vec<u8> =
-            bytes::from_hex("a582e8c28249fe7d7990bfa0afebd2da9185a9f831d4215b4efec74f355b301a")
-                .unwrap();
-
-        let mut ecdsa = Ecdsa::unsecure();
-
-        let signature = ecdsa.sign(&priv_key, &hashed_message).unwrap();
-
-        assert!(signature
-            .r
-            .eq(&ibig!(_3463305404748164609338311285124923862052453618569403153169767568482501357272)));
-        assert!(signature
-            .s
-            .eq(&ibig!(_100405446992574905632119098793357804827004850425679393697737205759528506423449)));
-    }
-
-    #[test]
-    fn test_verify() {
+    fn test_sign_and_verify() {
         let curve = Curve::secp256r1();
         let priv_key = PrivateKey::new(
             curve,

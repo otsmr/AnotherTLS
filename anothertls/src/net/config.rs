@@ -10,13 +10,26 @@ use ibig::IBig;
 use crate::{crypto::ellipticcurve::PrivateKey, rand::RngCore};
 
 pub struct TlsConfig {
-    // pub server_name: Option<String>,
-    // ca: Option<Certificate<'a>>, // Client Cert ?
 
-    // openssl ecparam -out pk_server.pem -name prime256v1 -genkey
-    // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
-    pub(crate) cert: Certificate,
+    // Required
+    // (1) openssl ecparam -out server.key -name prime256v1 -genkey
     pub(crate) privkey: PrivateKey,
+    // (2) openssl req -new -key server.key -x509 -nodes -days 365 -out server.cert
+    pub(crate) cert: Certificate,
+
+    // Optional
+    // pub server_name: Option<String>,
+    // -- Client Certificate --
+    // https://stackoverflow.com/questions/21297139/how-do-you-sign-a-certificate-signing-request-with-your-certification-authority
+    // (1) Create CA
+    //      (a) openssl ecparam -out ca.key -name prime256v1 -genkey
+    //      (b) openssl req -new -key ca.key -x509 -nodes -days 365 -out ca.cert
+    // (2) Create Client
+    //      (a) openssl ecparam -out client.key -name prime256v1 -genkey
+    //      (b) openssl req -new -key client.key -out client.cert
+    // (3) Sign client cert
+    //      (a) openssl x509 -req -in client.cert -days 365 -CA ca.cert -CAkey ca.key -CAcreateserial -out client.signed.cert
+    pub(crate) client_cert_ca: Option<Certificate>,
     pub(crate) keylog: Option<String>,
     pub(crate) server_name: Option<String>,
 }
@@ -26,6 +39,7 @@ pub struct TlsConfigBuilder {
     privkey: Option<PrivateKey>,
     keylog: Option<String>,
     server_name: Option<String>,
+    client_cert_ca: Option<Certificate>
 }
 impl Default for TlsConfigBuilder {
     fn default() -> Self {
@@ -40,12 +54,20 @@ impl TlsConfigBuilder {
             privkey: None,
             keylog: None,
             server_name: None,
+            client_cert_ca: None
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
         self.cert = Certificate::from_pem(filepath);
         if self.cert.is_none() {
             panic!("Error reading or parsing certificate");
+        }
+        self
+    }
+    pub fn add_client_cert_ca(mut self, filepath: String) -> Self {
+        self.client_cert_ca = Certificate::from_pem(filepath);
+        if self.client_cert_ca.is_none() {
+            panic!("Error reading or parsing client certificate ca");
         }
         self
     }
@@ -77,6 +99,7 @@ impl TlsConfigBuilder {
             return Err("No privkey for cert provided".to_string());
         }
         Ok(TlsConfig {
+            client_cert_ca: self.client_cert_ca,
             cert: self.cert.unwrap(),
             privkey: self.privkey.unwrap(),
             keylog: self.keylog,

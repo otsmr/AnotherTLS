@@ -3,8 +3,9 @@
  *
  */
 
-pub mod base64;
-pub mod bytes;
-pub mod pem;
-pub mod keylog;
+pub(crate) mod base64;
+pub(crate) mod bytes;
+pub(crate) mod pem;
+pub(crate) mod keylog;
+// pub(crate) mod x509;
 

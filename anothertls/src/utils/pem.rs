@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
+
 use std::{fs, collections::HashMap};
 
 use super::base64;

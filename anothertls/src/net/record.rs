@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{key_schedule::WriteKeys, alert::TlsError};
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum RecordType {
     Invalid = 0,
     ChangeCipherSpec = 20,
@@ -22,14 +22,14 @@ pub enum RecordType {
 }
 
 impl RecordType {
-    pub fn new(byte: u8) -> Option<RecordType> {
-        Some(match byte {
+    pub fn new(byte: u8) -> Result<RecordType, TlsError> {
+        Ok(match byte {
             0 => RecordType::Invalid,
             20 => RecordType::ChangeCipherSpec,
             21 => RecordType::Alert,
             22 => RecordType::Handshake,
             23 => RecordType::ApplicationData,
-            _ => return None,
+            _ => return Err(TlsError::DecodeError),
         })
     }
 }
@@ -80,16 +80,20 @@ impl<'a> Record<'a> {
         }
     }
 
-    pub fn from_raw(buf: &[u8]) -> Option<Record> {
+    pub fn from_raw(buf: &[u8]) -> Result<Record, TlsError> {
         if buf.len() < 5 {
-            return None;
+            return Err(TlsError::DecodeError);
         }
 
         let content_type = RecordType::new(buf[0])?;
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
         let len = ((buf[3] as u16) << 8) | buf[4] as u16;
 
-        Some(Record {
+        if content_type == RecordType::Alert {
+            return Err(TlsError::GotAlert);
+        }
+
+        Ok(Record {
             content_type,
             version,
             header: buf[..5].try_into().unwrap(),
@@ -145,7 +149,7 @@ impl RecordPayloadProtection {
     }
 
     pub fn encrypt(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
-        let keys = if let RecordType::Handshake = record.content_type {
+        let keys = if self.application_keys.is_none() {
             &mut self.handshake_keys
         } else {
             match &mut self.application_keys {
@@ -201,10 +205,8 @@ impl RecordPayloadProtection {
             };
 
         let len = plaintext.len() - 1;
-        if let Some(record_type) = RecordType::new(plaintext[len]) {
-            let record = Record::new(record_type, Value::Owned(plaintext[..len].to_vec()));
-            return Ok(record);
-        }
-        Err(TlsError::DecodeError)
+        let record_type = RecordType::new(plaintext[len])?;
+        let record = Record::new(record_type, Value::Owned(plaintext[..len].to_vec()));
+        Ok(record)
     }
 }

@@ -8,14 +8,16 @@ Goal: To use it in my websocket implementation,
 mistakes when implementing crypto, especially when using elliptic curves.
 
 
-It depends only on the following crates:
+It depends only on the following (main) crates:
 ```bash
-cargo tree
+cargo tree --depth 1
 anothertls v0.1.0
-├── ibig v0.3.6
-│   ├── cfg-if v1.0.0
-│   └── static_assertions v1.1.0
+├── x509-cert v0.1.1
+└── ibig v0.3.6
 ```
+
+The crate `IBig` is used for big numbers. And `x509-cert` to parse x.509 certificates
+(my own implementing in `utils/x509.rs` is work in progress).
 
 ## status of RFC8446
 - [TLSv1.3](https://datatracker.ietf.org/doc/html/rfc8446)
@@ -87,6 +89,7 @@ anothertls v0.1.0
 - [X25519](https://martin.kleppmann.com/papers/curve25519.pdf)
 - [HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
+- [X.509](https://www.rfc-editor.org/rfc/rfc5280#section-4.1)
 ### work in progress
 ### maybe
 - Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()

@@ -5,6 +5,7 @@
 
 const CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+#[allow(dead_code)]
 pub fn encode(input: &[u8]) -> String {
     let mut out = Vec::new();
     let mut tmp = [0; 3];
@@ -53,9 +54,8 @@ pub fn decode(input: &str) -> Option<Vec<u8>> {
     let mut tmp = [0u8; 4];
 
     let mut reverse_characters = [0u8; 'z' as usize + 1];
-    let characters = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    for (i, &c) in characters.iter().enumerate() {
+    for (i, &c) in CHARS.as_bytes().iter().enumerate() {
         reverse_characters[c as usize] = i as u8;
     }
 
