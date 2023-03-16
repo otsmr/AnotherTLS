@@ -14,7 +14,7 @@ use crate::{
     net::{
         alert::TlsError,
         extensions::{
-            client::KeyShare, client::KeyShareEntry, server::ServerExtension, ClientExtension,
+            shared::KeyShare, shared::{KeyShareEntry, SignatureScheme}, server::ServerExtension, ClientExtension,
             ServerExtensions, SupportedVersions,
         },
         handshake::ClientHello,
@@ -88,7 +88,18 @@ impl<'a> ServerHello<'a> {
                         if expected_server_name != server_name.get() {
                             return Err(TlsError::UnrecognizedName);
                         }
-
+                    }
+                }
+                ClientExtension::SignatureAlgorithms(sa) => {
+                    let mut supported = false;
+                    for sig_algo in sa.0.iter() {
+                        if matches!(sig_algo, SignatureScheme::ecdsa_secp256r1_sha256) {
+                            supported = true;
+                            break;
+                        }
+                    }
+                    if !supported {
+                        return Err(TlsError::InsufficientSecurity);
                     }
                 }
             }

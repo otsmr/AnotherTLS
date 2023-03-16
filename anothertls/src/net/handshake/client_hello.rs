@@ -7,7 +7,7 @@
 use crate::{
     crypto::CipherSuite,
     net::{
-        extensions::{self, ClientExtension, client::KeyShareEntry},
+        extensions::{self, ClientExtension, shared::KeyShareEntry},
         alert::TlsError,
     },
 };

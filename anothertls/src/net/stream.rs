@@ -21,6 +21,7 @@ use crate::{
     },
     rand::URandomRng,
     utils::keylog::KeyLog,
+    utils::log,
     TlsConfig,
 };
 
@@ -175,14 +176,24 @@ impl<'a> TlsStream<'a> {
                 ts_hash.update(&handshake_raw);
                 let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                 let mut encrypted_record_raw = protect.encrypt(record)?;
+                log::debug!("<-- EncryptedExtensions");
                 tx_buf.append(&mut encrypted_record_raw);
 
                 // > Certificate Request
 
                 if let Some(client_cert_ca) = &self.config.client_cert_ca {
 
-                    println!("Send Certificate Request");
+                    let random = context.rng.between_bytes(32);
+                    let certificate_request = client_cert_ca.get_certificate_request(&random);
 
+                    let handshake_raw = Handshake::to_raw(HandshakeType::CertificateRequest, certificate_request);
+
+                    ts_hash.update(&handshake_raw);
+                    let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
+
+                    let mut encrypted_record_raw = protect.encrypt(record)?;
+                    log::debug!("<-- CertificateRequest");
+                    tx_buf.append(&mut encrypted_record_raw);
                 }
 
                 // -- Server Certificate --
@@ -194,6 +205,7 @@ impl<'a> TlsStream<'a> {
                 ts_hash.update(&handshake_raw);
                 let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                 let mut encrypted_record_raw = protect.encrypt(record)?;
+                log::debug!("<-- Certificate");
                 tx_buf.append(&mut encrypted_record_raw);
 
                 // -- Server Certificate Verify --
@@ -209,6 +221,7 @@ impl<'a> TlsStream<'a> {
                 ts_hash.update(&handshake_raw);
                 let record = Record::new(RecordType::Handshake, Value::Ref(&handshake_raw));
                 let mut encrypted_record_raw = protect.encrypt(record)?;
+                log::debug!("<-- CertificateVerify");
                 tx_buf.append(&mut encrypted_record_raw);
 
                 // -- FINISHED --
@@ -228,7 +241,14 @@ impl<'a> TlsStream<'a> {
                 state = HandshakeState::Finished;
                 ts_hash_handshake = Some(ts_hash);
             } else if state == HandshakeState::Finished {
+
+                // TODO: do loop over records -> maybe send in different tcp connections
+
                 let change_cipher_spec = Record::from_raw(&rx_buf[..n])?;
+
+                if change_cipher_spec.content_type != RecordType::ChangeCipherSpec {
+                    return Err(TlsError::UnexpectedMessage);
+                }
 
                 let finished_start = 5 + change_cipher_spec.len as usize;
 
@@ -241,11 +261,14 @@ impl<'a> TlsStream<'a> {
 
                 if let Some(protect) = &mut self.record_payload_protection {
                     let ts_hash = ts_hash_handshake.as_ref().unwrap();
+
+                    todo!("Check if waiting for certificate from client");
                     let verify_data = get_verify_client_finished(
                         &protect.key_schedule.client_handshake_traffic_secret,
                         ts_hash.as_ref(),
                     )?;
                     let record = protect.decrypt(finished)?;
+                    println!("record_type={:?}", record.content_type);
 
                     if record.content_type != RecordType::Handshake {
                         return Err(TlsError::UnexpectedMessage);

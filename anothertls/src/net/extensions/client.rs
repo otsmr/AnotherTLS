@@ -4,10 +4,14 @@
  */
 
 
+use crate::net::extensions::shared::KeyShare;
+use crate::net::extensions::shared::Extension;
 use crate::net::extensions::SupportedVersions;
 use crate::net::extensions::ExtensionType;
 use crate::utils::bytes;
-use crate::net::{named_groups::NamedGroup, alert::TlsError};
+use crate::net::alert::TlsError;
+
+use super::shared::SignatureAlgorithms;
 
 #[derive(Debug)]
 pub struct ServerName(String);
@@ -36,89 +40,14 @@ impl ServerName {
     }
 }
 
-#[derive(Debug)]
-pub struct KeyShareEntry {
-    pub group: NamedGroup,
-    pub opaque: Vec<u8>,
-}
-impl KeyShareEntry {
-    pub fn new(group: NamedGroup, opaque: Vec<u8>) -> KeyShareEntry {
-        KeyShareEntry { group, opaque }
-    }
-    fn parse(buf: &[u8]) -> Result<(usize, KeyShareEntry), TlsError> {
-        let group = bytes::to_u16(buf);
-        let group = match NamedGroup::new(group) {
-            Some(x) => x,
-            None => return Err(TlsError::IllegalParameter),
-        };
-        let public_key_len = bytes::to_u16(&buf[2..]);
-        Ok((
-            4 + public_key_len as usize,
-            KeyShareEntry {
-                group,
-                opaque: (buf[4..(public_key_len + 4) as usize]).to_vec(),
-            },
-        ))
-    }
-    fn to_raw(&self) -> Vec<u8> {
-        let mut out = vec![];
-        match self.group {
-            NamedGroup::X25519 => {
-                out.append(&mut vec![0x00, 0x1d, 0x00, 0x20]);
-                for i in 0..self.opaque.len() {
-                    out.push(self.opaque[self.opaque.len() -1 - i]);
-                }
-            }
-            _ => todo!(),
-        }
-        out
-    }
-}
-
-#[derive(Debug)]
-pub struct KeyShare(pub Vec<KeyShareEntry>);
-impl KeyShare {
-    pub fn new(kse: KeyShareEntry) -> KeyShare {
-        KeyShare(vec![kse])
-    }
-    fn parse(buf: &[u8]) -> Result<KeyShare, TlsError> {
-        let mut entries = vec![];
-        let mut consumed = 2;
-        let len = bytes::to_u16(buf) as usize;
-        loop {
-            let (used, entry) = KeyShareEntry::parse(&buf[consumed..])?;
-            if used <= 7 {
-                break;
-            }
-            entries.push(entry);
-            consumed += used;
-            if consumed >= len {
-                break;
-            }
-        }
-        Ok(KeyShare(entries))
-    }
-    pub fn to_raw(&self) -> Vec<u8> {
-        let mut out = vec![0x00, 0x33, 0, 0];
-        let mut total_len = 0;
-        for ext in self.0.iter() {
-            let mut raw = ext.to_raw();
-            total_len += raw.len();
-            out.append(&mut raw);
-        }
-        out[2] = (total_len >> 8) as u8;
-        out[3] = total_len as u8;
-        out
-    }
-}
 
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub(crate) enum ClientExtension {
     SupportedVersion(SupportedVersions),
     KeyShare(KeyShare),
     ServerName(ServerName),
-    // SignatureAlgorithms()
+    SignatureAlgorithms(SignatureAlgorithms)
     // PreSharedKey(u16),
 }
 
@@ -146,9 +75,11 @@ impl ClientExtension {
                     ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)
                 }
                 ExtensionType::SupportedVersions => {
-                    ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..]))
+                    ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..])?)
                 }
-                // ExtensionType::SignatureAlgorithms => { }
+                ExtensionType::SignatureAlgorithms => {
+                    ClientExtension::SignatureAlgorithms(SignatureAlgorithms::parse(&buf[consumed..])?)
+                }
                 // ExtensionType::SupportedGroups => continue, // TODO
                 // ExtensionType::PSKKeyExchangeMode => continue, // TODO
             };

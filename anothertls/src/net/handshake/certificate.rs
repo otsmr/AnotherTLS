@@ -6,7 +6,10 @@
 use crate::{
     crypto::ellipticcurve::{Ecdsa, PrivateKey},
     hash::{sha256, TranscriptHash},
-    net::alert::TlsError,
+    net::{
+        alert::TlsError,
+        extensions::{server::ServerExtension, shared::{SignatureAlgorithms, SignatureScheme}, ServerExtensions},
+    },
     utils::pem::get_pem_content_from_file,
 };
 
@@ -20,6 +23,16 @@ impl Certificate {
         Some(Certificate {
             raw: raw.get("CERTIFICATE")?.to_vec(),
         })
+    }
+
+    pub fn get_certificate_request(&self, random: &[u8]) -> Vec<u8> {
+        let mut extensions = ServerExtensions::new();
+        let algs = SignatureAlgorithms::new(SignatureScheme::ecdsa_secp256r1_sha256);
+        extensions.push(ServerExtension::SignatureAlgorithms(algs));
+        let mut out = vec![random.len() as u8];
+        out.extend_from_slice(random);
+        out.extend(extensions.to_raw());
+        out
     }
 
     pub fn get_certificate_for_handshake(&self) -> Vec<u8> {
@@ -69,5 +82,3 @@ impl Certificate {
         Ok(res)
     }
 }
-
-

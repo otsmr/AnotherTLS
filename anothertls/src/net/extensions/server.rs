@@ -3,21 +3,17 @@
  *
  */
 
+use super::shared::{Extension, KeyShare, SignatureAlgorithms, SupportedVersions};
 
-use crate::net::extensions::SupportedVersions;
-
-use super::client::KeyShare;
-
-#[derive(Debug)]
 pub(crate) enum ServerExtension {
     SupportedVersion(SupportedVersions),
-    KeyShare(KeyShare)
+    KeyShare(KeyShare),
+    SignatureAlgorithms(SignatureAlgorithms),
 }
 
 pub(crate) struct ServerExtensions(Vec<ServerExtension>);
 
 impl ServerExtensions {
-
     pub fn new() -> Self {
         Self(vec![])
     }
@@ -33,8 +29,9 @@ impl ServerExtensions {
         }
         for ext in self.0.iter() {
             match ext {
-                ServerExtension::SupportedVersion(sv) => out.extend_from_slice(&sv.to_raw()),
+                ServerExtension::SupportedVersion(sv) => out.extend(sv.to_raw()),
                 ServerExtension::KeyShare(ks) => out.extend(ks.to_raw()),
+                ServerExtension::SignatureAlgorithms(sa) => out.extend(sa.to_raw()),
             }
         }
         let extension_len = out.len() - 2;
@@ -43,4 +40,3 @@ impl ServerExtensions {
         out
     }
 }
-
