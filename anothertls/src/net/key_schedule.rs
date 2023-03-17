@@ -7,7 +7,7 @@ use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
     hash::hkdf::HKDF,
-    net::{alert::TlsError, named_groups::NamedGroup},
+    net::{alert::TlsError, extensions::NamedGroup},
     utils::bytes,
 };
 use ibig::ibig;

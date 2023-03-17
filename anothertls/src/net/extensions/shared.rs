@@ -4,7 +4,7 @@
  */
 
 use crate::net::alert::TlsError;
-use crate::net::named_groups::NamedGroup;
+use crate::net::extensions::NamedGroup;
 use crate::utils::bytes;
 
 pub trait Extension {

@@ -21,7 +21,7 @@ use crate::{
             ServerExtensions, SupportedVersions,
         },
         handshake::ClientHello,
-        named_groups::NamedGroup,
+        extensions::NamedGroup,
     },
     utils::bytes::{self, ByteOrder},
 };
