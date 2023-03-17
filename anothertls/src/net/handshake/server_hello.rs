@@ -3,6 +3,9 @@
  *
  */
 
+use crate::TlsConfig;
+use ibig::IBig;
+use crate::rand::RngCore;
 use std::result::Result;
 
 use crate::{
@@ -19,7 +22,6 @@ use crate::{
         },
         handshake::ClientHello,
         named_groups::NamedGroup,
-        TlsContext,
     },
     utils::bytes::{self, ByteOrder},
 };
@@ -36,13 +38,14 @@ pub(crate) struct ServerHello<'a> {
 impl<'a> ServerHello<'a> {
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
-        config: &mut TlsContext,
+        rng: &mut dyn RngCore<IBig>,
+        config: &'a TlsConfig
     ) -> Result<ServerHello<'a>, TlsError> {
         let mut extensions = ServerExtensions::new();
         let mut private_key = None;
         let mut named_group = None;
 
-        let mut random: [u8; 32] = config.rng.between_bytes(32).try_into().unwrap();
+        let mut random: [u8; 32] = rng.between_bytes(32).try_into().unwrap();
 
         // Value is: DOWNGRD
         let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
@@ -62,7 +65,7 @@ impl<'a> ServerHello<'a> {
                     for key in key_share.0.iter() {
                         match key.group {
                             NamedGroup::X25519 => {
-                                let secret = config.rng.between(1, 32);
+                                let secret = rng.between(1, 32);
                                 let pk = PrivateKey::new(Curve::curve25519(), secret);
                                 let key_share_data = bytes::ibig_to_32bytes(
                                     pk.get_public_key().point.x,
@@ -84,7 +87,7 @@ impl<'a> ServerHello<'a> {
                     }
                 }
                 ClientExtension::ServerName(server_name) => {
-                    if let Some(expected_server_name) = &config.config.server_name {
+                    if let Some(expected_server_name) = &config.server_name {
                         if expected_server_name != server_name.get() {
                             return Err(TlsError::UnrecognizedName);
                         }

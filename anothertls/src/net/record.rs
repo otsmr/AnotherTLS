@@ -80,7 +80,7 @@ impl<'a> Record<'a> {
         }
     }
 
-    pub fn from_raw(buf: &[u8]) -> Result<Record, TlsError> {
+    pub fn from_raw(buf: &[u8]) -> Result<(usize, Record), TlsError> {
         if buf.len() < 5 {
             return Err(TlsError::DecodeError);
         }
@@ -88,18 +88,20 @@ impl<'a> Record<'a> {
         let content_type = RecordType::new(buf[0])?;
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
         let len = ((buf[3] as u16) << 8) | buf[4] as u16;
-
+        if buf.len() < (2 + len as usize) {
+            return Err(TlsError::DecodeError);
+        }
         if content_type == RecordType::Alert {
             return Err(TlsError::GotAlert);
         }
-
-        Ok(Record {
+        let consumed = 5 + (len as usize);
+        Ok((consumed, Record {
             content_type,
             version,
             header: buf[..5].try_into().unwrap(),
             len,
-            fraqment: Value::Ref(&buf[5..]),
-        })
+            fraqment: Value::Ref(&buf[5..consumed]),
+        }))
     }
     pub fn as_bytes(&self) -> Vec<u8> {
         Record::to_raw(self.content_type, self.fraqment.as_ref())

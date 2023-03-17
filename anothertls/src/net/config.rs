@@ -4,10 +4,7 @@
  */
 
 use super::handshake::Certificate;
-use crate::hash::TranscriptHash;
-use ibig::IBig;
-
-use crate::{crypto::ellipticcurve::PrivateKey, rand::RngCore};
+use crate::crypto::ellipticcurve::PrivateKey;
 
 pub struct TlsConfig {
 
@@ -108,8 +105,3 @@ impl TlsConfigBuilder {
     }
 }
 
-pub struct TlsContext<'a> {
-    pub config: &'a TlsConfig,
-    pub rng: Box<dyn RngCore<IBig>>,
-    pub ts_hash: Option<Box<dyn TranscriptHash>>,
-}

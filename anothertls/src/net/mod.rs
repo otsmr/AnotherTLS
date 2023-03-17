@@ -16,4 +16,3 @@ pub(crate) mod key_schedule;
 pub use listener::TlsListener;
 pub use stream::TlsStream;
 pub use config::TlsConfig;
-pub(crate) use config::TlsContext;

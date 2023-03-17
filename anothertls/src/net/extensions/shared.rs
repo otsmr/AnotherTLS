@@ -93,10 +93,9 @@ impl SignatureAlgorithms {
     pub fn new(scheme: SignatureScheme) -> Self {
         Self(vec![scheme])
     }
-    pub fn push(&mut self, scheme: SignatureScheme) {
-        self.0.push(scheme)
-    }
-
+    // pub fn push(&mut self, scheme: SignatureScheme) {
+    //     self.0.push(scheme)
+    // }
 }
 
 impl Extension for SignatureAlgorithms {
