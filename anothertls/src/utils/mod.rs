@@ -10,5 +10,5 @@ pub(crate) mod keylog;
 
 #[macro_use]
 pub(crate) mod log;
-// pub(crate) mod x509;
+pub(crate) mod x509;
 

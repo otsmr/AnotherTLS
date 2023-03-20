@@ -8,13 +8,14 @@ Goal: To use it in my websocket implementation,
 mistakes when implementing crypto, especially when using elliptic curves.
 
 
-It depends only on the following (main) crates:
+It depends only on the following crates:
 ```bash
-cargo tree --depth 1
+``
+$ cargo tree
 anothertls v0.1.0
-├── x509-cert v0.1.1
 └── ibig v0.3.6
-```
+    ├── cfg-if v1.0.0
+    └── static_assertions v1.1.0`
 
 ## security
 TODO: tlsfuzzer and TLS-Attacker

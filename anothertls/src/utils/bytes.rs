@@ -57,20 +57,20 @@ pub fn to_u16(buf: &[u8]) -> u16 {
     }
     ((buf[0] as u16) << 8) | buf[1] as u16
 }
-// pub fn to_u128_le_fill(bytes: &[u8]) -> u128 {
-//     let mut new = [0; 16];
-//     let bytes: &[u8] = match bytes.len() {
-//         a if a < 16 => {
-//             for (i, b) in bytes.iter().enumerate() {
-//                 new[(16 - bytes.len()) + i] = *b;
-//             }
-//             &new
-//         },
-//         a if a > 16 => &bytes[..16],
-//         _ => bytes
-//     };
-//     to_u128_le(bytes)
-// }
+pub fn to_u128_le_fill(bytes: &[u8]) -> u128 {
+    let mut new = [0; 16];
+    let bytes: &[u8] = match bytes.len() {
+        a if a < 16 => {
+            for (i, b) in bytes.iter().enumerate() {
+                new[(16 - bytes.len()) + i] = *b;
+            }
+            &new
+        },
+        a if a > 16 => &bytes[..16],
+        _ => bytes
+    };
+    to_u128_le(bytes)
+}
 pub fn to_u128_le(bytes: &[u8]) -> u128 {
     let mut res: u128 = 0;
     let bytes: &[u8] = match bytes.len() {
