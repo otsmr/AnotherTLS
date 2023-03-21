@@ -13,7 +13,6 @@ macro_rules! debug {
 }
 pub(crate) use debug;
 
-
 #[macro_export]
 macro_rules! error {
     ($($x: expr),*) => {{
@@ -25,5 +24,5 @@ macro_rules! error {
         )*
     }}
 }
-// pub(crate) use error;
+pub(crate) use error;
 

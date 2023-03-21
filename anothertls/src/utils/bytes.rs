@@ -65,7 +65,6 @@ pub fn str_to_u8(s: &str) -> u8 {
 }
 pub fn str_to_u16(s: &str) -> u16 {
     ((str_to_u8(&s[..1]) as u16)*10) + str_to_u8(&s[1..2]) as u16
-
 }
 // pub fn to_u32(buf: &[u8]) -> u32 {
 //     if buf.is_empty() {

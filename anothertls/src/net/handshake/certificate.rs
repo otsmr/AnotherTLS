@@ -8,20 +8,40 @@ use crate::{
     hash::{sha256, TranscriptHash},
     net::{
         alert::TlsError,
-        extensions::{server::ServerExtension, shared::{SignatureAlgorithms, SignatureScheme}, ServerExtensions},
+        extensions::{
+            server::ServerExtension,
+            shared::{SignatureAlgorithms, SignatureScheme},
+            ServerExtensions,
+        },
     },
-    utils::pem::get_pem_content_from_file,
+    utils::{log, pem::get_pem_content_from_file, x509::X509},
 };
 
 pub struct Certificate {
     pub raw: Vec<u8>,
+    pub x509: Option<X509>,
 }
 
 impl Certificate {
+    pub fn from_raw_x509(raw: Vec<u8>) -> Result<Self, TlsError> {
+        Ok(Certificate {
+            x509: Some(match X509::from_raw(&raw) {
+                Ok(a) => a,
+                Err(e) => {
+                    log::error!("Error parsing: {e:?}");
+                    return Err(TlsError::DecodeError);
+                }
+            }),
+            raw,
+        })
+    }
+
     pub fn from_pem(filepath: String) -> Option<Self> {
         let raw = get_pem_content_from_file(filepath)?;
+        // TODO: check if cert using the available algos
         Some(Certificate {
             raw: raw.get("CERTIFICATE")?.to_vec(),
+            x509: None,
         })
     }
 

@@ -2,20 +2,14 @@
 Yet another TLS implementation, but written **from scratch** (including the
 crypto) in pure Rust - of course.
 
-
-Goal: To use it in my websocket implementation,
-[WebRocket](https://github.com/otsmr/webrocket). And to learn about common
-mistakes when implementing crypto, especially when using elliptic curves.
-
-
 It depends only on the following crates:
 ```bash
-``
 $ cargo tree
 anothertls v0.1.0
 └── ibig v0.3.6
     ├── cfg-if v1.0.0
-    └── static_assertions v1.1.0`
+    └── static_assertions v1.1.0
+```
 
 ## security
 TODO: tlsfuzzer and TLS-Attacker
@@ -31,12 +25,12 @@ The crate `IBig` is used for big numbers. And `x509-cert` to parse x.509 certifi
   4.1.1. Cryptographic Negotiation ✓
   4.1.2. Client Hello ✓
   4.1.3. Server Hello ✓
-  4.1.4. Hello Retry Request
+  4.1.4. Hello Retry Request ×
  4.2. Extension
   4.2.1. Supported Versions ✓
-  4.2.2. Cookie
+  4.2.2. Cookie ×
   4.2.3. Signature Algorithms (✓)
-  4.2.4. Certificate Authoritie
+  4.2.4. Certificate Authority
   4.2.5. OID Filter
   4.2.6. Post-Handshake Client Authentication
   4.2.7. Supported Groups ( ✓)
@@ -64,8 +58,8 @@ The crate `IBig` is used for big numbers. And `x509-cert` to parse x.509 certifi
   5.4. Record Padding
   5.5. Limits on Key Usage
  6. Alert Protocol
-  6.1. Closure Alerts
-  6.2. Error Alerts
+  6.1. Closure Alerts ✓
+  6.2. Error Alerts ✓
 9.1.  Mandatory-to-Implement Cipher Suites
  MUST
   cipher suite
@@ -102,5 +96,11 @@ The crate `IBig` is used for big numbers. And `x509-cert` to parse x.509 certifi
 
 ## Example
 ```bash
-/opt/homebrew/opt/curl/bin/curl --tlsv1.3 -iv --insecure https://localhost:4000/
+curl -iv --insecure https://localhost:4000/
+```
+
+### Client certificate
+```bash
+cd ./examples/src/bin/config/client_cert/
+curl --cert client.signed.cert --key client.key -iv --insecure https://localhost:4000/
 ```

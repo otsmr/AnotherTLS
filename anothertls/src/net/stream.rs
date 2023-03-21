@@ -12,15 +12,15 @@ use crate::{
         alert::{AlertLevel, TlsError},
         extensions::ServerExtensions,
         handshake::{
-            get_finished_handshake, get_verify_client_finished, ClientHello, Handshake,
-            HandshakeType, ServerHello,
+            get_finished_handshake, get_verify_client_finished, Certificate, ClientHello,
+            Handshake, HandshakeType, ServerHello,
         },
         key_schedule::KeySchedule,
         record::{Record, RecordPayloadProtection, RecordType, Value},
     },
     rand::{RngCore, URandomRng},
-    utils::keylog::KeyLog,
     utils::log,
+    utils::{bytes, keylog::KeyLog},
     TlsConfig,
 };
 use ibig::IBig;
@@ -31,11 +31,13 @@ use std::{
     result::Result,
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[repr(u8)]
 enum HandshakeState {
     ClientHello,
     ChangeCipherSpec,
-    ClientCertificate,
+    ClientCertificate = 0x10,
+    ClientCertificateVerify,
     Finished,
     Ready,
 }
@@ -47,6 +49,8 @@ pub struct TlsStream<'a> {
     protection: Option<RecordPayloadProtection>,
     state: HandshakeState,
     key_log: Option<KeyLog>,
+    client_cert: Option<Certificate>,
+    certificate_request_context: Option<Vec<u8>>,
     rng: Box<dyn RngCore<IBig>>,
     tshash: Option<Box<dyn TranscriptHash>>,
 }
@@ -59,6 +63,8 @@ impl<'a> TlsStream<'a> {
             config,
             state: HandshakeState::ClientHello,
             key_log: None,
+            client_cert: None,
+            certificate_request_context: None,
             protection: None,
             rng: Box::new(URandomRng::new()),
             tshash: None,
@@ -176,8 +182,11 @@ impl<'a> TlsStream<'a> {
         // > Certificate Request
 
         if let Some(client_cert_ca) = &self.config.client_cert_ca {
-            let random = self.rng.between_bytes(32);
-            let certificate_request = client_cert_ca.get_certificate_request(&random);
+            // prevent an attacker who has temporary access to the client's
+            // private key from pre-computing valid CertificateVerify messages
+            self.certificate_request_context = Some(self.rng.between_bytes(32));
+            let certificate_request = client_cert_ca
+                .get_certificate_request(self.certificate_request_context.as_ref().unwrap());
 
             let handshake_raw =
                 Handshake::to_raw(HandshakeType::CertificateRequest, certificate_request);
@@ -235,6 +244,127 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 
+    fn handle_handshake_encrypted_record(
+        &mut self,
+        record: Record,
+        tx_buf: &mut Vec<u8>,
+    ) -> Result<(), TlsError> {
+        log::debug!("Encrypted");
+
+        let mut verify_data = None;
+        let protection = self.protection.as_mut().unwrap();
+
+        if self.state == HandshakeState::Finished {
+            if self.tshash.is_none() {
+                return Err(TlsError::InternalError);
+            }
+            verify_data = Some(get_verify_client_finished(
+                &protection.key_schedule.client_handshake_traffic_secret,
+                self.tshash.as_ref().unwrap().as_ref(),
+            )?);
+        }
+
+
+        let record = protection.decrypt(record)?;
+
+        if record.content_type != RecordType::Handshake
+            || self.certificate_request_context.is_none()
+        {
+            return Err(TlsError::UnexpectedMessage);
+        }
+
+        let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
+
+        match self.state {
+            HandshakeState::ClientCertificate => {
+                if handshake.handshake_type != HandshakeType::Certificate {
+                    return Err(TlsError::UnexpectedMessage);
+                }
+                log::debug!("--> ClientCertificate");
+
+                let mut consumed = 1;
+                let cert_request_context_len = handshake.fraqment[0] as usize;
+                let cert_request_context = &handshake.fraqment[1..cert_request_context_len + 1];
+
+                if cert_request_context != self.certificate_request_context.as_ref().unwrap() {
+                    return Err(TlsError::HandshakeFailure);
+                }
+
+                consumed += cert_request_context_len;
+
+                let certs_len =
+                    bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
+                consumed += 3;
+
+                let cert_len =
+                    bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
+                consumed += 3;
+
+                if certs_len != cert_len + 5 {
+                    todo!("Add support for multiple certs");
+                }
+
+                let cert = Certificate::from_raw_x509(
+                    handshake.fraqment[consumed..consumed + cert_len].to_vec(),
+                )?;
+
+                let common_name = cert
+                    .x509
+                    .as_ref()
+                    .unwrap()
+                    .tbs_certificate
+                    .issuer
+                    .get("commonName")
+                    .unwrap();
+                log::debug!("Got client cert signed from {common_name}");
+
+                self.client_cert = Some(cert);
+
+                self.state = HandshakeState::ClientCertificateVerify;
+            }
+            HandshakeState::ClientCertificateVerify => {
+                log::debug!("--> ClientCertificateVerify");
+                todo!("Verify")
+            }
+            HandshakeState::Finished => {
+                // why not finished
+
+                log::debug!("--> Finished");
+                if verify_data.is_none() {
+                    return Err(TlsError::InternalError);
+                }
+
+                let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
+
+                if handshake.fraqment != verify_data.unwrap() {
+                    return Err(TlsError::DecryptError);
+                }
+
+                protection.generate_application_keys(self.tshash.as_ref().unwrap().as_ref())?;
+
+                if let Some(k) = &self.key_log {
+                    k.append_application_traffic_secrets(
+                        &protection
+                            .application_keys
+                            .as_ref()
+                            .unwrap()
+                            .server
+                            .traffic_secret,
+                        &protection
+                            .application_keys
+                            .as_ref()
+                            .unwrap()
+                            .client
+                            .traffic_secret,
+                    );
+                }
+                self.state = HandshakeState::Ready;
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+
     fn handle_handshake_record(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
         let mut tx_buf = Vec::with_capacity(4096);
 
@@ -254,59 +384,10 @@ impl<'a> TlsStream<'a> {
                     self.state = HandshakeState::Finished;
                 }
             }
-            HandshakeState::ClientCertificate => {
-                log::debug!("--> ClientCertificate");
-                todo!("Handle ClientCertificate")
+            state if state >= HandshakeState::ClientCertificate => {
+                self.handle_handshake_encrypted_record(record, &mut tx_buf)?;
             }
-            HandshakeState::Finished => {
-                if record.content_type != RecordType::ApplicationData {
-                    return Err(TlsError::UnexpectedMessage);
-                }
-                if self.protection.is_none() || self.tshash.is_none() {
-                    return Err(TlsError::InternalError);
-                }
-
-                log::debug!("--> Finished");
-
-                let protect = self.protection.as_mut().unwrap();
-                let tshash = self.tshash.as_ref().unwrap();
-
-                let verify_data = get_verify_client_finished(
-                    &protect.key_schedule.client_handshake_traffic_secret,
-                    tshash.as_ref(),
-                )?;
-
-                let record = protect.decrypt(record)?;
-
-                if record.content_type != RecordType::Handshake {
-                    return Err(TlsError::UnexpectedMessage);
-                }
-
-                let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
-                if handshake.fraqment != verify_data {
-                    return Err(TlsError::DecryptError);
-                }
-
-                protect.generate_application_keys(tshash.as_ref())?;
-
-                if let Some(k) = &self.key_log {
-                    k.append_application_traffic_secrets(
-                        &protect
-                            .application_keys
-                            .as_ref()
-                            .unwrap()
-                            .server
-                            .traffic_secret,
-                        &protect
-                            .application_keys
-                            .as_ref()
-                            .unwrap()
-                            .client
-                            .traffic_secret,
-                    );
-                }
-                self.state = HandshakeState::Ready;
-            }
+            _ => (),
         }
         Ok(tx_buf)
     }
