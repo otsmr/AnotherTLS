@@ -48,6 +48,41 @@ pub fn to_bytes(num: u128) -> [u8; 16] {
     res
 }
 
+pub fn str_to_u8(s: &str) -> u8 {
+    match &s[..1] {
+        "1" => 1,
+        "2" => 2,
+        "3" => 3,
+        "4" => 4,
+        "5" => 5,
+        "6" => 6,
+        "7" => 7,
+        "8" => 8,
+        "9" => 9,
+        _ => 0
+    }
+
+}
+pub fn str_to_u16(s: &str) -> u16 {
+    ((str_to_u8(&s[..1]) as u16)*10) + str_to_u8(&s[1..2]) as u16
+
+}
+// pub fn to_u32(buf: &[u8]) -> u32 {
+//     if buf.is_empty() {
+//         return 0;
+//     }
+//     let mut res = buf[0] as u32;
+//     if buf.len() > 1 {
+//         res += (res << 8) | buf[1] as u32;
+//     }
+//     if buf.len() > 2 {
+//         res += (res << 8) | buf[2] as u32;
+//     }
+//     if buf.len() > 3 {
+//         res += (res << 8) | buf[3] as u32;
+//     }
+//     res
+// }
 pub fn to_u16(buf: &[u8]) -> u16 {
     if buf.is_empty() {
         return 0;
