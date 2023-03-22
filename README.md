@@ -1,4 +1,4 @@
-# AnotherTls
+# AnotherTLS
 Yet another TLS implementation, but written **from scratch** (including the
 crypto) in **pure Rust** - of course. The focus of this implementation is the
 simplicity and to use no dependencies. I started this project to deep dive into
