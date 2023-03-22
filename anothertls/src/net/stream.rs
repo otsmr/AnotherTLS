@@ -284,7 +284,10 @@ impl<'a> TlsStream<'a> {
                 }
 
                 log::debug!("--> ClientCertificate");
-                self.tshash.as_mut().unwrap().update(record.fraqment.as_ref());
+                self.tshash
+                    .as_mut()
+                    .unwrap()
+                    .update(record.fraqment.as_ref());
 
                 let mut consumed = 1;
                 let cert_request_context_len = handshake.fraqment[0] as usize;
@@ -347,7 +350,6 @@ impl<'a> TlsStream<'a> {
 
                 match sign_algo {
                     SignatureScheme::ecdsa_secp256r1_sha256 => {
-                        let curve = Curve::secp256r1();
                         // println!("Used Algos: {:?}", sign_algo);
 
                         for i in 0..3 {
@@ -384,11 +386,9 @@ impl<'a> TlsStream<'a> {
                             .as_ref()
                             .unwrap()
                             .verify_client_certificate(
-                                curve,
                                 signature,
                                 self.tshash.as_ref().unwrap().as_ref(),
                             )?;
-                        println!("Is VALID");
                     }
                     e => todo!("SignatureScheme {e:?} for client cert not implemented yet"),
                 }
@@ -397,7 +397,21 @@ impl<'a> TlsStream<'a> {
                     return Err(TlsError::DecodeError);
                 }
 
-                todo!("Verify")
+                // TODO: Check the validity of the client cert
+
+                // Validate client cert against the CA
+                self.config
+                    .client_cert_ca
+                    .as_ref()
+                    .unwrap()
+                    .has_signed(self.client_cert.as_ref().unwrap())?;
+
+                self.tshash
+                    .as_mut()
+                    .unwrap()
+                    .update(record.fraqment.as_ref());
+                self.state = HandshakeState::Finished;
+
             }
             HandshakeState::Finished => {
                 log::debug!("--> Finished");

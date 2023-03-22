@@ -66,7 +66,7 @@ impl Ecdsa {
         Ok(Signature::new(s, r))
     }
 
-    pub fn verify(pub_key: PublicKey, sign: Signature, hashed_message: &[u8]) -> bool {
+    pub fn verify(pub_key: PublicKey, sign: &Signature, hashed_message: &[u8]) -> bool {
         // Check Public Key
         // 1.
         if pub_key.point.x == ibig!(0) && pub_key.point.y == ibig!(0) {
@@ -146,7 +146,7 @@ mod tests {
 
         assert!(Ecdsa::verify(
             priv_key.get_public_key(),
-            sign,
+            &sign,
             &hashed_message
         ));
     }

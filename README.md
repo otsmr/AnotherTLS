@@ -108,7 +108,7 @@ tracked in the following section.
  6. Alert Protocol
   6.1. Closure Alerts ✓
   6.2. Error Alerts ✓
-9.1.  Mandatory-to-Implement Cipher Suites (✓, now support for rsa)
+9.1.  Mandatory-to-Implement Cipher Suites (✓, no support for rsa)
  MUST
   cipher suite
    TLS_AES_128_GCM_SHA256 ✓

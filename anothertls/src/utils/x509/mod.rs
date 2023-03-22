@@ -5,6 +5,9 @@
  */
 
 use super::der::*;
+use crate::crypto::ellipticcurve::Curve;
+use crate::crypto::ellipticcurve::Point;
+use crate::crypto::ellipticcurve::PublicKey;
 
 use ibig::IBig;
 
@@ -254,6 +257,7 @@ impl TBSCertificateBuilder {
 
 pub struct X509 {
     pub tbs_certificate: TBSCertificate,
+    pub tbs_certificate_size: usize,
     pub signature_algorithm: Algorithms,
     pub signature: Option<Signature>,
 }
@@ -265,9 +269,48 @@ impl X509 {
         parse(&mut res, ParsingState::Init, data, &mut consumed)?;
         res.build()
     }
+    pub fn get_public_key(&self) -> Option<PublicKey> {
+        if self
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm
+            .algorithm
+            != Algorithms::EcPublicKey
+        {
+            return None;
+        }
+
+        let curve = match self
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm
+            .parameters
+            .as_ref()?
+            .as_str()
+        {
+            "prime256v1" => Curve::secp256r1(),
+            _ => return None,
+        };
+
+        let pubkey = self
+            .tbs_certificate
+            .subject_public_key_info
+            .subject_public_key
+            .as_slice();
+
+        if pubkey[0] != 0x4 {
+            todo!("Handle compressed points");
+        }
+
+        let x = bytes::to_ibig_le(&pubkey[1..33]);
+        let y = bytes::to_ibig_le(&pubkey[33..65]);
+
+        Some(PublicKey::new(Point::new(x, y), curve))
+    }
 }
 pub struct X509Builder {
     tbs_certificate: TBSCertificateBuilder,
+    tbs_certificate_size: usize,
     signature_algorithm: Option<Algorithms>,
     signature: (Option<IBig>, Option<IBig>),
 }
@@ -275,6 +318,7 @@ impl X509Builder {
     fn new() -> X509Builder {
         X509Builder {
             tbs_certificate: TBSCertificateBuilder::new(),
+            tbs_certificate_size: 0,
             signature_algorithm: None,
             signature: (None, None),
         }
@@ -284,13 +328,14 @@ impl X509Builder {
 
         if self.signature.0.is_some() && self.signature.1.is_some() {
             signature = Some(Signature::new(
-                self.signature.0.unwrap(),
                 self.signature.1.unwrap(),
+                self.signature.0.unwrap(),
             ));
         }
 
         Ok(X509 {
             tbs_certificate: self.tbs_certificate.build()?,
+            tbs_certificate_size: self.tbs_certificate_size,
             signature_algorithm: self.signature_algorithm.unwrap(),
             signature,
         })
@@ -335,6 +380,11 @@ fn parse(
     match der {
         EncodedForm::Constructed(cons) => match cons {
             DerType::Sequence => {
+                if res.tbs_certificate_size == 0 {
+                    res.tbs_certificate_size = 1; // Size of tbs_certificate + signature_algorithm + signature
+                } else if res.tbs_certificate_size == 1 {
+                    res.tbs_certificate_size = size + 4;
+                }
                 let size_should = size + *consumed;
                 while size_should > *consumed {
                     parse(res, state.clone(), data, consumed)?;

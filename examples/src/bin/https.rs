@@ -38,7 +38,8 @@ impl HttpsServer {
 
                 let mut buf: [u8; 4096] = [0; 4096];
 
-                if let Ok(n) = socket.read(&mut buf) {
+                let receive = socket.read(&mut buf);
+                if let Ok(n) = receive {
                     println!(
                         "--- Request --- \n{}\n---------------",
                         String::from_utf8(buf[..n-4].to_vec()).unwrap()
@@ -62,6 +63,8 @@ Content-Length: 118\r\n\
                         println!("Error write_all: {:?}", e);
                         continue;
                     }
+                } else {
+                    println!("Error reading = {:?}", receive.err().unwrap());
                 }
                 // socket.read_to_end();
             } else if let Err(e) = client {

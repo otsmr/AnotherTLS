@@ -62,7 +62,7 @@ impl TlsConfigBuilder {
         self
     }
     pub fn add_client_cert_ca(mut self, filepath: String) -> Self {
-        self.client_cert_ca = Certificate::from_pem(filepath);
+        self.client_cert_ca = Certificate::from_pem_x509(filepath);
         if self.client_cert_ca.is_none() {
             panic!("Error reading or parsing client certificate ca");
         }

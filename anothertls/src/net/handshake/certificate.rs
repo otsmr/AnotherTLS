@@ -4,7 +4,7 @@
  */
 
 use crate::{
-    crypto::ellipticcurve::{Point, Ecdsa, PrivateKey, Signature, PublicKey, Curve},
+    crypto::ellipticcurve::{Curve, Ecdsa, PrivateKey, Signature},
     hash::{sha256, TranscriptHash},
     net::{
         alert::TlsError,
@@ -14,7 +14,7 @@ use crate::{
             ServerExtensions,
         },
     },
-    utils::{log, pem::get_pem_content_from_file, x509::X509, bytes},
+    utils::{bytes, log, pem::get_pem_content_from_file, x509::X509},
 };
 
 pub struct Certificate {
@@ -34,6 +34,14 @@ impl Certificate {
             }),
             raw,
         })
+    }
+    pub fn from_pem_x509(filepath: String) -> Option<Self> {
+        let raw = get_pem_content_from_file(filepath)?;
+        // TODO: check if cert using the available algos
+        Some(
+            Certificate::from_raw_x509(raw.get("CERTIFICATE")?.to_vec())
+                .expect("Provided client certificate is not a valid x509 certificate."),
+        )
     }
 
     pub fn from_pem(filepath: String) -> Option<Self> {
@@ -102,7 +110,41 @@ impl Certificate {
         Ok(res)
     }
 
-    pub fn verify_client_certificate(&self, curve: Curve, signature: Signature, tshash: &dyn TranscriptHash) -> Result<(), TlsError> {
+    /// Checks if the other certificate is signed from self as CA.
+    pub fn has_signed(&self, other: &Certificate) -> Result<(), TlsError> {
+        if self.x509.is_none() || other.x509.is_none() {
+            return Err(TlsError::InternalError);
+        }
+
+        let ca_public_key = self
+            .x509
+            .as_ref()
+            .unwrap()
+            .get_public_key()
+            .expect("CA for client certificate has no public key");
+
+        let other_x509 = other.x509.as_ref().unwrap();
+        let signature = match &other_x509.signature {
+            Some(e) => e,
+            None => return Err(TlsError::DecryptError),
+        };
+
+        let context = &other.raw[4..4 + other_x509.tbs_certificate_size];
+
+        let hash = sha256(context);
+
+        if Ecdsa::verify(ca_public_key, signature, &hash) {
+            return Ok(());
+        }
+
+        Err(TlsError::DecryptError)
+    }
+
+    pub fn verify_client_certificate(
+        &self,
+        signature: Signature,
+        tshash: &dyn TranscriptHash,
+    ) -> Result<(), TlsError> {
         // 4.4.3.  Certificate Verify
 
         let mut content = Vec::with_capacity(150);
@@ -113,18 +155,12 @@ impl Certificate {
 
         let hash = sha256(&content);
 
-        let pubkey = self.x509.as_ref().unwrap().tbs_certificate.subject_public_key_info.subject_public_key.as_slice();
-
-        let x = bytes::to_ibig_le(&pubkey[1..33]);
-        let y = bytes::to_ibig_le(&pubkey[33..65]);
-
-        let pubkey = PublicKey::new(Point::new(x, y), curve);
-
-        if !Ecdsa::verify(pubkey, signature, &hash) {
-            return Err(TlsError::DecryptError);
+        if let Some(pubkey) = self.x509.as_ref().unwrap().get_public_key() {
+            if Ecdsa::verify(pubkey, &signature, &hash) {
+                return Ok(());
+            }
         }
 
-        Ok(())
-
+        Err(TlsError::DecryptError)
     }
 }
