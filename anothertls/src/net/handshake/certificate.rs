@@ -4,7 +4,7 @@
  */
 
 use crate::{
-    crypto::ellipticcurve::{Ecdsa, PrivateKey},
+    crypto::ellipticcurve::{Point, Ecdsa, PrivateKey, Signature, PublicKey, Curve},
     hash::{sha256, TranscriptHash},
     net::{
         alert::TlsError,
@@ -14,7 +14,7 @@ use crate::{
             ServerExtensions,
         },
     },
-    utils::{log, pem::get_pem_content_from_file, x509::X509},
+    utils::{log, pem::get_pem_content_from_file, x509::X509, bytes},
 };
 
 pub struct Certificate {
@@ -79,7 +79,7 @@ impl Certificate {
     pub fn get_certificate_verify_for_handshake(
         &self,
         privkey: &PrivateKey,
-        ts_hash: &dyn TranscriptHash,
+        tshash: &dyn TranscriptHash,
     ) -> std::result::Result<Vec<u8>, TlsError> {
         // 4.4.3.  Certificate Verify
 
@@ -87,7 +87,7 @@ impl Certificate {
         content.resize(64, 0x20);
         content.extend_from_slice(b"TLS 1.3, server CertificateVerify");
         content.push(0x00);
-        content.extend(ts_hash.clone().finalize());
+        content.extend(tshash.clone().finalize());
 
         let hash = sha256(&content);
 
@@ -100,5 +100,31 @@ impl Certificate {
         let mut res = vec![0x04, 0x03, (der.len() >> 8) as u8, der.len() as u8]; // ecdsa_secp256r1_sha256 + Length
         res.extend(der);
         Ok(res)
+    }
+
+    pub fn verify_client_certificate(&self, curve: Curve, signature: Signature, tshash: &dyn TranscriptHash) -> Result<(), TlsError> {
+        // 4.4.3.  Certificate Verify
+
+        let mut content = Vec::with_capacity(150);
+        content.resize(64, 0x20);
+        content.extend_from_slice(b"TLS 1.3, client CertificateVerify");
+        content.push(0x00);
+        content.extend(tshash.clone().finalize());
+
+        let hash = sha256(&content);
+
+        let pubkey = self.x509.as_ref().unwrap().tbs_certificate.subject_public_key_info.subject_public_key.as_slice();
+
+        let x = bytes::to_ibig_le(&pubkey[1..33]);
+        let y = bytes::to_ibig_le(&pubkey[33..65]);
+
+        let pubkey = PublicKey::new(Point::new(x, y), curve);
+
+        if !Ecdsa::verify(pubkey, signature, &hash) {
+            return Err(TlsError::DecryptError);
+        }
+
+        Ok(())
+
     }
 }

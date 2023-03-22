@@ -25,7 +25,7 @@ pub enum DerType {
 }
 
 pub type TagNumber = u8;
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EncodedForm {
     Constructed(DerType),
     Primitive(DerType),

@@ -6,6 +6,7 @@
 pub(crate) mod base64;
 pub(crate) mod bytes;
 pub(crate) mod pem;
+pub(crate) mod der;
 pub(crate) mod keylog;
 
 #[macro_use]

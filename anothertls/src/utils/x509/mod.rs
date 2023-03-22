@@ -4,8 +4,7 @@
  *
  */
 
-mod der;
-use der::*;
+use super::der::*;
 
 use ibig::IBig;
 
@@ -158,6 +157,12 @@ fn parse_object_identifier(id: &[u8]) -> Result<String, ParseError> {
 }
 // type BitString = Vec<u8>;
 pub struct BitString(Vec<u8>);
+
+impl BitString {
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 // type UniqueIdentifier = BitString;
 pub struct Extensions(Vec<Extension>);
@@ -449,6 +454,11 @@ fn parse(
                         parse(res, ParsingState::InBitString, data, consumed)?;
                     }
                 } else {
+                    let number_of_unused_bits = data[*consumed];
+                    if number_of_unused_bits != 0 {
+                        todo!("Number of unused bits is not 0");
+                    }
+
                     if res
                         .tbs_certificate
                         .subject_public_key_info
@@ -457,7 +467,7 @@ fn parse(
                     {
                         res.tbs_certificate
                             .subject_public_key_info
-                            .subject_public_key = Some(BitString(body.to_vec()));
+                            .subject_public_key = Some(BitString(body[1..].to_vec()));
                     }
                     *consumed += size;
                 }

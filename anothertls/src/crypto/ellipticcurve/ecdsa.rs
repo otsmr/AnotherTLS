@@ -72,8 +72,13 @@ impl Ecdsa {
         if pub_key.point.x == ibig!(0) && pub_key.point.y == ibig!(0) {
             return false;
         }
+        // TODO: Check if necessary
+        if pub_key.point.x == pub_key.curve.n && pub_key.point.y == pub_key.curve.n {
+            return false;
+        }
         // 2.
         if !pub_key.curve.contains(&pub_key.point) {
+            println!("not containes");
             return false;
         }
         // 3. n * pub_key.point == 0

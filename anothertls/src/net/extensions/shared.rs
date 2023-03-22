@@ -45,7 +45,7 @@ impl ExtensionType {
         })
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SignatureScheme {
   /* RSASSA-PKCS1-v1_5 algorithms */
   // rsa_pkcs1_sha256 = 0x0401,
@@ -77,7 +77,7 @@ pub enum SignatureScheme {
 }
 
 impl SignatureScheme {
-    fn new(buf: u16) -> Result<SignatureScheme, TlsError> {
+    pub fn new(buf: u16) -> Result<SignatureScheme, TlsError> {
         Ok(match buf {
             0x0403 => SignatureScheme::ecdsa_secp256r1_sha256,
             0x0503 => SignatureScheme::ecdsa_secp384r1_sha384,
@@ -87,6 +87,7 @@ impl SignatureScheme {
     }
 
 }
+#[derive(Debug)]
 pub struct SignatureAlgorithms(pub Vec<SignatureScheme>);
 
 impl SignatureAlgorithms {
@@ -96,6 +97,14 @@ impl SignatureAlgorithms {
     // pub fn push(&mut self, scheme: SignatureScheme) {
     //     self.0.push(scheme)
     // }
+    pub fn parse_without_size(buf: &[u8]) -> Result<SignatureAlgorithms, TlsError> {
+        let mut out = vec![];
+        if buf.len() >= 2 {
+            let tes = bytes::to_u16(&buf[0..2]);
+            out.push(SignatureScheme::new(tes)?);
+        }
+        Ok(SignatureAlgorithms(out))
+    }
 }
 
 impl Extension for SignatureAlgorithms {

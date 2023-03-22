@@ -6,11 +6,14 @@
 #![allow(dead_code)]
 
 use crate::{
-    crypto::CipherSuite,
+    crypto::{
+        ellipticcurve::{Curve, Signature},
+        CipherSuite,
+    },
     hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
     net::{
         alert::{AlertLevel, TlsError},
-        extensions::ServerExtensions,
+        extensions::{shared::SignatureScheme, ServerExtensions},
         handshake::{
             get_finished_handshake, get_verify_client_finished, Certificate, ClientHello,
             Handshake, HandshakeType, ServerHello,
@@ -19,8 +22,12 @@ use crate::{
         record::{Record, RecordPayloadProtection, RecordType, Value},
     },
     rand::{RngCore, URandomRng},
-    utils::log,
-    utils::{bytes, keylog::KeyLog},
+    utils::{
+        bytes,
+        der::{self, DerType, EncodedForm},
+        keylog::KeyLog,
+        log,
+    },
     TlsConfig,
 };
 use ibig::IBig;
@@ -244,11 +251,7 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 
-    fn handle_handshake_encrypted_record(
-        &mut self,
-        record: Record,
-        tx_buf: &mut Vec<u8>,
-    ) -> Result<(), TlsError> {
+    fn handle_handshake_encrypted_record(&mut self, record: Record) -> Result<(), TlsError> {
         log::debug!("Encrypted");
 
         let mut verify_data = None;
@@ -263,7 +266,6 @@ impl<'a> TlsStream<'a> {
                 self.tshash.as_ref().unwrap().as_ref(),
             )?);
         }
-
 
         let record = protection.decrypt(record)?;
 
@@ -280,7 +282,9 @@ impl<'a> TlsStream<'a> {
                 if handshake.handshake_type != HandshakeType::Certificate {
                     return Err(TlsError::UnexpectedMessage);
                 }
+
                 log::debug!("--> ClientCertificate");
+                self.tshash.as_mut().unwrap().update(record.fraqment.as_ref());
 
                 let mut consumed = 1;
                 let cert_request_context_len = handshake.fraqment[0] as usize;
@@ -316,6 +320,7 @@ impl<'a> TlsStream<'a> {
                     .issuer
                     .get("commonName")
                     .unwrap();
+
                 log::debug!("Got client cert signed from {common_name}");
 
                 self.client_cert = Some(cert);
@@ -324,17 +329,82 @@ impl<'a> TlsStream<'a> {
             }
             HandshakeState::ClientCertificateVerify => {
                 log::debug!("--> ClientCertificateVerify");
+                if self.client_cert.is_none() {
+                    return Err(TlsError::UnexpectedMessage);
+                }
+
+                let mut consumed = 0;
+                let sign_algo = SignatureScheme::new(bytes::to_u16(
+                    &handshake.fraqment[consumed..consumed + 2],
+                ))?;
+
+                consumed += 2;
+                let sign_len = bytes::to_u16(&handshake.fraqment[consumed..consumed + 2]) as usize;
+                consumed += 2;
+
+                let mut r = None;
+                let mut s = None;
+
+                match sign_algo {
+                    SignatureScheme::ecdsa_secp256r1_sha256 => {
+                        let curve = Curve::secp256r1();
+                        // println!("Used Algos: {:?}", sign_algo);
+
+                        for i in 0..3 {
+                            let (size, der_type) =
+                                match der::der_parse(&mut consumed, handshake.fraqment) {
+                                    Ok(e) => e,
+                                    Err(e) => {
+                                        log::error!("Parsing Signature failed: {e:?}");
+                                        return Err(TlsError::DecodeError);
+                                    }
+                                };
+                            if i == 0 && der_type != EncodedForm::Constructed(DerType::Sequence) {
+                                return Err(TlsError::DecodeError);
+                            } else if i > 0 {
+                                let int = bytes::to_ibig_le(
+                                    &handshake.fraqment[consumed..consumed + size],
+                                );
+                                consumed += size;
+                                if r.is_none() {
+                                    r = Some(int);
+                                } else {
+                                    s = Some(int);
+                                }
+                            }
+                        }
+
+                        if s.is_none() {
+                            return Err(TlsError::DecodeError);
+                        }
+
+                        let signature = Signature::new(s.unwrap(), r.unwrap());
+
+                        self.client_cert
+                            .as_ref()
+                            .unwrap()
+                            .verify_client_certificate(
+                                curve,
+                                signature,
+                                self.tshash.as_ref().unwrap().as_ref(),
+                            )?;
+                        println!("Is VALID");
+                    }
+                    e => todo!("SignatureScheme {e:?} for client cert not implemented yet"),
+                }
+
+                if sign_len != consumed - 4 || self.client_cert.is_none() {
+                    return Err(TlsError::DecodeError);
+                }
+
                 todo!("Verify")
             }
             HandshakeState::Finished => {
-                // why not finished
-
                 log::debug!("--> Finished");
-                if verify_data.is_none() {
-                    return Err(TlsError::InternalError);
-                }
 
-                let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
+                if verify_data.is_none() {
+                    return Err(TlsError::UnexpectedMessage);
+                }
 
                 if handshake.fraqment != verify_data.unwrap() {
                     return Err(TlsError::DecryptError);
@@ -385,7 +455,7 @@ impl<'a> TlsStream<'a> {
                 }
             }
             state if state >= HandshakeState::ClientCertificate => {
-                self.handle_handshake_encrypted_record(record, &mut tx_buf)?;
+                self.handle_handshake_encrypted_record(record)?;
             }
             _ => (),
         }
