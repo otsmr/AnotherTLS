@@ -16,7 +16,7 @@ anothertls v0.1.0
 ```
 
 The current implementation has full handshake support, which can be tested with
-the command.
+the following command.
 
 **handshake and application data**
 ```bash
@@ -36,7 +36,8 @@ requirements are implemented, I will switch the focus to the security part,
 because this is one of the main reasons I started this project.
 
 Then you can find also a VulnTLS repository where typical security
-vulnerabilities like timing attacks on ECDSA can be attacked and demonstrated.
+vulnerabilities in TLS implementations like timing attacks on ECDSA can be
+attacked and demonstrated.
 
 **Todo**
 - setup [tlsfuzzer](https://github.com/tlsfuzzer/tlsfuzzer)
@@ -56,14 +57,14 @@ implemented in this repository.
 - [HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
 - [X.509](https://www.rfc-editor.org/rfc/rfc5280#section-4.1)
-### work in progress
+<!-- ### work in progress -->
 ### maybe
 - Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
 - TLS curves: [secp384r1]()
 
 
 ## status of [RFC8446](https://datatracker.ietf.org/doc/html/rfc8446)
-The Implementation is currently "work in progress". The current state is
+The Implementation is currently work in progress. The current state is
 tracked in the following section.
 
 ```
