@@ -125,3 +125,7 @@ tracked in the following section.
   key exchange
    X25519 ✓
 ```
+
+
+## Infos
+find . -name '*.rs' | xargs wc -l | sort -nr

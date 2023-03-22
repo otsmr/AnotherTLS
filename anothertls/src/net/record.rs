@@ -143,7 +143,6 @@ impl RecordPayloadProtection {
             &self.key_schedule.hkdf_master_secret,
             &handshake_hash,
         );
-
         if self.application_keys.is_none() {
             return Err(TlsError::InternalError);
         }

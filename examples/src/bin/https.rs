@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_keylog_path(
             "./examples/src/bin/config/keylog.txt".to_string(),
         )
-        // .add_client_cert_ca("./examples/src/bin/config/client_cert/ca.cert".to_string())
+        .add_client_cert_ca("./examples/src/bin/config/client_cert/ca.cert".to_string())
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
         .build()

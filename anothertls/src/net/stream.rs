@@ -421,6 +421,7 @@ impl<'a> TlsStream<'a> {
                     return Err(TlsError::DecryptError);
                 }
 
+                todo!("Not working when using client cert");
                 protection.generate_application_keys(self.tshash.as_ref().unwrap().as_ref())?;
 
                 if let Some(k) = &self.key_log {
