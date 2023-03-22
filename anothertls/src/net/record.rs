@@ -64,7 +64,7 @@ impl<'a> Value<'a> {
 pub struct Record<'a> {
     pub content_type: RecordType,
     pub version: u16,
-    pub len: u16,
+    pub len: usize,
     pub header: [u8; 5],
     pub fraqment: Value<'a>,
 }
@@ -87,14 +87,14 @@ impl<'a> Record<'a> {
 
         let content_type = RecordType::new(buf[0])?;
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
-        let len = ((buf[3] as u16) << 8) | buf[4] as u16;
-        if buf.len() < (2 + len as usize) {
+        let len = (((buf[3] as u16) << 8) | buf[4] as u16) as usize;
+        if buf.len() < (2 + len) {
             return Err(TlsError::DecodeError);
         }
         if content_type == RecordType::Alert {
             return Err(TlsError::GotAlert);
         }
-        let consumed = 5 + (len as usize);
+        let consumed = 5 + len;
         Ok((consumed, Record {
             content_type,
             version,

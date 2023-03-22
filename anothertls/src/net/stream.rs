@@ -6,10 +6,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    crypto::{
-        ellipticcurve::{Curve, Signature},
-        CipherSuite,
-    },
+    crypto::{ellipticcurve::Signature, CipherSuite},
     hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
     net::{
         alert::{AlertLevel, TlsError},
@@ -38,7 +35,7 @@ use std::{
     result::Result,
 };
 
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 #[repr(u8)]
 enum HandshakeState {
     ClientHello,
@@ -252,7 +249,7 @@ impl<'a> TlsStream<'a> {
     }
 
     fn handle_handshake_encrypted_record(&mut self, record: Record) -> Result<(), TlsError> {
-        log::debug!("Encrypted");
+        log::debug!("==> Encrypted handshake record");
 
         let mut verify_data = None;
         let protection = self.protection.as_mut().unwrap();
@@ -270,7 +267,7 @@ impl<'a> TlsStream<'a> {
         let record = protection.decrypt(record)?;
 
         if record.content_type != RecordType::Handshake
-            || self.certificate_request_context.is_none()
+            || (self.config.client_cert_ca.is_some() && self.certificate_request_context.is_none())
         {
             return Err(TlsError::UnexpectedMessage);
         }
@@ -410,8 +407,8 @@ impl<'a> TlsStream<'a> {
                     .as_mut()
                     .unwrap()
                     .update(record.fraqment.as_ref());
-                self.state = HandshakeState::Finished;
 
+                self.state = HandshakeState::Finished;
             }
             HandshakeState::Finished => {
                 log::debug!("--> Finished");
@@ -455,6 +452,7 @@ impl<'a> TlsStream<'a> {
         match self.state {
             HandshakeState::Ready => {}
             HandshakeState::ClientHello => {
+                log::debug!("--> ClientHello");
                 self.handle_client_hello(record, &mut tx_buf)?;
             }
             HandshakeState::ChangeCipherSpec => {
@@ -512,7 +510,7 @@ impl<'a> TlsStream<'a> {
 
         let (_consumed, record) = Record::from_raw(&rx_buf[..n])?;
 
-        if record.len as usize != record.fraqment.len() {
+        if record.len != record.fraqment.len() {
             return Err(TlsError::DecodeError);
         }
 
@@ -521,8 +519,8 @@ impl<'a> TlsStream<'a> {
         if record.content_type != RecordType::ApplicationData {
             todo!();
         }
-        if record.fraqment.len() > buf.len() {
-            todo!();
+        if record.len > buf.len() {
+            todo!("Handle records bigger than the buf.len()");
         }
         for (i, b) in record.fraqment.as_ref().iter().enumerate() {
             buf[i] = *b;

@@ -23,7 +23,7 @@ the following command.
 curl -iv --insecure https://localhost:4000/
 ```
 
-**WIP: client certificate**
+**client certificate**
 ```bash
 cd ./examples/src/bin/config/client_cert/
 curl --cert client.signed.cert --key client.key -iv --insecure https://localhost:4000/
