@@ -34,15 +34,15 @@ fn main() {
         "--- Request --- \n{}\n---------------",
         String::from_utf8(buf[..n - 4].to_vec()).unwrap()
     );
-    let not_found = b"\
-HTTP/1.1 404 Not Found\r\n\
+    let data = b"\
+HTTP/1.1 200\r\n\
 Server: AnotherTls/1.0\r\n\
 Content-Type: text/html; charset=utf-8\r\n\
-Content-Length: 13\r\n\
+Content-Length: 12\r\n\
 \r\n\
-404 Not Found";
+Hello world!";
     socket
-        .write_all(not_found)
+        .write_all(data)
         .expect("Error writing to socket.");
 }
 
