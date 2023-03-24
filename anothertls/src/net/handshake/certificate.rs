@@ -4,7 +4,7 @@
  */
 
 use crate::{
-    crypto::ellipticcurve::{Curve, Ecdsa, PrivateKey, Signature},
+    crypto::ellipticcurve::{Ecdsa, PrivateKey, Signature},
     hash::{sha256, TranscriptHash},
     net::{
         alert::TlsError,
@@ -14,7 +14,7 @@ use crate::{
             ServerExtensions,
         },
     },
-    utils::{bytes, log, pem::get_pem_content_from_file, x509::X509},
+    utils::{log, pem::get_pem_content_from_file, x509::X509},
 };
 
 pub struct Certificate {

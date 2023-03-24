@@ -3,7 +3,7 @@
  *
  */
 
-use crate::TlsConfig;
+use crate::{TlsConfig, utils::log};
 use ibig::IBig;
 use crate::rand::RngCore;
 use std::result::Result;
@@ -137,6 +137,9 @@ impl<'a> ServerHello<'a> {
             Some(cs) => cs,
             None => return Err(TlsError::HandshakeFailure),
         };
+
+        log::debug!("TLS connection using {cipher_suite:?}");
+
         let hash = hash.unwrap();
 
         let private_key = match private_key {

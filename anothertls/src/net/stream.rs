@@ -57,6 +57,7 @@ pub struct TlsStream<'a> {
     certificate_request_context: Option<Vec<u8>>,
     rng: Box<dyn RngCore<IBig>>,
     tshash: Option<Box<dyn TranscriptHash>>,
+    tshash_clienthello_serverfinished: Option<Box<dyn TranscriptHash>>,
 }
 
 impl<'a> TlsStream<'a> {
@@ -72,6 +73,7 @@ impl<'a> TlsStream<'a> {
             protection: None,
             rng: Box::new(URandomRng::new()),
             tshash: None,
+            tshash_clienthello_serverfinished: None,
         }
     }
     pub fn read_to_end(&mut self) -> Result<(), TlsError> {
@@ -281,6 +283,10 @@ impl<'a> TlsStream<'a> {
                 }
 
                 log::debug!("--> ClientCertificate");
+
+                self.tshash_clienthello_serverfinished =
+                    Some((*self.tshash.as_ref().unwrap()).clone());
+
                 self.tshash
                     .as_mut()
                     .unwrap()
@@ -308,20 +314,25 @@ impl<'a> TlsStream<'a> {
                     todo!("Add support for multiple certs");
                 }
 
+
+
                 let cert = Certificate::from_raw_x509(
                     handshake.fraqment[consumed..consumed + cert_len].to_vec(),
                 )?;
 
-                let common_name = cert
-                    .x509
-                    .as_ref()
-                    .unwrap()
-                    .tbs_certificate
-                    .issuer
-                    .get("commonName")
-                    .unwrap();
+                log::debug!("Client certificate:");
 
-                log::debug!("Got client cert signed from {common_name}");
+                if !cert.x509.as_ref().unwrap().tbs_certificate.validity.is_valid() {
+                    log::debug!("Certificate is not valid");
+                    return Err(TlsError::DecryptError);
+                }
+
+                // TODO: only in debug
+                let issuer = &cert.x509.as_ref().unwrap().tbs_certificate.issuer;
+                let subject = &cert.x509.as_ref().unwrap().tbs_certificate.subject;
+
+                log::debug!("   subject: {subject}");
+                log::debug!("   issuer: {issuer}");
 
                 self.client_cert = Some(cert);
 
@@ -347,8 +358,6 @@ impl<'a> TlsStream<'a> {
 
                 match sign_algo {
                     SignatureScheme::ecdsa_secp256r1_sha256 => {
-                        // println!("Used Algos: {:?}", sign_algo);
-
                         for i in 0..3 {
                             let (size, der_type) =
                                 match der::der_parse(&mut consumed, handshake.fraqment) {
@@ -416,13 +425,21 @@ impl<'a> TlsStream<'a> {
                 if verify_data.is_none() {
                     return Err(TlsError::UnexpectedMessage);
                 }
-
                 if handshake.fraqment != verify_data.unwrap() {
                     return Err(TlsError::DecryptError);
                 }
 
-                todo!("Not working when using client cert");
-                protection.generate_application_keys(self.tshash.as_ref().unwrap().as_ref())?;
+                // Derive-Secret: ClientHello..server Finished
+                if self.tshash_clienthello_serverfinished.is_some() {
+                    protection.generate_application_keys(
+                        self.tshash_clienthello_serverfinished
+                            .as_ref()
+                            .unwrap()
+                            .as_ref(),
+                    )?;
+                } else {
+                    protection.generate_application_keys(self.tshash.as_ref().unwrap().as_ref())?;
+                }
 
                 if let Some(k) = &self.key_log {
                     k.append_application_traffic_secrets(

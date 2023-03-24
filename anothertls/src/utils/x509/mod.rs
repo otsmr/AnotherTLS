@@ -14,6 +14,8 @@ use ibig::IBig;
 use super::{bytes, bytes::str_to_u16, log};
 use crate::crypto::ellipticcurve::Signature;
 use std::collections::HashMap;
+use std::fmt::Display;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -67,6 +69,33 @@ impl UtcTime {
             second,
         })
     }
+    pub fn get_unix_timestamp(&self) -> u64 {
+        let days_since_year_start = [0_u64, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        let year = self.year as u64;
+
+        let leap_years =
+            ((year - 1) - 1968) / 4 - ((year - 1) - 1900) / 100 + ((year - 1) - 1600) / 400;
+        let mut days = (year - 1970) * 365 + leap_years;
+        days += days_since_year_start[(self.month - 1) as usize];
+        days += (self.day - 1) as u64;
+
+        let mut res = 0;
+        res += days * 86400;
+        res += ((self.hour) as u64) * 3600;
+        res += ((self.minute) as u64) * 60;
+        res += (self.second) as u64;
+        res
+    }
+}
+impl Display for UtcTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 1678989832
+        write!(
+            f,
+            "{:0>2}:{:0>2}:{:0>2} {:0>2}/{:0>2}/{}",
+            self.hour, self.minute, self.second, self.month, self.day, self.year
+        )
+    }
 }
 
 pub struct Validity {
@@ -79,6 +108,29 @@ impl Validity {
             not_before: None,
             not_after: None,
         }
+    }
+    pub fn is_valid(&self) -> bool {
+        let current_time = SystemTime::now();
+        let since_the_epoch = current_time
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+        let current = since_the_epoch.as_secs();
+
+        if let Some(not_before) = self.not_before.as_ref() {
+            if current < not_before.get_unix_timestamp() {
+                return false;
+            }
+            log::debug!("   start date: {not_before}");
+        }
+
+        if let Some(not_after) = self.not_after.as_ref() {
+            if current > not_after.get_unix_timestamp() {
+                return false;
+            }
+            log::debug!("   end date: {not_after}");
+        }
+
+        true
     }
 }
 pub type Oid = [u8; 10];
@@ -158,7 +210,7 @@ fn parse_object_identifier(id: &[u8]) -> Result<String, ParseError> {
         _ => todo!("Missing ObjectIdentifier = {id:#x}"),
     })
 }
-// type BitString = Vec<u8>;
+
 pub struct BitString(Vec<u8>);
 
 impl BitString {
@@ -167,7 +219,6 @@ impl BitString {
     }
 }
 
-// type UniqueIdentifier = BitString;
 pub struct Extensions(Vec<Extension>);
 
 pub struct Name(HashMap<String, String>, Option<String>);
@@ -176,6 +227,7 @@ impl Name {
     pub fn new() -> Self {
         Self(HashMap::new(), None)
     }
+    #[allow(dead_code)]
     pub fn get(&self, key: &str) -> Result<String, ParseError> {
         if let Some(value) = self.0.get(key) {
             return Ok(value.to_string());
@@ -193,6 +245,17 @@ impl Name {
             return Ok(());
         }
         Err(ParseError::NameAddValue)
+    }
+}
+
+impl Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let empty = "".to_string();
+        let c = self.0.get("countryName").unwrap_or(&empty);
+        let st = self.0.get("stateOrProvinceName").unwrap_or(&empty);
+        let o = self.0.get("organizationName").unwrap_or(&empty);
+        let cn = self.0.get("commonName").unwrap_or(&empty);
+        write!(f, "C={}; ST={}; O={}; CN={}", c, st, o, cn)
     }
 }
 
