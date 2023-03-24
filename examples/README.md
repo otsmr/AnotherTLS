@@ -5,5 +5,5 @@ Start a example by the following command:
 cargo run --bin [example id]
 ```
 
-- Basic https example: `https.rs`
-- Client authentication: `client_auth.rs`
+- Basic https example: `https`
+- Client authentication: `client_auth`
