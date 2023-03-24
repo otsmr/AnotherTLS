@@ -11,6 +11,15 @@ fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
     let config = TlsConfigBuilder::new()
+        .set_keylog_path("./examples/src/bin/config/keylog.txt".to_string())
+        .set_client_cert_custom_verify_fn(|cert| {
+            let name = match cert.tbs_certificate.subject.get("commonName") {
+                Ok(e) => e,
+                Err(_) => return false,
+            };
+            name == "otsmr"
+        })
+        .add_client_cert_ca("./examples/src/bin/config/client_cert/ca.cert".to_string())
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
         .build()
@@ -45,4 +54,3 @@ Content-Length: 13\r\n\
         .write_all(not_found)
         .expect("Error writing to socket.");
 }
-

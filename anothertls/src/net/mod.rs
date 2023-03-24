@@ -9,7 +9,6 @@ pub mod config;
 
 pub use listener::TlsListener;
 pub use stream::TlsStream;
-pub use config::TlsConfig;
 
 pub(crate) mod alert;
 pub(crate) mod handshake;
