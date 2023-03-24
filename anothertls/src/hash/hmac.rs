@@ -7,15 +7,15 @@
 
 use super::{HashType, sha256, sha384};
 
-pub struct HMAC<'a> {
+pub struct Hmac<'a> {
     hash: HashType,
     key: &'a [u8],
     pub input: Vec<u8>
 }
 
-impl<'a> HMAC<'a> {
+impl<'a> Hmac<'a> {
     pub fn new(hash: HashType, key: &'a [u8]) -> Self {
-        HMAC { hash, key, input: vec![] }
+        Hmac { hash, key, input: vec![] }
     }
     pub fn update(&mut self, buf: &[u8]) {
         self.input.extend_from_slice(buf);
@@ -86,7 +86,7 @@ impl<'a> HMAC<'a> {
 #[cfg(test)]
 mod tests {
 
-    use crate::hash::hmac::HMAC;
+    use crate::hash::hmac::Hmac;
     use crate::hash::HashType;
     use crate::utils::bytes;
 
@@ -132,13 +132,13 @@ mod tests {
                 match res {
                     TestResult::SHA256(digest) => {
                         println!("SHA256");
-                        let mut hmac = HMAC::new(HashType::SHA256, &key);
+                        let mut hmac = Hmac::new(HashType::SHA256, &key);
                         hmac.update(&data);
                         assert_eq!(digest.to_string(), bytes::to_hex(&hmac.result()));
                     },
                     TestResult::SHA384(digest) => {
                         println!("SHA384");
-                        let mut hmac = HMAC::new(HashType::SHA384, &key);
+                        let mut hmac = Hmac::new(HashType::SHA384, &key);
                         hmac.update(&data);
                         assert_eq!(digest.to_string(), bytes::to_hex(&hmac.result()));
                     }

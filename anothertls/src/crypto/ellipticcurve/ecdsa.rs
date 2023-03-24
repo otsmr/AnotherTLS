@@ -21,6 +21,7 @@ impl Ecdsa {
         }
     }
 
+    #[allow(dead_code)]
     pub fn unsecure() -> Self {
         Self {
             rng: Box::new(SimpleRng::<IBig>::from_seed(ibig!(10))),

@@ -10,9 +10,9 @@
 use super::{Blocksize, AES};
 use crate::utils::bytes;
 
-pub struct GCM {}
+pub struct Gcm {}
 
-impl GCM {
+impl Gcm {
 
     fn gmult(mut a: u128, mut b: u128) -> u128 {
         a = a.reverse_bits();
@@ -56,10 +56,10 @@ impl GCM {
                 } else {
                     &iv[i..]
                 };
-                N = GCM::gmult(N ^ bytes::to_u128_le(add), H);
+                N = Gcm::gmult(N ^ bytes::to_u128_le(add), H);
             }
             let len = (iv.len() * 8) as u128;
-            GCM::gmult(N ^ len, H)
+            Gcm::gmult(N ^ len, H)
         } else {
             counter += 1;
             bytes::to_u128_le(iv) | 1
@@ -74,7 +74,7 @@ impl GCM {
             } else {
                 &additional_data[i..]
             };
-            X = GCM::gmult(X ^ bytes::to_u128_le(add), H);
+            X = Gcm::gmult(X ^ bytes::to_u128_le(add), H);
         }
 
         let n = data.len();
@@ -105,15 +105,15 @@ impl GCM {
             output.append(&mut out_i_bytes.to_vec());
 
             X = if encrypt {
-                GCM::gmult(X ^ (out_i << overflow), H)
+                Gcm::gmult(X ^ (out_i << overflow), H)
             } else {
-                GCM::gmult(X ^ (data_u128), H)
+                Gcm::gmult(X ^ (data_u128), H)
             }
         }
 
         let len = ((m as u128 * 8) << 64) | (n as u128 * 8);
 
-        auth_tag ^= GCM::gmult(X ^ len, H);
+        auth_tag ^= Gcm::gmult(X ^ len, H);
 
         Ok((output, auth_tag))
 
@@ -125,7 +125,7 @@ impl GCM {
         plaintext: &[u8],
         additional_data: &[u8],
     ) -> Result<(Vec<u8>, u128), String> {
-        GCM::gcm(key, iv, plaintext, additional_data, true)
+        Gcm::gcm(key, iv, plaintext, additional_data, true)
     }
 
     pub fn decrypt(
@@ -136,7 +136,7 @@ impl GCM {
         auth_tag: u128,
     ) -> Result<Vec<u8>, String> {
 
-        let (P, T) = GCM::gcm(key, iv, ciphertext, additional_data, false)?;
+        let (P, T) = Gcm::gcm(key, iv, ciphertext, additional_data, false)?;
 
         if T != auth_tag {
             return Err("auth_tag is not correct".to_string());
@@ -151,7 +151,7 @@ impl GCM {
 mod tests {
     use crate::utils::bytes::from_hex;
 
-    use super::GCM;
+    use super::Gcm;
 
     #[test]
     fn test_decrypt() {
@@ -160,10 +160,10 @@ mod tests {
         let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255").unwrap();
         let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
         let A = from_hex("").unwrap();
-        let (C, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (C, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
 
-        let P1 = GCM::decrypt(&K, &IV, &C, &A, T).unwrap();
+        let P1 = Gcm::decrypt(&K, &IV, &C, &A, T).unwrap();
         assert_eq!(P, P1);
     }
 
@@ -175,21 +175,21 @@ mod tests {
         let IV = from_hex("000000000000000000000000").unwrap();
         let A = from_hex("").unwrap();
 
-        let (C, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (C, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(C, vec![]);
         assert_eq!(T, 0x58e2fccefa7e3061367f1d57a4e7455a);
 
         // Test Case 2
         let P = from_hex("00000000000000000000000000000000").unwrap();
         println!("len(P)={}", P.len());
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0xAB6E47D42CEC13BDF53A67B21257BDDF);
 
         // Test Case 3
         let K = from_hex("feffe9928665731c6d6a8f9467308308").unwrap();
         let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255").unwrap();
         let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
 
         // Test Case 4
@@ -197,17 +197,17 @@ mod tests {
         let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39").unwrap();
         let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
         let A = from_hex("feedfacedeadbeeffeedfacedeadbeefabaddad2").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x5bc94fbc3221a5db94fae95ae7121a47);
 
         // Test Case 5
         let IV = from_hex("cafebabefacedbad").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x3612d2e79e3b0785561be14aaca2fccb);
 
         // Test Case 6
         let IV = from_hex("9313225df88406e555909c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0c95156809539fcf0e2429a6b525416aedbf5a0de6a57a637b39b").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x619cc5aefffe0bfa462af43c1699d050);
 
         // Test Case 7
@@ -215,12 +215,12 @@ mod tests {
         let IV = from_hex("000000000000000000000000").unwrap();
         let P = from_hex("").unwrap();
         let A = from_hex("").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0xcd33b28ac773f74ba00ed1f312572435);
 
         // Test Case 8
         let P = from_hex("00000000000000000000000000000000").unwrap();
-        let (_, T) = GCM::encrypt(&K, &IV, &P, &A).unwrap();
+        let (_, T) = Gcm::encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x2ff58d80033927ab8ef4d4587514f0fb);
 
         // Test Case 9

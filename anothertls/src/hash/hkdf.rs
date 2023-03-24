@@ -1,26 +1,26 @@
 /*
  * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
  *
- * HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+ * Hmac-based Extract-and-Expand Key Derivation Function (HKDF)
  * https://www.rfc-editor.org/rfc/rfc5869
  */
 
-use super::{hmac::HMAC, HashType};
+use super::{hmac::Hmac, HashType};
 
-pub struct HKDF {
+pub struct Hkdf {
     pub hash: HashType,
     pub pseudo_random_key: Vec<u8>,
 }
 
-impl HKDF {
+impl Hkdf {
 
     pub fn from_prk(hash: HashType, pseudo_random_key: Vec<u8>) -> Self {
         Self { hash, pseudo_random_key }
     }
 
     // 2.2 Step 1: Extract
-    pub fn extract(hash: HashType, salt: &[u8], ikm: &[u8]) -> HKDF {
-        let mut hmac = HMAC::new(hash, salt);
+    pub fn extract(hash: HashType, salt: &[u8], ikm: &[u8]) -> Hkdf {
+        let mut hmac = Hmac::new(hash, salt);
         hmac.update(ikm);
         let pseudo_random_key = hmac.result();
         Self {
@@ -44,9 +44,9 @@ impl HKDF {
         while okm.len() < out_len {
             i += 1;
 
-            let mut hmac = HMAC::new(self.hash, &self.pseudo_random_key);
+            let mut hmac = Hmac::new(self.hash, &self.pseudo_random_key);
 
-            // T(i) = HMAC-Hash(PRK, T(i-1), info, i);
+            // T(i) = Hmac-Hash(PRK, T(i-1), info, i);
 
             hmac.update(&last);
             hmac.update(info);
@@ -66,7 +66,7 @@ impl HKDF {
 #[cfg(test)]
 mod tests {
 
-    use crate::hash::hkdf::HKDF;
+    use crate::hash::hkdf::Hkdf;
     use crate::hash::HashType;
     use crate::utils::bytes;
 
@@ -111,7 +111,7 @@ mod tests {
             let info = bytes::from_hex(test_case.info).unwrap();
             let okm_expected = bytes::from_hex(test_case.okm).unwrap();
 
-            let hkdf = HKDF::extract(test_case.hash, &salt, &ikm);
+            let hkdf = Hkdf::extract(test_case.hash, &salt, &ikm);
 
             let okm = hkdf.expand(&info, test_case.okm.len()/2).unwrap();
             assert_eq!(okm_expected, okm);

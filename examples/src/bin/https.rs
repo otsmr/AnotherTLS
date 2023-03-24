@@ -5,8 +5,7 @@
 
 // #![cfg(feature = "debug")]
 
-use anothertls::net::{config::TlsConfigBuilder, TlsListener};
-use anothertls::TlsConfig;
+use anothertls::{TlsConfig, TlsConfigBuilder, TlsListener};
 use std::{
     io,
     net::{TcpListener, ToSocketAddrs},
@@ -18,8 +17,8 @@ struct HttpsServer {
 
 impl HttpsServer {
     pub fn bind<A: ToSocketAddrs>(addr: A, config: TlsConfig) -> io::Result<Self> {
-        let listener = TcpListener::bind(addr)?;
-        let listener = TlsListener::new(listener, config);
+        let tcp = TcpListener::bind(addr)?;
+        let listener = TlsListener::new(tcp, config);
         Ok(Self { listener })
     }
 
@@ -42,7 +41,7 @@ impl HttpsServer {
                 if let Ok(n) = receive {
                     println!(
                         "--- Request --- \n{}\n---------------",
-                        String::from_utf8(buf[..n-4].to_vec()).unwrap()
+                        String::from_utf8(buf[..n - 4].to_vec()).unwrap()
                     );
                     let not_found = b"\
 HTTP/1.1 404 Not Found\r\n\
@@ -79,9 +78,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting HTTPS Server");
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
     let config = TlsConfigBuilder::new()
-        .set_keylog_path(
-            "./examples/src/bin/config/keylog.txt".to_string(),
-        )
+        .set_keylog_path("./examples/src/bin/config/keylog.txt".to_string())
+        .set_client_cert_custom_verify_fn(|cert| {
+            let name = match cert.tbs_certificate.subject.get("commonName") {
+                Ok(e) => e,
+                Err(_) => return false,
+            };
+            name == "otsmr"
+        })
         .add_client_cert_ca("./examples/src/bin/config/client_cert/ca.cert".to_string())
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())

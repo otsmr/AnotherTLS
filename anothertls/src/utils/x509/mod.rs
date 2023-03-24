@@ -248,6 +248,12 @@ impl Name {
     }
 }
 
+impl Default for Name {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let empty = "".to_string();

@@ -5,7 +5,7 @@
  */
 
 use crate::{
-    crypto::aes::gcm::GCM,
+    crypto::aes::gcm::Gcm,
     hash::TranscriptHash,
     net::key_schedule::KeySchedule,
     utils::bytes,
@@ -175,7 +175,7 @@ impl RecordPayloadProtection {
         let nonce = keys.server.get_per_record_nonce();
 
         let (encrypted_record, ahead) =
-            match GCM::encrypt(&keys.server.key, &nonce, &inner_plaintext, &tls_cipher_text) {
+            match Gcm::encrypt(&keys.server.key, &nonce, &inner_plaintext, &tls_cipher_text) {
                 Ok(e) => e,
                 Err(_) => return Err(TlsError::InternalError),
             };
@@ -200,7 +200,7 @@ impl RecordPayloadProtection {
         let nonce = keys.client.get_per_record_nonce();
 
         let plaintext =
-            match GCM::decrypt(&keys.client.key, &nonce, ciphertext, &record.header, ahead) {
+            match Gcm::decrypt(&keys.client.key, &nonce, ciphertext, &record.header, ahead) {
                 Ok(e) => e,
                 Err(_) => return Err(TlsError::DecryptError),
             };

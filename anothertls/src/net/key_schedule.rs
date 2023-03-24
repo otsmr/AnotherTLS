@@ -6,7 +6,7 @@
 use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
-    hash::hkdf::HKDF,
+    hash::hkdf::Hkdf,
     net::{alert::TlsError, extensions::NamedGroup},
     utils::bytes,
 };
@@ -35,7 +35,7 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn from_hkdf(hkdf: &HKDF) -> Option<Key> {
+    pub fn from_hkdf(hkdf: &Hkdf) -> Option<Key> {
         let (key_len, iv_len) = match hkdf.hash {
             HashType::SHA256 => (16, 12),
             HashType::SHA384 => (32, 12),
@@ -79,13 +79,13 @@ impl WriteKeys {
         Some(Self { server, client })
     }
     pub fn application_keys_from_master_secret(
-        hkdf_master_secret: &HKDF,
+        hkdf_master_secret: &Hkdf,
         handshake_hash: &[u8],
     ) -> Option<Self> {
         let hash = hkdf_master_secret.hash;
         let hash_len = hash as usize;
 
-        let client_application_traffic_secret_0 = HKDF::from_prk(
+        let client_application_traffic_secret_0 = Hkdf::from_prk(
             hash,
             hkdf_master_secret.expand(
                 &get_hkdf_expand_label(b"c ap traffic", handshake_hash, hash_len),
@@ -93,7 +93,7 @@ impl WriteKeys {
             )?,
         );
         let client = Key::from_hkdf(&client_application_traffic_secret_0)?;
-        let server_application_traffic_secret_0 = HKDF::from_prk(
+        let server_application_traffic_secret_0 = Hkdf::from_prk(
             hash,
             hkdf_master_secret.expand(
                 &get_hkdf_expand_label(b"s ap traffic", handshake_hash, hash_len),
@@ -108,12 +108,12 @@ impl WriteKeys {
 // 7.3 Traffic Key Calculation
 pub struct KeySchedule {
     // Early Secret
-    // hkdf_early_secret: HKDF,
+    // hkdf_early_secret: Hkdf,
     // Handshake Secret
-    pub(crate) client_handshake_traffic_secret: HKDF,
-    pub(crate) server_handshake_traffic_secret: HKDF,
+    pub(crate) client_handshake_traffic_secret: Hkdf,
+    pub(crate) server_handshake_traffic_secret: Hkdf,
     // Master Secret
-    pub(crate) hkdf_master_secret: HKDF,
+    pub(crate) hkdf_master_secret: Hkdf,
 }
 
 impl KeySchedule {
@@ -152,15 +152,15 @@ impl KeySchedule {
     pub fn _get_early_keys() {
 
         // TODO: ext binder
-        // let binder_key = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        // let binder_key = Hkdf::from_prk(hash, hkdf_early_secret.expand(
         //     &get_hkdf_expand_label(b"res binder", client_hello_hash, hash_len),
         //     hash_len,
         // )?);
-        // let client_early_traffic_secret = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        // let client_early_traffic_secret = Hkdf::from_prk(hash, hkdf_early_secret.expand(
         //     &get_hkdf_expand_label(b"c e traffic", client_hello_hash, hash_len),
         //     hash_len,
         // )?);
-        // let early_exporter_master_secret = HKDF::from_prk(hash, hkdf_early_secret.expand(
+        // let early_exporter_master_secret = Hkdf::from_prk(hash, hkdf_early_secret.expand(
         //     &get_hkdf_expand_label(b"e exp master", client_hello_hash, hash_len),
         //     hash_len,
         // )?);
@@ -178,7 +178,7 @@ impl KeySchedule {
         let empty_hash = sha_x(hash, b"");
 
         // Early Secret
-        let hkdf_early_secret = HKDF::extract(hash, empty_slice, empty_slice);
+        let hkdf_early_secret = Hkdf::extract(hash, empty_slice, empty_slice);
 
         let derived_secret = hkdf_early_secret.expand(
             &get_hkdf_expand_label(b"derived", &empty_hash, hash_len),
@@ -186,15 +186,15 @@ impl KeySchedule {
         )?;
 
         // Handshake Secret
-        let hkdf_handshake_secret = HKDF::extract(hash, &derived_secret, shared_secret);
-        let client_handshake_traffic_secret = HKDF::from_prk(
+        let hkdf_handshake_secret = Hkdf::extract(hash, &derived_secret, shared_secret);
+        let client_handshake_traffic_secret = Hkdf::from_prk(
             hash,
             hkdf_handshake_secret.expand(
                 &get_hkdf_expand_label(b"c hs traffic", hello_hash, hash_len),
                 hash_len,
             )?,
         );
-        let server_handshake_traffic_secret = HKDF::from_prk(
+        let server_handshake_traffic_secret = Hkdf::from_prk(
             hash,
             hkdf_handshake_secret.expand(
                 &get_hkdf_expand_label(b"s hs traffic", hello_hash, hash_len),
@@ -208,7 +208,7 @@ impl KeySchedule {
         )?;
 
         // Master Secret
-        let hkdf_master_secret = HKDF::extract(hash, &derived_secret, &vec![0_u8; hash_len]);
+        let hkdf_master_secret = Hkdf::extract(hash, &derived_secret, &vec![0_u8; hash_len]);
 
         Some(KeySchedule {
             // hkdf_early_secret,

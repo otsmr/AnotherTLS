@@ -314,8 +314,6 @@ impl<'a> TlsStream<'a> {
                     todo!("Add support for multiple certs");
                 }
 
-
-
                 let cert = Certificate::from_raw_x509(
                     handshake.fraqment[consumed..consumed + cert_len].to_vec(),
                 )?;
@@ -333,6 +331,13 @@ impl<'a> TlsStream<'a> {
 
                 log::debug!("   subject: {subject}");
                 log::debug!("   issuer: {issuer}");
+
+                if let Some(f) = self.config.client_cert_custom_verify_fn.as_ref() {
+                    if !f(cert.x509.as_ref().unwrap()) {
+                        log::debug!("Certificate denied by custom verify function");
+                        return Err(TlsError::DecryptError);
+                    }
+                }
 
                 self.client_cert = Some(cert);
 

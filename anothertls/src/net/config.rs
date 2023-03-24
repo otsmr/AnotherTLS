@@ -3,6 +3,7 @@
  *
  */
 
+use crate::utils::x509::X509;
 use super::handshake::Certificate;
 use crate::crypto::ellipticcurve::PrivateKey;
 
@@ -27,6 +28,7 @@ pub struct TlsConfig {
     // (3) Sign client cert
     //      (a) openssl x509 -req -in client.cert -days 365 -CA ca.cert -CAkey ca.key -CAcreateserial -out client.signed.cert
     pub(crate) client_cert_ca: Option<Certificate>,
+    pub(crate) client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
     pub(crate) keylog: Option<String>,
     pub(crate) server_name: Option<String>,
 }
@@ -36,7 +38,8 @@ pub struct TlsConfigBuilder {
     privkey: Option<PrivateKey>,
     keylog: Option<String>,
     server_name: Option<String>,
-    client_cert_ca: Option<Certificate>
+    client_cert_ca: Option<Certificate>,
+    client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
 }
 impl Default for TlsConfigBuilder {
     fn default() -> Self {
@@ -51,7 +54,8 @@ impl TlsConfigBuilder {
             privkey: None,
             keylog: None,
             server_name: None,
-            client_cert_ca: None
+            client_cert_ca: None,
+            client_cert_custom_verify_fn: None
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
@@ -84,6 +88,10 @@ impl TlsConfigBuilder {
         self.keylog = Some("keylog.txt".to_string());
         self
     }
+    pub fn set_client_cert_custom_verify_fn(mut self, f: fn(cert: &X509) -> bool) -> Self {
+        self.client_cert_custom_verify_fn = Some(f);
+        self
+    }
     pub fn set_server_name(mut self, server_name: String) -> Self {
         self.server_name = Some(server_name);
         self
@@ -100,7 +108,8 @@ impl TlsConfigBuilder {
             cert: self.cert.unwrap(),
             privkey: self.privkey.unwrap(),
             keylog: self.keylog,
-            server_name: self.server_name
+            server_name: self.server_name,
+            client_cert_custom_verify_fn: self.client_cert_custom_verify_fn
         })
     }
 }

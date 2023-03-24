@@ -3,10 +3,13 @@
  *
  */
 
-pub mod crypto;
-pub mod net;
-pub mod utils;
-pub mod rand;
-pub mod hash;
+pub(crate) mod crypto;
+pub(crate) mod net;
+pub(crate) mod utils;
+pub(crate) mod rand;
+pub(crate) mod hash;
 
 pub use net::TlsConfig;
+pub use net::config::TlsConfigBuilder;
+pub use net::TlsListener;
+pub use net::TlsStream;

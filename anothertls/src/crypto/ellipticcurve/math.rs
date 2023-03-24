@@ -6,7 +6,7 @@
 mod curve25519;
 mod jacobian;
 
-use jacobian::{jacobian_multiply, jacobian_add, jacobian_double};
+use jacobian::{jacobian_multiply, jacobian_add};
 use ibig::{ibig, IBig};
 
 use crate::utils::bytes;
@@ -72,16 +72,16 @@ pub fn rem_euclid(x: &IBig, v: &IBig) -> IBig {
     }
 }
 
-pub fn double(p: Point, curve: &Curve) -> Point {
-    match curve.equation {
-        Equation::ShortWeierstrass => {
-            jacobian_double(&JacobianPoint::from_point(p), curve).to_point(&curve.p)
-        }
-        Equation::Montgomery => {
-            todo!()
-        }
-    }
-}
+// pub fn double(p: Point, curve: &Curve) -> Point {
+//     match curve.equation {
+//         Equation::ShortWeierstrass => {
+//             jacobian_double(&JacobianPoint::from_point(p), curve).to_point(&curve.p)
+//         }
+//         Equation::Montgomery => {
+//             todo!()
+//         }
+//     }
+// }
 
 pub fn add(p: Point, q: Point, curve: &Curve) -> Point {
     match curve.equation {
@@ -140,21 +140,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_weierstrass_double() {
-        let curve = Curve::secp256r1();
-        let point = Point {
-            x: ibig!(_440c8c7d996adc6038090e43d8595c45381b840219ea7d376f1fe9cd833bbe61 base 16),
-            y: ibig!(_c5a285ff65319f8f3d8dcb12388457140c00a1887e18a0fe8da0f1b8c34670e3 base 16),
-        };
-        let result = math::double(point, &curve);
-        assert!(result
-            .x
-            .eq(&ibig!(_aefb289843cfeba8dd1d1db86cb85f306384994c5a57c109ee018d8ef70b5582 base 16)));
-        assert!(result
-            .y
-            .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
-    }
+    // #[test]
+    // fn test_weierstrass_double() {
+    //     let curve = Curve::secp256r1();
+    //     let point = Point {
+    //         x: ibig!(_440c8c7d996adc6038090e43d8595c45381b840219ea7d376f1fe9cd833bbe61 base 16),
+    //         y: ibig!(_c5a285ff65319f8f3d8dcb12388457140c00a1887e18a0fe8da0f1b8c34670e3 base 16),
+    //     };
+    //     let result = math::double(point, &curve);
+    //     assert!(result
+    //         .x
+    //         .eq(&ibig!(_aefb289843cfeba8dd1d1db86cb85f306384994c5a57c109ee018d8ef70b5582 base 16)));
+    //     assert!(result
+    //         .y
+    //         .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
+    // }
 
 
     #[test]
