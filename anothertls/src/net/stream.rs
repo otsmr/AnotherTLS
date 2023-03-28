@@ -373,6 +373,7 @@ impl<'a> TlsStream<'a> {
                                     }
                                 };
                             if i == 0 && der_type != EncodedForm::Constructed(DerType::Sequence) {
+                                log::error!("Parsing Signature failed: Wrong Format");
                                 return Err(TlsError::DecodeError);
                             } else if i > 0 {
                                 let int = bytes::to_ibig_le(
@@ -388,6 +389,7 @@ impl<'a> TlsStream<'a> {
                         }
 
                         if s.is_none() {
+                            log::error!("Parsing Signature failed: No signature found");
                             return Err(TlsError::DecodeError);
                         }
 

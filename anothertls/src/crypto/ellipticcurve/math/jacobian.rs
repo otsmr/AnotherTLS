@@ -69,14 +69,14 @@ pub(crate) fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) 
     JacobianPoint { x, y, z }
 }
 
-// fn get_nbits(n: IBig) -> usize {
-//     for i in (0..256).rev() {
-//         if n.clone() >> i & 1 == ibig!(1) {
-//             return i + 1;
-//         }
-//     }
-//     1
-// }
+fn get_nbits(n: IBig) -> usize {
+    for i in (0..256).rev() {
+        if n.clone() >> i & 1 == ibig!(1) {
+            return i + 1;
+        }
+    }
+    1
+}
 
 // pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
 
@@ -84,7 +84,8 @@ pub(crate) fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) 
 
 //     let mut r0 = JacobianPoint::new(0, 0, 1);
 //     let mut r1 = p.clone();
-//     let nbits = get_nbits(n.clone());
+//     // let nbits = get_nbits(n.clone());
+//     let nbits = 256;
 
 //     for i in (0..nbits).rev() {
 //         if n.clone() >> i & 1 == ibig!(1) {

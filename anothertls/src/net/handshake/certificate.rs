@@ -136,6 +136,7 @@ impl Certificate {
         if Ecdsa::verify(ca_public_key, signature, &hash) {
             return Ok(());
         }
+        log::error!("Client Certificate not valid.");
 
         Err(TlsError::DecryptError)
     }

@@ -86,12 +86,6 @@ impl Ecdsa {
         // ??
 
         // Check Signature
-        if sign.s <= ibig!(0) || sign.s >= pub_key.curve.n {
-            return false;
-        }
-        if sign.r <= ibig!(0) || sign.r >= pub_key.curve.n {
-            return false;
-        }
 
         let z = bytes::to_ibig_le(hashed_message);
         let curve = pub_key.curve;
