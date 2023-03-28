@@ -126,7 +126,10 @@ impl Certificate {
         let other_x509 = other.x509.as_ref().unwrap();
         let signature = match &other_x509.signature {
             Some(e) => e,
-            None => return Err(TlsError::DecryptError),
+            None => {
+                log::error!("Certificate has no signature.");
+                return Err(TlsError::DecryptError);
+            }
         };
 
         let context = &other.raw[4..4 + other_x509.tbs_certificate_size];
@@ -136,6 +139,7 @@ impl Certificate {
         if Ecdsa::verify(ca_public_key, signature, &hash) {
             return Ok(());
         }
+
         log::error!("Client Certificate not valid.");
 
         Err(TlsError::DecryptError)

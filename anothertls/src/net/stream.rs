@@ -424,6 +424,8 @@ impl<'a> TlsStream<'a> {
                     .unwrap()
                     .update(record.fraqment.as_ref());
 
+                log::debug!("Certificate is valid.");
+
                 self.state = HandshakeState::Finished;
             }
             HandshakeState::Finished => {
