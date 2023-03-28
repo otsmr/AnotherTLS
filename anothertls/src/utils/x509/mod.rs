@@ -566,7 +566,7 @@ fn parse(
                 *consumed += size;
             }
             DerType::BitString => {
-                if data[*consumed - 1] == 0x48 {
+                if data[*consumed + 1] == 0x30 {
                     *consumed += 1;
                     let size_should = size + *consumed - 1;
                     while size_should > *consumed {
