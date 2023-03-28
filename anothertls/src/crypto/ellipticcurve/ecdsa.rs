@@ -85,8 +85,6 @@ impl Ecdsa {
         // 3. n * pub_key.point == 0
         // ??
 
-        // Check Signature
-
         let z = bytes::to_ibig_le(hashed_message);
         let curve = pub_key.curve;
 
@@ -101,11 +99,6 @@ impl Ecdsa {
         let res2 = math::multiply(&pub_key.point, u.y, &curve);
         let res = math::add(res1, res2, &curve);
         let x = math::rem_euclid(&res.x, &curve.n);
-        let y = math::rem_euclid(&res.y, &curve.n);
-
-        if x == ibig!(0) && y == ibig!(0) {
-            return false;
-        }
 
         if x != sign.r {
             return false;
