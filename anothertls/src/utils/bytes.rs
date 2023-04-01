@@ -106,6 +106,7 @@ pub fn to_u128_le_fill(bytes: &[u8]) -> u128 {
     to_u128_le(bytes)
 }
 pub fn to_u128_le(bytes: &[u8]) -> u128 {
+    // if bytes.len() < 128/8 filling 0 at the END
     let mut res: u128 = 0;
     let bytes: &[u8] = match bytes.len() {
         a if a > 16 => &bytes[..16],
