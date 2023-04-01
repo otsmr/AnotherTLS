@@ -39,7 +39,6 @@ use std::{
 #[repr(u8)]
 enum HandshakeState {
     ClientHello,
-    ChangeCipherSpec,
     ClientCertificate = 0x10,
     ClientCertificateVerify,
     Finished,
@@ -245,7 +244,11 @@ impl<'a> TlsStream<'a> {
         let mut encrypted_record_raw = protect.encrypt(record)?;
         tx_buf.append(&mut encrypted_record_raw);
 
-        self.state = HandshakeState::ChangeCipherSpec;
+        if self.config.client_cert_ca.is_some() {
+            self.state = HandshakeState::ClientCertificate;
+        } else {
+            self.state = HandshakeState::Finished;
+        }
         self.tshash = Some(tshash);
         Ok(())
     }
@@ -469,7 +472,16 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 
-    fn handle_handshake_record(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
+    fn handle_handshake_record(&mut self, record: Record) -> Result<Option<Vec<u8>>, TlsError> {
+
+        if record.content_type == RecordType::ChangeCipherSpec {
+            log::debug!("--> ChangeCipherSpec");
+            if self.state == HandshakeState::ClientHello {
+                return Err(TlsError::UnexpectedMessage);
+            }
+            return Ok(None)
+        }
+
         let mut tx_buf = Vec::with_capacity(4096);
 
         match self.state {
@@ -478,23 +490,12 @@ impl<'a> TlsStream<'a> {
                 log::debug!("--> ClientHello");
                 self.handle_client_hello(record, &mut tx_buf)?;
             }
-            HandshakeState::ChangeCipherSpec => {
-                if record.content_type != RecordType::ChangeCipherSpec {
-                    return Err(TlsError::UnexpectedMessage);
-                }
-                log::debug!("--> ChangeCipherSpec");
-                if self.config.client_cert_ca.is_some() {
-                    self.state = HandshakeState::ClientCertificate;
-                } else {
-                    self.state = HandshakeState::Finished;
-                }
-            }
             state if state >= HandshakeState::ClientCertificate => {
                 self.handle_handshake_encrypted_record(record)?;
             }
             _ => (),
         }
-        Ok(tx_buf)
+        Ok(Some(tx_buf))
     }
     fn do_handshake(&mut self) -> Result<(), TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
@@ -513,7 +514,7 @@ impl<'a> TlsStream<'a> {
                 let tx_buf = self.handle_handshake_record(record)?;
 
                 // Send buffer
-                if !tx_buf.is_empty() && self.stream.write_all(tx_buf.as_slice()).is_err() {
+                if tx_buf.is_some() && !tx_buf.as_ref().unwrap().is_empty() && self.stream.write_all(tx_buf.unwrap().as_slice()).is_err() {
                     return Err(TlsError::BrokenPipe);
                 }
             }
