@@ -42,7 +42,7 @@ impl Gcm {
 
         let mut output = Vec::new();
         let mut aes = AES::init(key, blocksize)?;
-        let mut counter = 1u128;
+        let mut counter = 0u128;
         let mut X = 0u128; // for i == 0
 
         let H = bytes::to_u128_le(&aes.encrypt([0; 16]));
@@ -61,6 +61,7 @@ impl Gcm {
             let len = (iv.len() * 8) as u128;
             Gcm::gmult(N ^ len, H)
         } else {
+            counter = 1;
             bytes::to_u128_le(iv) | 1
         };
 
