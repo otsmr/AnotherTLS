@@ -124,7 +124,7 @@ tracked in the following section.
  SHOULD
   cipher suite
    TLS_AES_256_GCM_SHA384 ✓
-   TLS_CHACHA20_POLY1305_SHA256
+   TLS_CHACHA20_POLY1305_SHA256 TODO: https://datatracker.ietf.org/doc/html/rfc8439
   key exchange
    X25519 ✓
 ```
