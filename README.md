@@ -4,6 +4,9 @@ crypto) in **pure Rust** - of course. The focus of this implementation is the
 simplicity and to use no dependencies. I started this project to deep dive into
 Rust, cryptography and network protocols.
 
+**If you are interested in hacking TLS, you should checkout the branch
+[VulnTLS](https://github.com/otsmr/anothertls/tree/vulntls).**
+
 When I find the time, I will replace all the current dependencies, but for now
 this crate depends on the standard library and the following crates (`cargo
 tree`):
