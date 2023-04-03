@@ -65,6 +65,7 @@ impl<'a> ServerHello<'a> {
                     for key in key_share.0.iter() {
                         match key.group {
                             NamedGroup::X25519 => {
+                                log::debug!("TLS key exchange using ECDHE with Curve25519");
                                 let secret = rng.between(1, 32);
                                 let pk = PrivateKey::new(Curve::curve25519(), secret);
                                 let key_share_data = bytes::ibig_to_32bytes(
@@ -79,8 +80,8 @@ impl<'a> ServerHello<'a> {
                                 break;
                             }
                             NamedGroup::Secp256r1 => {
-                                named_group = Some(NamedGroup::Secp256r1);
-                                // todo!("Add support for secp256 key exchange");
+                                todo!("Add support for secp256 key exchange");
+                                // named_group = Some(NamedGroup::Secp256r1);
                             }
                             _ => {}
                         }
@@ -109,7 +110,7 @@ impl<'a> ServerHello<'a> {
         }
 
         if named_group.is_none() {
-            todo!("No supporet group -> HelloRetry");
+            todo!("No supported group -> Hello Retry Request");
         }
 
         extensions.push(ServerExtension::SupportedVersion(SupportedVersions::new(
@@ -123,7 +124,7 @@ impl<'a> ServerHello<'a> {
                 CipherSuite::TLS_AES_256_GCM_SHA384 => {
                     cipher_suite_to_use = Some(CipherSuite::TLS_AES_256_GCM_SHA384);
                     hash = Some(HashType::SHA384);
-                    break;
+                    break; // Break because server best choice
                 }
                 CipherSuite::TLS_AES_128_GCM_SHA256 => {
                     hash = Some(HashType::SHA256);

@@ -32,7 +32,10 @@ fn main() {
 
     println!("Waiting for tls handshake");
 
-    socket.do_handshake_block().expect("Error while handshake.");
+    if let Err(err) = socket.do_handshake_block() {
+        println!("Error during handshake: {err:?}");
+        return;
+    }
 
     println!("New secure connection");
 
@@ -43,14 +46,15 @@ fn main() {
         "--- Request --- \n{}\n---------------",
         String::from_utf8(buf[..n - 4].to_vec()).unwrap()
     );
-    let data = b"\
+    let body = "Hello admin!\n";
+    let data = format!("\
 HTTP/1.1 200\r\n\
 Server: AnotherTls/1.0\r\n\
 Content-Type: text/html; charset=utf-8\r\n\
-Content-Length: 12\r\n\
+Content-Length: {}\r\n\
 \r\n\
-Hello world!";
+{}", body.len(), body);
     socket
-        .write_all(data)
+        .write_all(data.as_bytes())
         .expect("Error writing to socket.");
 }

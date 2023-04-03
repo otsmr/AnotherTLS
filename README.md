@@ -99,8 +99,8 @@ tracked in the following section.
   4.4.4. Finished ✓
  4.5. End of Early Data ×
  4.6. Post-Handshake Messages ×
-  4.6.1. New Session Ticket Message ×
-  4.6.2. Post-Handshake Authentication ×
+  4.6.1. New Session Ticket Message MAY for server
+  4.6.2. Post-Handshake Authentication MAY for server
   4.6.3. Key and Initialization Vector Update ×
 5. Record Protocol
   5.1. Record Layer ✓
