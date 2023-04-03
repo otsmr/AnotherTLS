@@ -106,7 +106,7 @@ tracked in the following section.
   5.1. Record Layer ✓
   5.2. Record Payload Protection ✓
   5.3. Per-Record Nonce ✓
-  5.4. Record Padding ×
+  5.4. Record Padding ✓
   5.5. Limits on Key Usage ×
  6. Alert Protocol
   6.1. Closure Alerts ✓
