@@ -56,8 +56,9 @@ impl Key {
         let mut out = self.iv.to_vec();
 
         for i in 0..8 {
-            out[(self.iv.len() - 1) - i] ^= (self.sequence_number << (i * 8)) as u8;
+            out[(12 - 1) - i] ^= (self.sequence_number >> (i*8)) as u8;
         }
+
 
         // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
         // implementation would need to wrap a sequence number, it MUST either rekey (Section

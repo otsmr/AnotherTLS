@@ -10,7 +10,7 @@
 //! started this project to deep dive into Rust, cryptography and network protocols.
 //!
 //! Currently AnotherTLS depends only on the following crates:
-//! ```
+//! ```ignore
 //! anothertls v0.1.0
 //! └── ibig v0.3.6
 //!     ├── cfg-if v1.0.0

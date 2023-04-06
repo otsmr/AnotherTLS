@@ -4,6 +4,9 @@ crypto) in **pure Rust** - of course. The focus of this implementation is the
 simplicity and to use no dependencies. I started this project to deep dive into
 Rust, cryptography and network protocols.
 
+**If you are interested in hacking TLS, you should checkout the branch
+[VulnTLS](https://github.com/otsmr/anothertls/tree/vulntls).**
+
 When I find the time, I will replace all the current dependencies, but for now
 this crate depends on the standard library and the following crates (`cargo
 tree`):
@@ -96,14 +99,14 @@ tracked in the following section.
   4.4.4. Finished ✓
  4.5. End of Early Data ×
  4.6. Post-Handshake Messages ×
-  4.6.1. New Session Ticket Message ×
-  4.6.2. Post-Handshake Authentication ×
+  4.6.1. New Session Ticket Message MAY for server
+  4.6.2. Post-Handshake Authentication MAY for server
   4.6.3. Key and Initialization Vector Update ×
 5. Record Protocol
   5.1. Record Layer ✓
   5.2. Record Payload Protection ✓
   5.3. Per-Record Nonce ✓
-  5.4. Record Padding ×
+  5.4. Record Padding ✓
   5.5. Limits on Key Usage ×
  6. Alert Protocol
   6.1. Closure Alerts ✓
@@ -121,7 +124,7 @@ tracked in the following section.
  SHOULD
   cipher suite
    TLS_AES_256_GCM_SHA384 ✓
-   TLS_CHACHA20_POLY1305_SHA256
+   TLS_CHACHA20_POLY1305_SHA256 TODO: https://datatracker.ietf.org/doc/html/rfc8439
   key exchange
    X25519 ✓
 ```

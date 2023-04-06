@@ -61,7 +61,7 @@ impl Gcm {
             let len = (iv.len() * 8) as u128;
             Gcm::gmult(N ^ len, H)
         } else {
-            counter += 1;
+            counter = 1;
             bytes::to_u128_le(iv) | 1
         };
 

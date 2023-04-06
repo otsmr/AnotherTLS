@@ -57,14 +57,14 @@ impl Curve {
 
     /// Verify if the point p is on the curve.
     ///
-    /// ```
+    /// ```ignore
     /// # use anothertls::crypto::ellipticcurve::curve::Curve;
     /// # use anothertls::crypto::ellipticcurve::Point;
     /// let curve = Curve::secp256r1();
     /// assert_eq!(curve.contains(&Point::u32(10, 10)), false);
     /// assert_eq!(curve.contains(&curve.g), true);
     /// ```
-    /// ```
+    /// ```ignore
     /// # use anothertls::crypto::ellipticcurve::curve::Curve;
     /// # use anothertls::crypto::ellipticcurve::Point;
     /// let curve = Curve::curve25519();

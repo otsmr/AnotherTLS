@@ -18,7 +18,7 @@ use super::Point;
 
 /// Calculates the modular inverse of `x` with respect to `n` using the Extended Euclidean Algorithm.
 ///
-/// ```
+/// ```ignore
 /// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::inv;
 /// let x = ibig!(5);
@@ -51,14 +51,14 @@ pub fn inv(x: &IBig, n: &IBig) -> IBig {
 
 /// Calculates the modules
 ///
-/// ````
+/// ```ignore
 /// # use ibig::{ibig, IBig};
 /// # use anothertls::crypto::ellipticcurve::math::rem_euclid;
 /// let x = ibig!(12);
 /// let n = ibig!(11);
 ///
 /// assert_eq!(rem_euclid(&x, &n), ibig!(1));
-/// ````
+/// ```
 pub fn rem_euclid(x: &IBig, v: &IBig) -> IBig {
     let r = x % v;
     if r < ibig!(0) {

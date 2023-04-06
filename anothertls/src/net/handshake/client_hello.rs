@@ -9,7 +9,7 @@ use crate::{
     net::{
         extensions::{self, ClientExtension, shared::KeyShareEntry},
         alert::TlsError,
-    },
+    }, utils::log,
 };
 use std::result::Result;
 
@@ -48,11 +48,13 @@ impl<'a> ClientHello<'a> {
         }
         consumed += 2;
         let mut cipher_suites = vec![];
+        log::debug!("Clients CipherSuites:");
         for i in (consumed..(consumed + cipher_suites_len as usize)).step_by(2) {
             let cs = CipherSuite::new(
                 ((buf[i] as u16) << 8) | (buf[i + 1] as u16),
             );
             if let Ok(cs) = cs {
+                log::debug!("  {cs:?}");
                 cipher_suites.push(cs);
             }
         }

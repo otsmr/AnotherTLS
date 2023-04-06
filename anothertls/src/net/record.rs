@@ -75,7 +75,7 @@ impl<'a> Record<'a> {
             content_type,
             version: 0x0303,
             header: [content_type as u8, 0x03, 0x03, 0, 0],
-            len: 0,
+            len: fraqment.as_ref().len(),
             fraqment,
         }
     }
@@ -92,7 +92,7 @@ impl<'a> Record<'a> {
             return Err(TlsError::DecodeError);
         }
         if content_type == RecordType::Alert {
-            return Err(TlsError::GotAlert);
+            return Err(TlsError::GotAlert(buf[1]));
         }
         let consumed = 5 + len;
         Ok((consumed, Record {
@@ -205,9 +205,21 @@ impl RecordPayloadProtection {
                 Err(_) => return Err(TlsError::DecryptError),
             };
 
-        let len = plaintext.len() - 1;
-        let record_type = RecordType::new(plaintext[len])?;
-        let record = Record::new(record_type, Value::Owned(plaintext[..len].to_vec()));
-        Ok(record)
+
+        // 5.4. Record Padding
+        // The receiving implementation scans the field from the end toward the beginning until it
+        // finds a non-zero octet. This non-zero octet is the content type of the message
+
+        let mut content_type = RecordType::Invalid;
+        let mut record_len = 0;
+        for i in (0..plaintext.len()).rev() {
+            if plaintext[i] != 0x00 {
+                content_type = RecordType::new(plaintext[i])?;
+                record_len = i;
+                break;
+            }
+        }
+
+        Ok(Record::new(content_type, Value::Owned(plaintext[..record_len].to_vec())))
     }
 }

@@ -19,12 +19,7 @@ use crate::{
         record::{Record, RecordPayloadProtection, RecordType, Value},
     },
     rand::{RngCore, URandomRng},
-    utils::{
-        bytes,
-        der::{self, DerType, EncodedForm},
-        keylog::KeyLog,
-        log,
-    },
+    utils::{bytes, keylog::KeyLog, log},
     TlsConfig,
 };
 use ibig::IBig;
@@ -39,9 +34,9 @@ use std::{
 #[repr(u8)]
 enum HandshakeState {
     ClientHello,
-    ChangeCipherSpec,
     ClientCertificate = 0x10,
     ClientCertificateVerify,
+    FinishWithError(TlsError),
     Finished,
     Ready,
 }
@@ -81,7 +76,7 @@ impl<'a> TlsStream<'a> {
         self.write_alert(TlsError::CloseNotify)
     }
     pub fn write_alert(&mut self, err: TlsError) -> Result<(), TlsError> {
-        let data = vec![AlertLevel::get_from_error(err) as u8, err as u8];
+        let data = vec![AlertLevel::get_from_error(err) as u8, err.as_u8()];
 
         let record = Record::new(RecordType::Alert, Value::Owned(data));
 
@@ -99,8 +94,13 @@ impl<'a> TlsStream<'a> {
     }
 
     pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
-        if let Err(err) = self.do_handshake() {
-            self.write_alert(err)?;
+        if let Err(mut err) = self.do_handshake() {
+            if err < TlsError::NotOfficial {
+                self.write_alert(err)?;
+            }
+            if let TlsError::GotAlert(err_code) = err {
+                err = TlsError::new(err_code);
+            }
             return Err(err);
         }
 
@@ -245,7 +245,11 @@ impl<'a> TlsStream<'a> {
         let mut encrypted_record_raw = protect.encrypt(record)?;
         tx_buf.append(&mut encrypted_record_raw);
 
-        self.state = HandshakeState::ChangeCipherSpec;
+        if self.config.client_cert_ca.is_some() {
+            self.state = HandshakeState::ClientCertificate;
+        } else {
+            self.state = HandshakeState::Finished;
+        }
         self.tshash = Some(tshash);
         Ok(())
     }
@@ -256,14 +260,18 @@ impl<'a> TlsStream<'a> {
         let mut verify_data = None;
         let protection = self.protection.as_mut().unwrap();
 
-        if self.state == HandshakeState::Finished {
-            if self.tshash.is_none() {
-                return Err(TlsError::InternalError);
+        match self.state {
+            // TODO: How to write this using if instead of match?
+            HandshakeState::Finished | HandshakeState::FinishWithError(_) => {
+                if self.tshash.is_none() {
+                    return Err(TlsError::InternalError);
+                }
+                verify_data = Some(get_verify_client_finished(
+                    &protection.key_schedule.client_handshake_traffic_secret,
+                    self.tshash.as_ref().unwrap().as_ref(),
+                )?);
             }
-            verify_data = Some(get_verify_client_finished(
-                &protection.key_schedule.client_handshake_traffic_secret,
-                self.tshash.as_ref().unwrap().as_ref(),
-            )?);
+            _ => (),
         }
 
         let record = protection.decrypt(record)?;
@@ -271,6 +279,9 @@ impl<'a> TlsStream<'a> {
         if record.content_type != RecordType::Handshake
             || (self.config.client_cert_ca.is_some() && self.certificate_request_context.is_none())
         {
+            if record.content_type == RecordType::Alert {
+                return Err(TlsError::GotAlert(record.fraqment.as_ref()[1]));
+            }
             return Err(TlsError::UnexpectedMessage);
         }
 
@@ -306,6 +317,13 @@ impl<'a> TlsStream<'a> {
                     bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
                 consumed += 3;
 
+                if certs_len == 0 {
+                    log::debug!("Client send no certificate!");
+                    self.state = HandshakeState::FinishWithError(TlsError::CertificateRequired);
+                    return Ok(());
+                }
+
+
                 let cert_len =
                     bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
                 consumed += 3;
@@ -318,13 +336,20 @@ impl<'a> TlsStream<'a> {
                     handshake.fraqment[consumed..consumed + cert_len].to_vec(),
                 )?;
 
-                log::debug!("Client certificate:");
-
-                if !cert.x509.as_ref().unwrap().tbs_certificate.validity.is_valid() {
+                if !cert
+                    .x509
+                    .as_ref()
+                    .unwrap()
+                    .tbs_certificate
+                    .validity
+                    .is_valid()
+                {
                     log::debug!("Certificate is not valid");
-                    return Err(TlsError::DecryptError);
+                    self.state = HandshakeState::FinishWithError(TlsError::CertificateExpired);
+                    return Ok(());
                 }
 
+                log::debug!("Client certificate:");
                 // TODO: only in debug
                 let issuer = &cert.x509.as_ref().unwrap().tbs_certificate.issuer;
                 let subject = &cert.x509.as_ref().unwrap().tbs_certificate.subject;
@@ -335,7 +360,8 @@ impl<'a> TlsStream<'a> {
                 if let Some(f) = self.config.client_cert_custom_verify_fn.as_ref() {
                     if !f(cert.x509.as_ref().unwrap()) {
                         log::debug!("Certificate denied by custom verify function");
-                        return Err(TlsError::DecryptError);
+                        self.state = HandshakeState::FinishWithError(TlsError::AccessDenied);
+                        return Ok(());
                     }
                 }
 
@@ -345,79 +371,64 @@ impl<'a> TlsStream<'a> {
             }
             HandshakeState::ClientCertificateVerify => {
                 log::debug!("--> ClientCertificateVerify");
+
                 if self.client_cert.is_none() {
                     return Err(TlsError::UnexpectedMessage);
                 }
 
-                let mut consumed = 0;
-                let sign_algo = SignatureScheme::new(bytes::to_u16(
-                    &handshake.fraqment[consumed..consumed + 2],
-                ))?;
+                let algo = SignatureScheme::new(bytes::to_u16(&handshake.fraqment[0..2]))?;
 
-                consumed += 2;
-                let sign_len = bytes::to_u16(&handshake.fraqment[consumed..consumed + 2]) as usize;
-                consumed += 2;
+                let mut consumed = 4; // algo and len
 
-                let mut r = None;
-                let mut s = None;
-
-                match sign_algo {
+                match algo {
                     SignatureScheme::ecdsa_secp256r1_sha256 => {
-                        for i in 0..3 {
-                            let (size, der_type) =
-                                match der::der_parse(&mut consumed, handshake.fraqment) {
-                                    Ok(e) => e,
-                                    Err(e) => {
-                                        log::error!("Parsing Signature failed: {e:?}");
-                                        return Err(TlsError::DecodeError);
-                                    }
-                                };
-                            if i == 0 && der_type != EncodedForm::Constructed(DerType::Sequence) {
-                                log::error!("Parsing Signature failed: Wrong Format");
-                                return Err(TlsError::DecodeError);
-                            } else if i > 0 {
-                                let int = bytes::to_ibig_le(
-                                    &handshake.fraqment[consumed..consumed + size],
-                                );
-                                consumed += size;
-                                if r.is_none() {
-                                    r = Some(int);
-                                } else {
-                                    s = Some(int);
+                        let (signature, size) =
+                            match Signature::from_der(&handshake.fraqment[consumed..]) {
+                                Ok(e) => e,
+                                Err(e) => {
+                                    self.state = HandshakeState::FinishWithError(e);
+                                    return Ok(());
                                 }
-                            }
-                        }
+                            };
 
-                        if s.is_none() {
-                            log::error!("Parsing Signature failed: No signature found");
-                            return Err(TlsError::DecodeError);
-                        }
+                        consumed += size;
 
-                        let signature = Signature::new(s.unwrap(), r.unwrap());
-
-                        self.client_cert
+                        if self
+                            .client_cert
                             .as_ref()
                             .unwrap()
                             .verify_client_certificate(
                                 signature,
                                 self.tshash.as_ref().unwrap().as_ref(),
-                            )?;
+                            )
+                            .is_err()
+                        {
+                            self.state = HandshakeState::FinishWithError(TlsError::BadCertificate);
+                            return Ok(());
+                        }
                     }
                     e => todo!("SignatureScheme {e:?} for client cert not implemented yet"),
                 }
 
+                let sign_len = bytes::to_u16(&handshake.fraqment[2..4]) as usize;
                 if sign_len != consumed - 4 || self.client_cert.is_none() {
-                    return Err(TlsError::DecodeError);
+                    self.state = HandshakeState::FinishWithError(TlsError::BadCertificate);
+                    return Ok(());
                 }
 
                 // TODO: Check the validity of the client cert
 
                 // Validate client cert against the CA
-                self.config
+                if self
+                    .config
                     .client_cert_ca
                     .as_ref()
                     .unwrap()
-                    .has_signed(self.client_cert.as_ref().unwrap())?;
+                    .has_signed(self.client_cert.as_ref().unwrap())
+                    .is_err()
+                {
+                    self.state = HandshakeState::FinishWithError(TlsError::UnknownCa)
+                }
 
                 self.tshash
                     .as_mut()
@@ -428,7 +439,7 @@ impl<'a> TlsStream<'a> {
 
                 self.state = HandshakeState::Finished;
             }
-            HandshakeState::Finished => {
+            HandshakeState::Finished | HandshakeState::FinishWithError(_) => {
                 log::debug!("--> Finished");
 
                 if verify_data.is_none() {
@@ -466,6 +477,10 @@ impl<'a> TlsStream<'a> {
                             .traffic_secret,
                     );
                 }
+
+                if let HandshakeState::FinishWithError(err) = self.state {
+                    return Err(err);
+                }
                 self.state = HandshakeState::Ready;
             }
             _ => (),
@@ -473,7 +488,15 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 
-    fn handle_handshake_record(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
+    fn handle_handshake_record(&mut self, record: Record) -> Result<Option<Vec<u8>>, TlsError> {
+        if record.content_type == RecordType::ChangeCipherSpec {
+            log::debug!("--> ChangeCipherSpec");
+            if self.state == HandshakeState::ClientHello {
+                return Err(TlsError::UnexpectedMessage);
+            }
+            return Ok(None);
+        }
+
         let mut tx_buf = Vec::with_capacity(4096);
 
         match self.state {
@@ -482,23 +505,12 @@ impl<'a> TlsStream<'a> {
                 log::debug!("--> ClientHello");
                 self.handle_client_hello(record, &mut tx_buf)?;
             }
-            HandshakeState::ChangeCipherSpec => {
-                if record.content_type != RecordType::ChangeCipherSpec {
-                    return Err(TlsError::UnexpectedMessage);
-                }
-                log::debug!("--> ChangeCipherSpec");
-                if self.config.client_cert_ca.is_some() {
-                    self.state = HandshakeState::ClientCertificate;
-                } else {
-                    self.state = HandshakeState::Finished;
-                }
-            }
             state if state >= HandshakeState::ClientCertificate => {
                 self.handle_handshake_encrypted_record(record)?;
             }
             _ => (),
         }
-        Ok(tx_buf)
+        Ok(Some(tx_buf))
     }
     fn do_handshake(&mut self) -> Result<(), TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
@@ -517,7 +529,10 @@ impl<'a> TlsStream<'a> {
                 let tx_buf = self.handle_handshake_record(record)?;
 
                 // Send buffer
-                if !tx_buf.is_empty() && self.stream.write_all(tx_buf.as_slice()).is_err() {
+                if tx_buf.is_some()
+                    && !tx_buf.as_ref().unwrap().is_empty()
+                    && self.stream.write_all(tx_buf.unwrap().as_slice()).is_err()
+                {
                     return Err(TlsError::BrokenPipe);
                 }
             }
@@ -567,3 +582,5 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 }
+
+// TODO: create tests
