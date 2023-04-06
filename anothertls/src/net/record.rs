@@ -91,9 +91,6 @@ impl<'a> Record<'a> {
         if buf.len() < (2 + len) {
             return Err(TlsError::DecodeError);
         }
-        if content_type == RecordType::Alert {
-            return Err(TlsError::GotAlert(buf[1]));
-        }
         let consumed = 5 + len;
         Ok((consumed, Record {
             content_type,

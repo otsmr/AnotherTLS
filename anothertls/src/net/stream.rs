@@ -495,6 +495,16 @@ impl<'a> TlsStream<'a> {
             return Ok(None);
         }
 
+        if record.content_type == RecordType::Alert {
+            let alert_code = record.fraqment.as_ref()[1];
+            let alert = TlsError::new(alert_code);
+            log::debug!("--> Alert {alert:?}");
+            if self.state != HandshakeState::Ready {
+                log::error!("Handshake aborted by client");
+            }
+            return Err(TlsError::GotAlert(alert_code));
+        }
+
         let mut tx_buf = Vec::with_capacity(4096);
 
         match self.state {
