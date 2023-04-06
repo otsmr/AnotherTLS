@@ -140,8 +140,6 @@ impl Certificate {
             return Ok(());
         }
 
-        log::error!("Client Certificate not valid.");
-
         Err(TlsError::DecryptError)
     }
 
