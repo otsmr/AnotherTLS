@@ -3,7 +3,9 @@
  *
  */
 
-use crate::utils::bytes;
+use crate::utils::der::{self, DerType, EncodedForm};
+use crate::net::alert::TlsError;
+use crate::utils::{bytes, log};
 use ibig::IBig;
 
 // pub struct RecoveryId(u8);
@@ -18,6 +20,42 @@ pub struct Signature {
 impl Signature {
     pub fn new(s: IBig, r: IBig) -> Self {
         Self { s, r }
+    }
+
+    pub fn from_der(buf: &[u8]) -> Result<(Signature, usize), TlsError> {
+        let mut r = None;
+        let mut s = None;
+        let mut consumed = 0;
+
+        for i in 0..3 {
+            let (size, der_type) = match der::der_parse(&mut consumed, buf) {
+                Ok(e) => e,
+                Err(e) => {
+                    log::debug!("Error parsing Signature: {e:?}");
+                    return Err(TlsError::BadCertificate);
+                }
+            };
+
+            if i == 0 {
+                if der_type != EncodedForm::Constructed(DerType::Sequence) {
+                    return Err(TlsError::BadCertificate);
+                }
+            } else {
+                let int = bytes::to_ibig_le(&buf[consumed..consumed + size]);
+                consumed += size;
+                if r.is_none() {
+                    r = Some(int);
+                } else {
+                    s = Some(int);
+                }
+            }
+        }
+
+        if s.is_none() {
+            return Err(TlsError::BadCertificate);
+        }
+
+        Ok((Signature::new(s.unwrap(), r.unwrap()), consumed))
     }
 
     pub fn to_der(&self) -> Vec<u8> {

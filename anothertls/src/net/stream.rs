@@ -19,12 +19,7 @@ use crate::{
         record::{Record, RecordPayloadProtection, RecordType, Value},
     },
     rand::{RngCore, URandomRng},
-    utils::{
-        bytes,
-        der::{self, DerType, EncodedForm},
-        keylog::KeyLog,
-        log,
-    },
+    utils::{bytes, keylog::KeyLog, log},
     TlsConfig,
 };
 use ibig::IBig;
@@ -320,6 +315,7 @@ impl<'a> TlsStream<'a> {
 
                 let certs_len =
                     bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
+                consumed += 3;
 
                 if certs_len == 0 {
                     log::debug!("Client send no certificate!");
@@ -327,7 +323,6 @@ impl<'a> TlsStream<'a> {
                     return Ok(());
                 }
 
-                consumed += 3;
 
                 let cert_len =
                     bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
@@ -376,58 +371,27 @@ impl<'a> TlsStream<'a> {
             }
             HandshakeState::ClientCertificateVerify => {
                 log::debug!("--> ClientCertificateVerify");
+
                 if self.client_cert.is_none() {
                     return Err(TlsError::UnexpectedMessage);
                 }
 
-                let mut consumed = 0;
-                let sign_algo = SignatureScheme::new(bytes::to_u16(
-                    &handshake.fraqment[consumed..consumed + 2],
-                ))?;
+                let algo = SignatureScheme::new(bytes::to_u16(&handshake.fraqment[0..2]))?;
 
-                consumed += 2;
-                let sign_len = bytes::to_u16(&handshake.fraqment[consumed..consumed + 2]) as usize;
-                consumed += 2;
+                let mut consumed = 4; // algo and len
 
-                let mut r = None;
-                let mut s = None;
-
-                match sign_algo {
+                match algo {
                     SignatureScheme::ecdsa_secp256r1_sha256 => {
-                        for i in 0..3 {
-                            let (size, der_type) =
-                                match der::der_parse(&mut consumed, handshake.fraqment) {
-                                    Ok(e) => e,
-                                    Err(e) => {
-                                        log::error!("Parsing Signature failed: {e:?}");
-                                        self.state = HandshakeState::FinishWithError(
-                                            TlsError::BadCertificate,
-                                        );
-                                        return Ok(());
-                                    }
-                                };
-                            if i == 0 && der_type != EncodedForm::Constructed(DerType::Sequence) {
-                                self.state =
-                                    HandshakeState::FinishWithError(TlsError::BadCertificate);
-                                return Ok(());
-                            } else if i > 0 {
-                                let int = bytes::to_ibig_le(
-                                    &handshake.fraqment[consumed..consumed + size],
-                                );
-                                consumed += size;
-                                if r.is_none() {
-                                    r = Some(int);
-                                } else {
-                                    s = Some(int);
+                        let (signature, size) =
+                            match Signature::from_der(&handshake.fraqment[consumed..]) {
+                                Ok(e) => e,
+                                Err(e) => {
+                                    self.state = HandshakeState::FinishWithError(e);
+                                    return Ok(());
                                 }
-                            }
-                        }
+                            };
 
-                        if s.is_none() {
-                            return Err(TlsError::DecodeError);
-                        }
-
-                        let signature = Signature::new(s.unwrap(), r.unwrap());
+                        consumed += size;
 
                         if self
                             .client_cert
@@ -446,20 +410,24 @@ impl<'a> TlsStream<'a> {
                     e => todo!("SignatureScheme {e:?} for client cert not implemented yet"),
                 }
 
+                let sign_len = bytes::to_u16(&handshake.fraqment[2..4]) as usize;
                 if sign_len != consumed - 4 || self.client_cert.is_none() {
-                    return Err(TlsError::DecodeError);
+                    self.state = HandshakeState::FinishWithError(TlsError::BadCertificate);
+                    return Ok(());
                 }
 
                 // TODO: Check the validity of the client cert
 
                 // Validate client cert against the CA
-                if self.config
+                if self
+                    .config
                     .client_cert_ca
                     .as_ref()
                     .unwrap()
-                    .has_signed(self.client_cert.as_ref().unwrap()).is_err() {
+                    .has_signed(self.client_cert.as_ref().unwrap())
+                    .is_err()
+                {
                     self.state = HandshakeState::FinishWithError(TlsError::UnknownCa)
-
                 }
 
                 self.tshash
@@ -612,3 +580,5 @@ impl<'a> TlsStream<'a> {
         Ok(())
     }
 }
+
+// TODO: create tests
