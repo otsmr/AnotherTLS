@@ -69,34 +69,6 @@ pub(crate) fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) 
     JacobianPoint { x, y, z }
 }
 
-// fn get_nbits(n: IBig) -> usize {
-//     for i in (0..256).rev() {
-//         if n.clone() >> i & 1 == ibig!(1) {
-//             return i + 1;
-//         }
-//     }
-//     1
-// }
-
-// pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
-
-//     // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Montgomery_ladder
-
-//     let mut r0 = JacobianPoint::new(0, 0, 1);
-//     let mut r1 = p.clone();
-//     let nbits = get_nbits(n.clone());
-
-//     for i in (0..nbits).rev() {
-//         if n.clone() >> i & 1 == ibig!(1) {
-//             r0 = jacobian_add(&r0, &r1, curve);
-//             r1 = jacobian_double(&r1, curve);
-//         } else {
-//             r1 = jacobian_add(&r0, &r1, curve);
-//             r0 = jacobian_double(&r0, curve);
-//         }
-//     }
-//     r0
-// }
 pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
     if p.y == ibig!(0) || n == ibig!(0) {
         return JacobianPoint::new(0, 0, 1);
