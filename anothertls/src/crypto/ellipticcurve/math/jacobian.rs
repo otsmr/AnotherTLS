@@ -70,6 +70,7 @@ pub(crate) fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) 
 }
 
 fn get_nbits(n: IBig) -> usize {
+    // see libcrypt/mpi/ec.c:838
     for i in (0..256).rev() {
         if n.clone() >> i & 1 == ibig!(1) {
             return i + 1;
@@ -78,44 +79,24 @@ fn get_nbits(n: IBig) -> usize {
     1
 }
 
-// pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
-
-//     // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Montgomery_ladder
-
-//     let mut r0 = JacobianPoint::new(0, 0, 1);
-//     let mut r1 = p.clone();
-//     // let nbits = get_nbits(n.clone());
-//     let nbits = 256;
-
-//     for i in (0..nbits).rev() {
-//         if n.clone() >> i & 1 == ibig!(1) {
-//             r0 = jacobian_add(&r0, &r1, curve);
-//             r1 = jacobian_double(&r1, curve);
-//         } else {
-//             r1 = jacobian_add(&r0, &r1, curve);
-//             r0 = jacobian_double(&r0, curve);
-//         }
-//     }
-//     r0
-// }
 pub fn jacobian_multiply(p: &JacobianPoint, n: IBig, curve: &Curve) -> JacobianPoint {
-    if p.y == ibig!(0) || n == ibig!(0) {
-        return JacobianPoint::new(0, 0, 1);
+
+    // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Montgomery_ladder
+
+    let mut r0 = JacobianPoint::new(0, 0, 1);
+    let mut r1 = p.clone();
+
+    let nbits = get_nbits(n.clone());
+
+    for i in (0..nbits).rev() {
+        if n.clone() >> i & 1 == ibig!(1) {
+            r0 = jacobian_add(&r0, &r1, curve);
+            r1 = jacobian_double(&r1, curve);
+        } else {
+            r1 = jacobian_add(&r0, &r1, curve);
+            r0 = jacobian_double(&r0, curve);
+        }
     }
 
-    if n == ibig!(1) {
-        return p.clone();
-    }
-
-    if n < ibig!(0) || n >= curve.n {
-        return jacobian_multiply(p, rem_euclid(&n, &curve.n), curve);
-    }
-
-    let q = jacobian_double(&jacobian_multiply(p, n.clone() / 2, curve), curve);
-
-    if rem_euclid(&n, &ibig!(2)) == ibig!(0) {
-        return q;
-    }
-
-    jacobian_add(&q, p, curve)
+    r0
 }
