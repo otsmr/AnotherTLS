@@ -11,6 +11,7 @@ fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
     let config = TlsConfigBuilder::new()
+        // .enable_keylog()
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
         .build()

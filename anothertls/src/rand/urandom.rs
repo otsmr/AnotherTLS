@@ -44,10 +44,8 @@ impl RngCore<IBig> for URandomRng {
     }
 
     fn between(&mut self, min: usize, max: usize) -> IBig {
-        // IDEA: remove *8 to get leading zeros
         let min = ibig!(2).pow(min*8);
         let max = ibig!(2).pow(max*8);
-
         self.next() % (max - min.clone()) + min
     }
     fn between_bytes(&mut self, size: usize) -> Vec<u8> {

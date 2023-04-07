@@ -116,7 +116,7 @@ impl<'a> Record<'a> {
 
 pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
-    handshake_keys: WriteKeys,
+    pub handshake_keys: WriteKeys,
     pub(crate) application_keys: Option<WriteKeys>,
 }
 
@@ -144,6 +144,13 @@ impl RecordPayloadProtection {
             return Err(TlsError::InternalError);
         }
         Ok(())
+    }
+
+    pub fn encrypt_handshake(&mut self, buf: &[u8]) -> Result<Vec<u8>, TlsError> {
+
+        let record = Record::new(RecordType::Handshake, Value::Ref(buf));
+        self.encrypt(record)
+
     }
 
     pub fn encrypt(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
