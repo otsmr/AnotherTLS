@@ -12,16 +12,15 @@ use std::result::Result;
 pub fn get_finished_handshake(
     hash: HashType,
     server_secret: &Hkdf,
-    ts_hash: &dyn TranscriptHash,
+    tshash: &dyn TranscriptHash,
 ) -> Result<Vec<u8>, TlsError> {
-    let finished_hash = ts_hash.clone().finalize();
-
     let finished_key = match server_secret.expand(&get_hkdf_expand_label(b"finished", b"", 48), 48)
     {
         Some(a) => a,
         None => return Err(TlsError::InternalError),
     };
 
+    let finished_hash = tshash.finalize();
     let mut verify_data = Hmac::new(hash, &finished_key);
     verify_data.update(&finished_hash);
 
@@ -33,9 +32,9 @@ pub fn get_finished_handshake(
 
 pub fn get_verify_client_finished(
     client_secret: &Hkdf,
-    ts_hash: &dyn TranscriptHash,
+    tshash: &dyn TranscriptHash,
 ) -> Result<Vec<u8>, TlsError> {
-    let finished_hash = ts_hash.clone().finalize();
+    let finished_hash = tshash.clone().finalize();
 
     let finished_key = match client_secret.expand(&get_hkdf_expand_label(b"finished", b"", 48), 48)
     {
@@ -43,7 +42,7 @@ pub fn get_verify_client_finished(
         None => return Err(TlsError::InternalError),
     };
 
-    let mut verify_data = Hmac::new(ts_hash.get_type(), &finished_key);
+    let mut verify_data = Hmac::new(tshash.get_type(), &finished_key);
     verify_data.update(&finished_hash);
 
     Ok(verify_data.result())

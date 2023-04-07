@@ -3,7 +3,8 @@
  *
  */
 
-use crate::{TlsConfig, utils::log};
+use crate::{utils::log, ServerConfig};
+
 use ibig::IBig;
 use crate::rand::RngCore;
 use std::result::Result;
@@ -39,7 +40,7 @@ impl<'a> ServerHello<'a> {
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
         rng: &mut dyn RngCore<IBig>,
-        config: &'a TlsConfig
+        config: &'a ServerConfig
     ) -> Result<ServerHello<'a>, TlsError> {
         let mut extensions = ServerExtensions::new();
         let mut private_key = None;

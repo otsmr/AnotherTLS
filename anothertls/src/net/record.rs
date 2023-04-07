@@ -133,12 +133,11 @@ impl RecordPayloadProtection {
 
     pub fn generate_application_keys(
         &mut self,
-        ts_hash: &dyn TranscriptHash,
+        tshash: &dyn TranscriptHash,
     ) -> Result<(), TlsError> {
-        let handshake_hash = ts_hash.clone().finalize();
         self.application_keys = WriteKeys::application_keys_from_master_secret(
             &self.key_schedule.hkdf_master_secret,
-            &handshake_hash,
+            &tshash.finalize(),
         );
         if self.application_keys.is_none() {
             return Err(TlsError::InternalError);

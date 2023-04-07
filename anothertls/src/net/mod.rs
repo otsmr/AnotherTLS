@@ -3,11 +3,16 @@
  *
  */
 
-pub mod listener;
 pub mod stream;
-pub mod config;
 
-pub use listener::TlsListener;
+pub mod server {
+    mod config;
+    mod connection;
+    mod server_hello;
+    pub use config::{ServerConfig, ServerConfigBuilder};
+    pub use connection::ServerConnection;
+}
+
 pub use stream::TlsStream;
 
 pub(crate) mod alert;

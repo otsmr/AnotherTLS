@@ -1,13 +1,14 @@
+
 /*
  * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
  *
  */
 
 use crate::utils::x509::X509;
-use super::handshake::Certificate;
+use crate::net::handshake::Certificate;
 use crate::crypto::ellipticcurve::PrivateKey;
 
-pub struct TlsConfig {
+pub struct ServerConfig {
 
     // Required
     // (1) openssl ecparam -out server.key -name prime256v1 -genkey
@@ -33,7 +34,7 @@ pub struct TlsConfig {
     pub(crate) server_name: Option<String>,
 }
 
-pub struct TlsConfigBuilder {
+pub struct ServerConfigBuilder {
     cert: Option<Certificate>,
     privkey: Option<PrivateKey>,
     keylog: Option<String>,
@@ -41,15 +42,15 @@ pub struct TlsConfigBuilder {
     client_cert_ca: Option<Certificate>,
     client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
 }
-impl Default for TlsConfigBuilder {
+impl Default for ServerConfigBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl TlsConfigBuilder {
+impl ServerConfigBuilder {
     pub fn new() -> Self {
-        TlsConfigBuilder {
+        ServerConfigBuilder {
             cert: None,
             privkey: None,
             keylog: None,
@@ -96,14 +97,14 @@ impl TlsConfigBuilder {
         self.server_name = Some(server_name);
         self
     }
-    pub fn build(self) -> std::result::Result<TlsConfig, String> {
+    pub fn build(self) -> std::result::Result<ServerConfig, String> {
         if self.cert.is_none() {
             return Err("No cert provided".to_string());
         }
         if self.privkey.is_none() {
             return Err("No privkey for cert provided".to_string());
         }
-        Ok(TlsConfig {
+        Ok(ServerConfig {
             client_cert_ca: self.client_cert_ca,
             cert: self.cert.unwrap(),
             privkey: self.privkey.unwrap(),

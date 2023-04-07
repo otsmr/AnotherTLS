@@ -21,7 +21,10 @@ pub enum HashType {
 pub trait TranscriptHash {
     fn new() -> Self where Self: Sized;
     fn update(&mut self, buf: &[u8]);
-    fn finalize(&mut self) -> Vec<u8>;
+    // finalize is not mutable and creates an copy of it self
+    // the benefit is, that other functions doesn't have to clone
+    // it before finalizing it
+    fn finalize(&self) -> Vec<u8>;
     fn get_type(&self) -> HashType;
     fn clone(&self) -> Box<dyn TranscriptHash>;
 }

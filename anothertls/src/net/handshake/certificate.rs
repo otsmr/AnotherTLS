@@ -68,7 +68,7 @@ impl Certificate {
         let lens = len + 5;
         let mut certificate_raw = vec![
             0x00,
-            // CertificateS Length + Extensions
+            // Certificates Length + Extensions
             (lens >> 16) as u8,
             (lens >> 8) as u8,
             (lens as u8),
@@ -79,8 +79,7 @@ impl Certificate {
         ];
         certificate_raw.extend_from_slice(&self.raw);
         // Certificate Extensions
-        certificate_raw.push(0x00);
-        certificate_raw.push(0x00);
+        certificate_raw.extend_from_slice(&[0x00, 0x00]);
         certificate_raw
     }
 
@@ -95,7 +94,7 @@ impl Certificate {
         content.resize(64, 0x20);
         content.extend_from_slice(b"TLS 1.3, server CertificateVerify");
         content.push(0x00);
-        content.extend(tshash.clone().finalize());
+        content.extend(tshash.finalize());
 
         let hash = sha256(&content);
 
@@ -151,7 +150,7 @@ impl Certificate {
         content.resize(64, 0x20);
         content.extend_from_slice(b"TLS 1.3, client CertificateVerify");
         content.push(0x00);
-        content.extend(tshash.clone().finalize());
+        content.extend(tshash.finalize());
 
         let hash = sha256(&content);
 

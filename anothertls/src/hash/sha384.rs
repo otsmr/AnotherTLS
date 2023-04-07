@@ -163,11 +163,17 @@ impl TranscriptHash for Sha384 {
         }
     }
 
-    fn finalize(&mut self) -> Vec<u8> {
-        self.padd_input();
+    fn finalize(&self) -> Vec<u8> {
+        let mut copy = Self {
+            input: self.input,
+            input_len: self.input_len,
+            state: self.state,
+            length: self.length
+        };
+        copy.padd_input();
         let mut out: [u8; 48] = [0; 48];
         for i in 0u8..48u8 {
-            out[i as usize] = (self.state[(i >> 3) as usize] >> (8 * (7 - (i & 7))) as u64) as u8;
+            out[i as usize] = (copy.state[(i >> 3) as usize] >> (8 * (7 - (i & 7))) as u64) as u8;
         }
         out.to_vec()
     }
