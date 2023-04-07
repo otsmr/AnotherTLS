@@ -3,8 +3,8 @@ Yet another TLS implementation, but written **from scratch** (including the
 crypto) in **pure Rust** - of course. The focus of this implementation is the
 simplicity and to use no dependencies. I started this project to deep dive into
 Rust, cryptography and network protocols. So don't use it in production, just
-**use [rustls](https://crates.io/crates/rustls)** as it is and will be the better
-choice.
+**use [rustls](https://crates.io/crates/rustls)** as it is the better choice
+and will be forever.
 
 **If you are interested in hacking TLS, you should checkout the branch
 [VulnTLS](https://github.com/otsmr/anothertls/tree/vulntls).**
@@ -20,8 +20,8 @@ anothertls v0.1.0
     └── static_assertions v1.1.0
 ```
 
-The current implementation has full (server-side) handshake support, which can be
-tested with the following command.
+The current implementation has full (server-side) handshake support, which can
+be tested with the following command.
 
 **handshake and application data**
 ```bash
