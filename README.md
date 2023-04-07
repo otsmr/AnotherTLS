@@ -6,8 +6,8 @@ Rust, cryptography and network protocols. So don't use it in production, just
 **use [rustls](https://crates.io/crates/rustls)** as it is the better choice
 and will be forever.
 
-**If you are interested in hacking TLS, you should checkout the my VulnTLS project
-[VulnTLS](https://github.com/otsmr/VulnTLS).**
+**If you are interested in hacking TLS, you should checkout the my
+[VulnTLS](https://github.com/otsmr/VulnTLS) project.**
 
 What makes AnotherTLS unique? It depends only on the standard library and the
 following crates (`cargo tree`). So you will find **the entire TLSv1.3 stack in a
