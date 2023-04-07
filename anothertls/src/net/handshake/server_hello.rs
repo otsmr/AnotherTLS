@@ -139,21 +139,20 @@ impl<'a> ServerHello<'a> {
             None => return Err(TlsError::HandshakeFailure),
         };
 
-        log::debug!("TLS connection using {cipher_suite:?}");
-
-        let hash = hash.unwrap();
 
         let private_key = match private_key {
             Some(pk) => pk,
             None => return Err(TlsError::HandshakeFailure),
         };
 
+        log::debug!("TLS connection using {cipher_suite:?}");
+
         Ok(ServerHello {
             random,
             legacy_session_id_echo: client_hello.legacy_session_id_echo,
             private_key,
             cipher_suite,
-            hash,
+            hash: hash.unwrap(),
             extensions,
         })
     }
