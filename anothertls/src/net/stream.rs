@@ -3,8 +3,6 @@
  *
  */
 
-#![allow(dead_code)]
-
 use crate::{
     crypto::{ellipticcurve::Signature, CipherSuite},
     hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
@@ -26,7 +24,7 @@ use ibig::IBig;
 
 use std::{
     io::{Read, Write},
-    net::{SocketAddr, TcpStream},
+    net::TcpStream,
     result::Result,
 };
 
@@ -43,7 +41,6 @@ enum HandshakeState {
 
 pub struct TlsStream<'a> {
     stream: TcpStream,
-    addr: SocketAddr,
     config: &'a TlsConfig,
     protection: Option<RecordPayloadProtection>,
     state: HandshakeState,
@@ -56,10 +53,9 @@ pub struct TlsStream<'a> {
 }
 
 impl<'a> TlsStream<'a> {
-    pub fn new(stream: TcpStream, addr: SocketAddr, config: &'a TlsConfig) -> Self {
+    pub fn new(stream: TcpStream, config: &'a TlsConfig) -> Self {
         Self {
             stream,
-            addr,
             config,
             state: HandshakeState::ClientHello,
             key_log: None,
@@ -475,6 +471,7 @@ impl<'a> TlsStream<'a> {
         }
         Ok(None)
     }
+
     fn do_handshake(&mut self) -> Result<(), TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
 

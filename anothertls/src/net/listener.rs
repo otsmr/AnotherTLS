@@ -25,7 +25,7 @@ impl TlsListener {
 
         let (socket, addr) = self.server.accept()?;
 
-        let stream = TlsStream::new(socket, addr, &self.config);
+        let stream = TlsStream::new(socket, &self.config);
 
         Ok((stream, addr))
     }
