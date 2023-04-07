@@ -2,7 +2,9 @@
 Yet another TLS implementation, but written **from scratch** (including the
 crypto) in **pure Rust** - of course. The focus of this implementation is the
 simplicity and to use no dependencies. I started this project to deep dive into
-Rust, cryptography and network protocols.
+Rust, cryptography and network protocols. So don't use it in production, just
+*use [rustls](https://crates.io/crates/rustls)* as it is and will be the better
+choice.
 
 **If you are interested in hacking TLS, you should checkout the branch
 [VulnTLS](https://github.com/otsmr/anothertls/tree/vulntls).**
