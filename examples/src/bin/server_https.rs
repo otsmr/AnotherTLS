@@ -4,13 +4,13 @@
  */
 
 // #![cfg(feature = "debug")]
-use anothertls::{TlsConfigBuilder, TlsListener};
+use anothertls::{ServerConnection, ServerConfigBuilder};
 use std::net::TcpListener;
 
 fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
-    let config = TlsConfigBuilder::new()
+    let config = ServerConfigBuilder::new()
         // .enable_keylog()
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
@@ -18,13 +18,9 @@ fn main() {
         .unwrap();
 
     let tcp = TcpListener::bind("127.0.0.1:4000").expect("Error binding to tcp socket.");
-    let listener = TlsListener::new(tcp, config);
+    let listener = ServerConnection::new(tcp, config);
 
     let (mut socket, _) = listener.accept().expect("Couldn't get client");
-
-    println!("Waiting for tls handshake");
-
-    socket.do_handshake_block().expect("Error while handshake.");
 
     println!("New secure connection");
 

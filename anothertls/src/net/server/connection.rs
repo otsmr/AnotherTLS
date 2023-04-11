@@ -3,6 +3,10 @@
  *
  */
 
+use crate::rand::URandomRng;
+use crate::net::server::ServerHello;
+use crate::net::TlsStream;
+use crate::ServerConfig;
 use crate::{
     crypto::{ellipticcurve::Signature, CipherSuite},
     hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
@@ -11,7 +15,7 @@ use crate::{
         extensions::{shared::SignatureScheme, ServerExtensions},
         handshake::{
             get_finished_handshake, get_verify_client_finished, Certificate, ClientHello,
-            Handshake, HandshakeType, ServerHello,
+            Handshake, HandshakeType,
         },
         key_schedule::KeySchedule,
         record::{Record, RecordPayloadProtection, RecordType},
@@ -20,35 +24,37 @@ use crate::{
     utils::{bytes, keylog::KeyLog, log},
 };
 use ibig::IBig;
-use crate::ServerConfig;
-use crate::net::TlsStream;
-use std::net::TcpListener;
 use std::net::SocketAddr;
+use std::net::TcpListener;
 
 use std::result::Result;
 
 pub struct ServerConnection {
     server: TcpListener,
-    config: ServerConfig
+    config: ServerConfig,
 }
 
 impl ServerConnection {
-
     pub fn new(server: TcpListener, config: ServerConfig) -> Self {
         Self { server, config }
     }
 
-    pub fn accept(&self) -> std::io::Result<(TlsStream, SocketAddr)> {
+    pub fn accept(&self) -> std::result::Result<(TlsStream, SocketAddr), TlsError> {
+        let (sock, _addr) = match self.server.accept() {
+            Ok(e) => e,
+            Err(e) => {
+                log::error!("TCP accept error: {e:?}");
+                return Err(TlsError::BrokenPipe);
+            }
+        };
 
-        let (sock, addr) = self.server.accept()?;
+        let mut stream = TlsStream::new(sock);
 
-        let stream = TlsStream::new(sock);
+        let mut shs = ServerHandshake::new(&mut stream, &self.config);
+        shs.do_handshake_with_error()?;
 
-
-
-        Ok((stream, addr))
+        Ok((stream, _addr))
     }
-
 }
 
 #[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
@@ -63,7 +69,7 @@ enum ServerHsState {
 }
 
 pub struct ServerHandshake<'a> {
-    stream: &'a TlsStream,
+    stream: &'a mut TlsStream,
     config: &'a ServerConfig,
     state: ServerHsState,
     key_log: Option<KeyLog>,
@@ -75,8 +81,20 @@ pub struct ServerHandshake<'a> {
 }
 
 impl<'a> ServerHandshake<'a> {
-
-    pub fn do_handshake_block(&mut self) -> Result<(), TlsError> {
+    pub fn new(stream: &'a mut TlsStream, config: &'a ServerConfig) -> Self {
+        Self {
+            stream,
+            config,
+            state: ServerHsState::ClientHello,
+            key_log: None,
+            client_cert: None,
+            certificate_request_context: None,
+            rng: Box::new(URandomRng::new()),
+            tshash: None,
+            tshash_clienthello_serverfinished: None,
+        }
+    }
+    pub fn do_handshake_with_error(&mut self) -> Result<(), TlsError> {
         if let Err(mut err) = self.do_handshake() {
             if err < TlsError::NotOfficial {
                 self.stream.write_alert(err)?;
@@ -86,14 +104,35 @@ impl<'a> ServerHandshake<'a> {
             }
             return Err(err);
         }
-
         Ok(())
     }
 
+    fn do_handshake(&mut self) -> Result<(), TlsError> {
+        let mut rx_buf: [u8; 4096] = [0; 4096];
+
+        while self.state != ServerHsState::Ready {
+            let n = match self.stream.read_raw(&mut rx_buf) {
+                Ok(n) => n,
+                Err(_) => return Err(TlsError::DecodeError),
+            };
+            let mut consumed_total = 0;
+
+            while consumed_total < n {
+                let (consumed, record) = Record::from_raw(&rx_buf[consumed_total..n])?;
+                consumed_total += consumed;
+
+                self.handle_handshake_record(record)?;
+                // Send buffer
+                self.stream.flush()?;
+            }
+            rx_buf.fill(0);
+        }
+
+        Ok(())
+    }
     fn handle_client_hello(
         &mut self,
         record: Record,
-        tx_buf: &mut Vec<u8>,
     ) -> Result<(), TlsError> {
         let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
 
@@ -120,22 +159,35 @@ impl<'a> ServerHandshake<'a> {
         // -- ServerHello --
         let handshake_raw = Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
         tshash.update(&handshake_raw);
-        tx_buf.append(&mut Record::to_raw(RecordType::Handshake, &handshake_raw));
+        self.stream.write_record(RecordType::Handshake, &handshake_raw)?;
 
         // -- Change Cipher Spec --
         // Either side can send change_cipher_spec at any time during the handshake, as they
         // must be ignored by the peer, but if the client sends a non-empty session ID, the
         // server MUST send the change_cipher_spec as described in this appendix.
         if client_hello.legacy_session_id_echo.is_some() {
-            tx_buf.append(&mut vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01]);
+            self.stream.write_record(RecordType::ChangeCipherSpec, &[0x01])?;
         }
 
         // -- Handshake Keys Calc --
         let key_schedule =
             KeySchedule::from_handshake(tshash.as_ref(), &client_hello, &server_hello)?;
 
+        let protection = RecordPayloadProtection::new(key_schedule);
 
-        self.stream.set_protection(RecordPayloadProtection::new(key_schedule));
+        if let Some(filepath) = &self.config.keylog {
+            if protection.is_some() {
+                let protection = protection.as_ref().unwrap();
+                let key_log = KeyLog::new(filepath.to_owned(), client_hello.random);
+                key_log.append_handshake_traffic_secrets(
+                    &protection.handshake_keys.server.traffic_secret,
+                    &protection.handshake_keys.client.traffic_secret,
+                );
+                self.key_log = Some(key_log);
+            }
+        }
+
+        self.stream.set_protection(protection);
 
         // self.protection = RecordPayloadProtection::new(key_schedule);
         // let protect = match self.protection.as_mut() {
@@ -143,19 +195,15 @@ impl<'a> ServerHandshake<'a> {
         //     None => return Err(TlsError::InternalError),
         // };
 
-        if let Some(filepath) = &self.config.keylog {
-            let key_log = KeyLog::new(filepath.to_owned(), client_hello.random);
-            key_log.append_from_record_payload_protection(protect);
-            self.key_log = Some(key_log);
-        }
-
         // -- EncryptedExtensions --
         let encrypted_extensions_raw = ServerExtensions::new().to_raw();
         let handshake_raw =
             Handshake::to_raw(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
-        tshash.update(&handshake_raw);
-        tx_buf.append(&mut protect.encrypt_handshake(&handshake_raw)?);
+
         log::debug!("<-- EncryptedExtensions");
+        self.stream
+            .write_record(RecordType::Handshake, &handshake_raw)?;
+        tshash.update(&handshake_raw);
 
         // -- Certificate Request --
         if let Some(client_cert_ca) = &self.config.client_cert_ca {
@@ -168,10 +216,10 @@ impl<'a> ServerHandshake<'a> {
             let handshake_raw =
                 Handshake::to_raw(HandshakeType::CertificateRequest, certificate_request);
 
-            tshash.update(&handshake_raw);
-
             log::debug!("<-- CertificateRequest");
-            tx_buf.append(&mut protect.encrypt_handshake(&handshake_raw)?);
+            self.stream
+                .write_record(RecordType::Handshake, &handshake_raw)?;
+            tshash.update(&handshake_raw);
         }
 
         // -- Server Certificate --
@@ -180,9 +228,10 @@ impl<'a> ServerHandshake<'a> {
             self.config.cert.get_certificate_for_handshake(),
         );
 
-        tshash.update(&handshake_raw);
-        tx_buf.append(&mut protect.encrypt_handshake(&handshake_raw)?);
         log::debug!("<-- Certificate");
+        self.stream
+            .write_record(RecordType::Handshake, &handshake_raw)?;
+        tshash.update(&handshake_raw);
 
         // -- Server Certificate Verify --
 
@@ -195,20 +244,21 @@ impl<'a> ServerHandshake<'a> {
             Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
 
         tshash.update(&handshake_raw);
-        self.stream.write_record(RecordType::Handshake, &handshake_raw);
-        // tx_buf.append(&mut protect.encrypt_handshake(&handshake_raw)?);
+        self.stream
+            .write_record(RecordType::Handshake, &handshake_raw)?;
         log::debug!("<-- CertificateVerify");
 
         // -- FINISHED --
         let handshake_raw = get_finished_handshake(
             server_hello.hash,
-            &protect.key_schedule.server_handshake_traffic_secret,
+            &self.stream.protection.as_ref().unwrap().key_schedule.server_handshake_traffic_secret,
             tshash.as_ref(),
         )?;
 
         tshash.update(&handshake_raw);
-        self.stream.write_record(RecordType::Handshake, &handshake_raw)?;
-        log::debug!("<-- Finished");
+        self.stream
+            .write_record(RecordType::Handshake, &handshake_raw)?;
+        log::debug!("<-- ServerFinished");
 
         self.state = if self.config.client_cert_ca.is_some() {
             ServerHsState::ClientCertificate
@@ -223,7 +273,7 @@ impl<'a> ServerHandshake<'a> {
     fn handle_handshake_encrypted_record(&mut self, record: Record) -> Result<(), TlsError> {
         log::debug!("==> Encrypted handshake record");
 
-        let protection = self.protection.as_mut().unwrap();
+        let protection = self.stream.protection.as_mut().unwrap();
 
         let record = protection.decrypt(record)?;
 
@@ -316,7 +366,6 @@ impl<'a> ServerHandshake<'a> {
                 }
 
                 self.client_cert = Some(cert);
-
                 self.state = ServerHsState::ClientCertificateVerify;
             }
             ServerHsState::ClientCertificateVerify => {
@@ -388,8 +437,8 @@ impl<'a> ServerHandshake<'a> {
                 self.state = ServerHsState::Finished;
             }
             ServerHsState::Finished | ServerHsState::FinishWithError(_) => {
-                log::debug!("--> Finished");
 
+                log::debug!("--> Finished");
                 let fraqment = handshake.fraqment.to_owned();
                 let verify_data = Some(get_verify_client_finished(
                     &protection.key_schedule.client_handshake_traffic_secret,
@@ -410,7 +459,8 @@ impl<'a> ServerHandshake<'a> {
                 protection.generate_application_keys(tshash.as_ref())?;
 
                 if let Some(k) = &self.key_log {
-                    k.append_from_record_payload_protection(self.protection.as_ref().unwrap());
+                    let protect = self.stream.protection.as_ref().unwrap();
+                    k.append_from_record_payload_protection(protect);
                 }
 
                 if let ServerHsState::FinishWithError(err) = self.state {
@@ -448,9 +498,7 @@ impl<'a> ServerHandshake<'a> {
                 if record.content_type != RecordType::Handshake {
                     return Err(TlsError::UnexpectedMessage);
                 }
-                let mut tx_buf = Vec::with_capacity(4096);
-                self.handle_client_hello(record, &mut tx_buf)?;
-                return Ok(Some(tx_buf));
+                self.handle_client_hello(record)?;
             }
             ServerHsState::ClientCertificate
             | ServerHsState::ClientCertificateVerify
@@ -463,33 +511,4 @@ impl<'a> ServerHandshake<'a> {
         Ok(None)
     }
 
-    fn do_handshake(&mut self) -> Result<(), TlsError> {
-        let mut rx_buf: [u8; 4096] = [0; 4096];
-
-        while self.state != ServerHsState::Ready {
-            let n = match self.stream.read(&mut rx_buf) {
-                Ok(n) => n,
-                Err(_) => return Err(TlsError::DecodeError),
-            };
-            let mut consumed_total = 0;
-
-            while consumed_total < n {
-                let (consumed, record) = Record::from_raw(&rx_buf[consumed_total..n])?;
-                consumed_total += consumed;
-
-                let tx_buf = self.handle_handshake_record(record)?;
-
-                // Send buffer
-                if tx_buf.is_some()
-                    && !tx_buf.as_ref().unwrap().is_empty()
-                    && self.stream.write_all(tx_buf.unwrap().as_slice()).is_err()
-                {
-                    return Err(TlsError::BrokenPipe);
-                }
-            }
-            rx_buf.fill(0);
-        }
-
-        Ok(())
-    }
 }

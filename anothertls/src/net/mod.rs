@@ -9,6 +9,7 @@ pub mod server {
     mod config;
     mod connection;
     mod server_hello;
+    pub(crate) use server_hello::ServerHello;
     pub use config::{ServerConfig, ServerConfigBuilder};
     pub use connection::ServerConnection;
 }

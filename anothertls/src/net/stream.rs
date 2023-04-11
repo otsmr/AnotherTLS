@@ -16,7 +16,7 @@ use std::{
 
 pub struct TlsStream {
     stream: TcpStream,
-    protection: Option<RecordPayloadProtection>,
+    pub protection: Option<RecordPayloadProtection>,
     buffer: Vec<u8>
 }
 
@@ -29,7 +29,9 @@ impl TlsStream {
         }
     }
 
-
+    /// The function write_record buffers the data before sending.
+    /// This is useful in the handshake process, where multiple
+    /// TLS records are send to the client.
     pub fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
 
         let record = Record::new(typ, Value::Ref(data));
@@ -41,7 +43,7 @@ impl TlsStream {
         }
 
         if self.buffer.len() > 1024 {
-            self.flush();
+            self.flush()?;
         }
 
         Ok(())
@@ -87,25 +89,34 @@ impl TlsStream {
         Ok(())
     }
 
+    pub fn read_raw<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
+        match self.stream.read(buf) {
+            Ok(n) => Ok(n),
+            Err(_) => Err(TlsError::BrokenPipe),
+        }
+    }
+
     pub fn read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
 
-        let n = match self.stream.read(&mut rx_buf) {
-            Ok(n) => n,
-            Err(_) => return Err(TlsError::BrokenPipe),
-        };
+        let n = self.read_raw(&mut rx_buf)?;
 
-        let (_consumed, record) = Record::from_raw(&rx_buf[..n])?;
+        let (_consumed, mut record) = Record::from_raw(&rx_buf[..n])?;
 
         if record.len != record.fraqment.len() {
-            return Err(TlsError::DecodeError);
+            todo!("Problem, when multiple TLS packages in one TCP package");
+            // return Err(TlsError::DecodeError);
         }
 
-        let record = self.protection.as_mut().unwrap().decrypt(record)?;
-
-        if record.content_type != RecordType::ApplicationData {
-            todo!();
+        if let Some(protection) = self.protection.as_mut() {
+            record = protection.decrypt(record)?;
+            if record.content_type != RecordType::ApplicationData {
+                todo!("Handle handshake messages");
+            }
+        } else if record.content_type != RecordType::Handshake {
+            return Err(TlsError::UnexpectedMessage);
         }
+
         if record.len > buf.len() {
             todo!("Handle records bigger than the buf.len()");
         }
