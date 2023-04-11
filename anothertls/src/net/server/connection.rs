@@ -3,9 +3,9 @@
  *
  */
 
-use crate::rand::URandomRng;
 use crate::net::server::ServerHello;
 use crate::net::TlsStream;
+use crate::rand::URandomRng;
 use crate::ServerConfig;
 use crate::{
     crypto::{ellipticcurve::Signature, CipherSuite},
@@ -116,24 +116,17 @@ impl<'a> ServerHandshake<'a> {
                 Err(_) => return Err(TlsError::DecodeError),
             };
             let mut consumed_total = 0;
-
             while consumed_total < n {
                 let (consumed, record) = Record::from_raw(&rx_buf[consumed_total..n])?;
                 consumed_total += consumed;
-
                 self.handle_handshake_record(record)?;
-                // Send buffer
-                self.stream.flush()?;
             }
-            rx_buf.fill(0);
+            // send server handshake records to the client
+            self.stream.flush()?;
         }
-
         Ok(())
     }
-    fn handle_client_hello(
-        &mut self,
-        record: Record,
-    ) -> Result<(), TlsError> {
+    fn handle_client_hello(&mut self, record: Record) -> Result<(), TlsError> {
         let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
 
         if handshake.handshake_type != HandshakeType::ClientHello {
@@ -159,14 +152,16 @@ impl<'a> ServerHandshake<'a> {
         // -- ServerHello --
         let handshake_raw = Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
         tshash.update(&handshake_raw);
-        self.stream.write_record(RecordType::Handshake, &handshake_raw)?;
+        self.stream
+            .write_record(RecordType::Handshake, &handshake_raw)?;
 
         // -- Change Cipher Spec --
         // Either side can send change_cipher_spec at any time during the handshake, as they
         // must be ignored by the peer, but if the client sends a non-empty session ID, the
         // server MUST send the change_cipher_spec as described in this appendix.
         if client_hello.legacy_session_id_echo.is_some() {
-            self.stream.write_record(RecordType::ChangeCipherSpec, &[0x01])?;
+            self.stream
+                .write_record(RecordType::ChangeCipherSpec, &[0x01])?;
         }
 
         // -- Handshake Keys Calc --
@@ -188,12 +183,6 @@ impl<'a> ServerHandshake<'a> {
         }
 
         self.stream.set_protection(protection);
-
-        // self.protection = RecordPayloadProtection::new(key_schedule);
-        // let protect = match self.protection.as_mut() {
-        //     Some(a) => a,
-        //     None => return Err(TlsError::InternalError),
-        // };
 
         // -- EncryptedExtensions --
         let encrypted_extensions_raw = ServerExtensions::new().to_raw();
@@ -234,7 +223,6 @@ impl<'a> ServerHandshake<'a> {
         tshash.update(&handshake_raw);
 
         // -- Server Certificate Verify --
-
         let certificate_verify_raw = self
             .config
             .cert
@@ -251,7 +239,13 @@ impl<'a> ServerHandshake<'a> {
         // -- FINISHED --
         let handshake_raw = get_finished_handshake(
             server_hello.hash,
-            &self.stream.protection.as_ref().unwrap().key_schedule.server_handshake_traffic_secret,
+            &self
+                .stream
+                .protection
+                .as_ref()
+                .unwrap()
+                .key_schedule
+                .server_handshake_traffic_secret,
             tshash.as_ref(),
         )?;
 
@@ -437,7 +431,6 @@ impl<'a> ServerHandshake<'a> {
                 self.state = ServerHsState::Finished;
             }
             ServerHsState::Finished | ServerHsState::FinishWithError(_) => {
-
                 log::debug!("--> Finished");
                 let fraqment = handshake.fraqment.to_owned();
                 let verify_data = Some(get_verify_client_finished(
@@ -510,5 +503,4 @@ impl<'a> ServerHandshake<'a> {
         }
         Ok(None)
     }
-
 }

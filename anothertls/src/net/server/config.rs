@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
  *
@@ -103,6 +102,9 @@ impl ServerConfigBuilder {
         }
         if self.privkey.is_none() {
             return Err("No privkey for cert provided".to_string());
+        }
+        if self.client_cert_custom_verify_fn.is_some() && self.client_cert_ca.is_none() {
+            return Err("No client certificate CA found. Custom verify fn useless.".to_string());
         }
         Ok(ServerConfig {
             client_cert_ca: self.client_cert_ca,

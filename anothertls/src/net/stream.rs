@@ -25,7 +25,7 @@ impl TlsStream {
         Self {
             stream,
             protection: None,
-            buffer: Vec::with_capacity(1024)
+            buffer: Vec::with_capacity(2048)
         }
     }
 
@@ -42,7 +42,8 @@ impl TlsStream {
             self.buffer.append(&mut record.as_bytes());
         }
 
-        if self.buffer.len() > 1024 {
+        // TODO: Find a smart value
+        if self.buffer.len() >= 2048 {
             self.flush()?;
         }
 
