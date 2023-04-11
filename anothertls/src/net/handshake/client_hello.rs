@@ -19,6 +19,7 @@ pub(crate) struct ClientHello<'a> {
     pub legacy_session_id_echo: Option<&'a [u8]>,
     pub extensions: Vec<ClientExtension>,
 }
+
 impl<'a> ClientHello<'a> {
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
         if buf.len() < 100 {

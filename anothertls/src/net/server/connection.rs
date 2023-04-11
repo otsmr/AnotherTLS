@@ -68,7 +68,7 @@ enum ServerHsState {
     Ready,
 }
 
-pub struct ServerHandshake<'a> {
+struct ServerHandshake<'a> {
     stream: &'a mut TlsStream,
     config: &'a ServerConfig,
     state: ServerHsState,

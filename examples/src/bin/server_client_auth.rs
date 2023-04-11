@@ -28,14 +28,14 @@ fn main() {
     let tcp = TcpListener::bind("127.0.0.1:4000").expect("Error binding to tcp socket.");
     let listener = ServerConnection::new(tcp, config);
 
-    let (mut socket, _) = listener.accept().expect("Couldn't get client");
+    let (mut sock, _) = listener.accept().expect("Couldn't get client");
 
 
     println!("New secure connection");
 
     let mut buf: [u8; 4096] = [0; 4096];
 
-    let n = socket.read(&mut buf).expect("Error reading from socket.");
+    let n = sock.read(&mut buf).expect("Error reading from socket.");
     println!(
         "--- Request --- \n{}\n---------------",
         String::from_utf8(buf[..n - 4].to_vec()).unwrap()
@@ -48,7 +48,7 @@ Content-Type: text/html; charset=utf-8\r\n\
 Content-Length: {}\r\n\
 \r\n\
 {}", body.len(), body);
-    socket
+    sock
         .write_all(data.as_bytes())
         .expect("Error writing to socket.");
 }

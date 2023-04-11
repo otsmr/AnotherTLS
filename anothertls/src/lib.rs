@@ -40,4 +40,9 @@ pub(crate) mod hash;
 pub use net::server::ServerConfig;
 pub use net::server::ServerConfigBuilder;
 pub use net::server::ServerConnection;
+
+pub use net::client::ClientConfig;
+pub use net::client::ClientConfigBuilder;
+pub use net::client::ClientConnection;
+
 pub use net::TlsStream;

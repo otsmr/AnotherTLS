@@ -14,6 +14,13 @@ pub mod server {
     pub use connection::ServerConnection;
 }
 
+pub mod client {
+    mod connection;
+    mod config;
+    pub use config::{ClientConfig, ClientConfigBuilder};
+    pub use connection::ClientConnection;
+}
+
 pub use stream::TlsStream;
 
 pub(crate) mod alert;
