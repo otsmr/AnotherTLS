@@ -12,10 +12,11 @@ use crate::{
     hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
     net::{
         alert::TlsError,
+        client::ClientHello,
         extensions::{shared::SignatureScheme, ServerExtensions},
         handshake::{
-            get_finished_handshake, get_verify_client_finished, Certificate, ClientHello,
-            Handshake, HandshakeType,
+            get_finished_handshake, get_verify_client_finished, Certificate, Handshake,
+            HandshakeType,
         },
         key_schedule::KeySchedule,
         record::{Record, RecordPayloadProtection, RecordType},
@@ -72,7 +73,7 @@ struct ServerHandshake<'a> {
     stream: &'a mut TlsStream,
     config: &'a ServerConfig,
     state: ServerHsState,
-    key_log: Option<KeyLog>,
+    keylog: Option<KeyLog>,
     client_cert: Option<Certificate>,
     certificate_request_context: Option<Vec<u8>>,
     rng: Box<dyn RngCore<IBig>>,
@@ -86,7 +87,7 @@ impl<'a> ServerHandshake<'a> {
             stream,
             config,
             state: ServerHsState::ClientHello,
-            key_log: None,
+            keylog: None,
             client_cert: None,
             certificate_request_context: None,
             rng: Box::new(URandomRng::new()),
@@ -211,12 +212,12 @@ impl<'a> ServerHandshake<'a> {
         if let Some(filepath) = &self.config.keylog {
             if protection.is_some() {
                 let protection = protection.as_ref().unwrap();
-                let key_log = KeyLog::new(filepath.to_owned(), client_hello.random);
-                key_log.append_handshake_traffic_secrets(
+                let keylog = KeyLog::new(filepath.to_owned(), client_hello.random);
+                keylog.append_handshake_traffic_secrets(
                     &protection.handshake_keys.server.traffic_secret,
                     &protection.handshake_keys.client.traffic_secret,
                 );
-                self.key_log = Some(key_log);
+                self.keylog = Some(keylog);
             }
         }
 
@@ -359,7 +360,7 @@ impl<'a> ServerHandshake<'a> {
 
         protection.generate_application_keys(tshash.as_ref())?;
 
-        if let Some(k) = &self.key_log {
+        if let Some(k) = &self.keylog {
             let protect = self.stream.protection.as_ref().unwrap();
             k.append_from_record_payload_protection(protect);
         }

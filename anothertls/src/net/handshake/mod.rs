@@ -3,11 +3,9 @@
  *
  */
 
-mod client_hello;
 mod certificate;
 mod finished;
 
-pub(crate) use client_hello::ClientHello;
 pub(crate) use certificate::Certificate;
 pub(crate) use finished::get_finished_handshake;
 pub(crate) use finished::get_verify_client_finished;

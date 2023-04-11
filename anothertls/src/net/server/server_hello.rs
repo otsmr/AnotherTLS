@@ -21,7 +21,7 @@ use crate::{
             shared::KeyShare, shared::{KeyShareEntry, SignatureScheme}, server::ServerExtension, ClientExtension,
             ServerExtensions, SupportedVersions,
         },
-        handshake::ClientHello,
+        client::ClientHello,
         extensions::NamedGroup,
     },
     utils::bytes::{self, ByteOrder},

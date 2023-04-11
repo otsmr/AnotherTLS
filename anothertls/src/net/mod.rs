@@ -17,6 +17,8 @@ pub mod server {
 pub mod client {
     mod connection;
     mod config;
+    mod client_hello;
+    pub(crate) use client_hello::ClientHello;
     pub use config::{ClientConfig, ClientConfigBuilder};
     pub use connection::ClientConnection;
 }

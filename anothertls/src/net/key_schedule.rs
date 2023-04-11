@@ -13,7 +13,7 @@ use crate::{
 };
 use ibig::ibig;
 
-use super::handshake::ClientHello;
+use super::client::ClientHello;
 use std::result::Result;
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
