@@ -189,7 +189,8 @@ impl RecordPayloadProtection {
         Ok(tls_cipher_text)
     }
 
-    pub fn decrypt(&mut self, record: Record) -> Result<Record, TlsError> {
+    /// Returns Vec instead of a Record because of the borrow checker <3
+    pub fn decrypt(&mut self, record: Record) -> Result<(RecordType, Vec<u8>), TlsError> {
         let keys = if self.application_keys.is_some() {
             self.application_keys.as_mut().unwrap()
         } else {
@@ -223,6 +224,6 @@ impl RecordPayloadProtection {
             }
         }
 
-        Ok(Record::new(content_type, Value::Owned(plaintext[..record_len].to_vec())))
+        Ok((content_type, plaintext[..record_len].to_vec()))
     }
 }

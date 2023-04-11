@@ -110,7 +110,8 @@ impl TlsStream {
         }
 
         if let Some(protection) = self.protection.as_mut() {
-            record = protection.decrypt(record)?;
+            let (typ, data) = protection.decrypt(record)?;
+            record = Record::new(typ, Value::Owned(data));
             if record.content_type != RecordType::ApplicationData {
                 todo!("Handle handshake messages");
             }
