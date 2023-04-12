@@ -14,6 +14,40 @@ pub trait Extension {
     fn as_bytes(&self) -> Vec<u8>;
 }
 
+pub trait ExtensionWrapper {
+    #[allow(clippy::redundant_allocation)]
+    // FIXME: How to avoid Box<&dyn> ?
+    fn get_extension(&self) -> Box<&dyn Extension>;
+}
+
+pub(crate) struct Extensions<T: ExtensionWrapper>(Vec<T>);
+
+impl<T: ExtensionWrapper> Extensions<T> {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+    pub fn as_vec(&self) -> &Vec<T> {
+        &self.0
+    }
+    pub fn push(&mut self, ext: T) {
+        self.0.push(ext)
+    }
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut out = vec![0x00, 0x00];
+        if self.0.is_empty() {
+            return out; // Length of the extension list (0 bytes)
+        }
+        for ext in self.0.iter() {
+            out.extend_from_slice(&ext.get_extension().as_bytes());
+        }
+        let extension_len = out.len() - 2;
+        out[0] = (extension_len >> 8) as u8;
+        out[1] = extension_len as u8;
+        out
+    }
+}
+
+
 #[derive(PartialEq, Debug)]
 pub enum ExtensionType {
     ServerName = 0x00,
@@ -95,6 +129,10 @@ impl SignatureAlgorithms {
     pub fn new(scheme: SignatureScheme) -> Self {
         Self(vec![scheme])
     }
+    pub fn supported() -> Self {
+        // TODO: extend supported signature scheme
+        Self(vec![SignatureScheme::ecdsa_secp256r1_sha256])
+    }
     // pub fn push(&mut self, scheme: SignatureScheme) {
     //     self.0.push(scheme)
     // }
@@ -136,7 +174,7 @@ impl Extension for SignatureAlgorithms {
 #[derive(Debug)]
 pub(crate) struct SupportedVersions(bool);
 impl SupportedVersions {
-    pub(crate) fn tls13_is_supported(&self) -> bool {
+    pub(crate) fn is_tls13_supported(&self) -> bool {
         self.0
     }
     pub(crate) fn new(tls13: bool) -> SupportedVersions {

@@ -8,7 +8,7 @@ use crate::{
     crypto::CipherSuite,
     net::{
         alert::TlsError,
-        extensions::{self, shared::KeyShareEntry, ClientExtension},
+        extensions::{self, shared::KeyShareEntry, ClientExtension, ClientExtensions},
     },
     utils::log,
 };
@@ -18,7 +18,7 @@ pub(crate) struct ClientHello<'a> {
     pub random: &'a [u8],
     pub cipher_suites: Vec<CipherSuite>,
     pub legacy_session_id_echo: Option<&'a [u8]>,
-    pub extensions: Vec<ClientExtension>,
+    pub extensions: ClientExtensions,
 }
 
 impl<'a> ClientHello<'a> {
@@ -27,11 +27,37 @@ impl<'a> ClientHello<'a> {
             random,
             cipher_suites: vec![CipherSuite::TLS_AES_256_GCM_SHA384, CipherSuite::TLS_AES_128_GCM_SHA256],
             legacy_session_id_echo: None,
-            extensions: vec![],
+            extensions: ClientExtensions::new(),
         })
     }
     pub fn as_bytes(&self) -> Result<Vec<u8>, TlsError> {
-        Ok(vec![])
+        let mut out = vec![0x3, 0x3]; // ClientVersion
+                                      //
+        out.extend_from_slice(self.random);
+
+        if let Some(session_id) = self.legacy_session_id_echo {
+            out.push(session_id.len() as u8);
+            out.extend_from_slice(session_id);
+        } else {
+            out.push(0x00);
+        }
+
+        // CipherSuites
+        out.push((self.cipher_suites.len() * 2) as u8); // len
+        for cipher_suite in self.cipher_suites.iter() {
+            let num = cipher_suite.as_u16();
+            out.push((num >> 8) as u8);
+            out.push(num as u8);
+        }
+
+        // Compression Methodes
+        out.push(0x01);
+        out.push(0x00);
+
+        // ClientExtensions
+        out.extend_from_slice(&self.extensions.as_bytes());
+
+        Ok(out)
     }
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
         if buf.len() < 100 {
@@ -92,7 +118,7 @@ impl<'a> ClientHello<'a> {
     }
 
     pub fn get_public_key_share(&self) -> Option<&KeyShareEntry> {
-        for ext in self.extensions.iter() {
+        for ext in self.extensions.as_vec().iter() {
             if let ClientExtension::KeyShare(key_share) = ext {
                 if !key_share.0.is_empty() {
                     return Some(&key_share.0[0]);

@@ -3,7 +3,9 @@
  *
  */
 
-use super::shared::{Extension, KeyShare, SignatureAlgorithms, SupportedVersions};
+use crate::net::extensions::shared::Extensions;
+// use crate::utils::x509::Extensions;
+use super::shared::{Extension, KeyShare, SignatureAlgorithms, SupportedVersions, ExtensionWrapper};
 
 pub(crate) enum ServerExtension {
     SupportedVersion(SupportedVersions),
@@ -11,32 +13,14 @@ pub(crate) enum ServerExtension {
     SignatureAlgorithms(SignatureAlgorithms),
 }
 
-pub(crate) struct ServerExtensions(Vec<ServerExtension>);
-
-impl ServerExtensions {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
-    pub fn push(&mut self, ext: ServerExtension) {
-        self.0.push(ext)
-    }
-
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut out = vec![0x00, 0x00];
-        if self.0.is_empty() {
-            return out; // Length of the extension list (0 bytes)
+impl ExtensionWrapper for ServerExtension {
+    fn get_extension(&self) -> Box<&dyn Extension> {
+        match self {
+            ServerExtension::SupportedVersion(sv) => Box::new(sv),
+            ServerExtension::KeyShare(ks) => Box::new(ks),
+            ServerExtension::SignatureAlgorithms(sa) => Box::new(sa)
         }
-        for ext in self.0.iter() {
-            match ext {
-                ServerExtension::SupportedVersion(sv) => out.extend(sv.as_bytes()),
-                ServerExtension::KeyShare(ks) => out.extend(ks.as_bytes()),
-                ServerExtension::SignatureAlgorithms(sa) => out.extend(sa.as_bytes()),
-            }
-        }
-        let extension_len = out.len() - 2;
-        out[0] = (extension_len >> 8) as u8;
-        out[1] = extension_len as u8;
-        out
     }
 }
+
+pub(crate) type ServerExtensions = Extensions<ServerExtension>;

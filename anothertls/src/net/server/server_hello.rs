@@ -55,10 +55,10 @@ impl<'a> ServerHello<'a> {
             random[(32 - 8) + i] = *b;
         }
 
-        for ext in client_hello.extensions.iter() {
+        for ext in client_hello.extensions.as_vec().iter() {
             match ext {
                 ClientExtension::SupportedVersion(version) => {
-                    if !version.tls13_is_supported() {
+                    if !version.is_tls13_supported() {
                         return Err(TlsError::InsufficientSecurity);
                     }
                 }
@@ -159,7 +159,7 @@ impl<'a> ServerHello<'a> {
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut out = vec![0x3, 0x3];
+        let mut out = vec![0x3, 0x3]; // Server Version
         out.extend_from_slice(&self.random);
 
         if let Some(session_id) = self.legacy_session_id_echo {

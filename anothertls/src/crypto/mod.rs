@@ -27,4 +27,13 @@ impl CipherSuite {
             _ => return Err(TlsError::InsufficientSecurity),
         })
     }
+    pub fn as_u16(&self) -> u16 {
+        match self {
+            CipherSuite::TLS_AES_256_GCM_SHA384 => 0x1302,
+            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => 0x1303,
+            CipherSuite::TLS_AES_128_GCM_SHA256 => 0x1301,
+            CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => 0x00ff,
+            _ => 0x0000,
+        }
+    }
 }
