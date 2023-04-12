@@ -61,11 +61,9 @@ impl ClientExtension {
                 ), // ExtensionType::SupportedGroups => continue, // TODO
                    // ExtensionType::PSKKeyExchangeMode => continue, // TODO
             };
-
             consumed += size;
             extensions.push(extension);
         }
-
         Ok(extensions)
     }
 }

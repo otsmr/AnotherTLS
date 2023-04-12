@@ -38,8 +38,23 @@ pub(crate) struct ServerHello<'a> {
 
 impl<'a> ServerHello<'a> {
 
-    pub fn from_raw(buf: &[u8]) -> ServerHello {
-        todo!("Parse ServerHello!");
+    pub fn from_raw(buf: &[u8]) -> Result<ServerHello, TlsError> {
+        let mut consumed = 0;
+
+
+        let extensions = ServerExtensions::from_server_hello(&buf[consumed..])?;
+
+        todo!("Parse ServerHello");
+
+        Ok(ServerHello {
+            random,
+            legacy_session_id_echo: None,
+            cipher_suite,
+            hash,
+            private_key: None,
+            extensions
+        };
+
     }
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
@@ -119,7 +134,7 @@ impl<'a> ServerHello<'a> {
             return Err(TlsError::InsufficientSecurity);
         }
 
-        extensions.push(ServerExtension::SupportedVersion(SupportedVersions::new(
+        extensions.push(ServerExtension::SupportedVersions(SupportedVersions::new(
             true,
         )));
 
