@@ -4,48 +4,11 @@
  */
 
 use crate::net::alert::TlsError;
-use crate::net::extensions::shared::{Extension, ExtensionWrapper, Extensions, KeyShare};
-use crate::net::extensions::{ExtensionType, SupportedVersions};
+use crate::net::extensions::{
+    Extension, ExtensionType, ExtensionWrapper, Extensions, KeyShare, ServerName,
+    SignatureAlgorithms, SupportedVersions,
+};
 use crate::utils::bytes;
-
-use super::shared::SignatureAlgorithms;
-
-#[derive(Debug)]
-pub struct ServerName(String);
-impl ServerName {
-    pub fn get(&self) -> &str {
-        &self.0
-    }
-}
-impl Extension for ServerName {
-    fn parse(buf: &[u8]) -> Result<Self, TlsError>
-    where
-        Self: Sized,
-    {
-        let server_name_list_len = bytes::to_u16(buf);
-        let mut consumed = 2;
-        let mut server_name = String::new();
-        if server_name_list_len > 0 {
-            let name_type = buf[consumed];
-            consumed += 1;
-            if name_type != 0 {
-                return Err(TlsError::DecodeError);
-            }
-            let server_name_len = bytes::to_u16(&buf[consumed..]) as usize;
-            consumed += 2;
-            server_name =
-                match String::from_utf8(buf[consumed..server_name_len + consumed].to_vec()) {
-                    Ok(a) => a,
-                    Err(_) => return Err(TlsError::DecodeError),
-                };
-        }
-        Ok(ServerName(server_name))
-    }
-
-    fn as_bytes(&self) -> Vec<u8> {
-        self.get().as_bytes().to_vec()
-    }
-}
 
 pub(crate) type ClientExtensions = Extensions<ClientExtension>;
 

@@ -11,7 +11,7 @@ fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
     let config = ServerConfigBuilder::new()
-        // .enable_keylog()
+        .enable_keylog()
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())
         .add_privkey_pem("./examples/src/bin/config/server.key".to_string())
         .build()
@@ -21,17 +21,31 @@ fn main() {
     let listener = ServerConnection::new(tcp, config);
 
     loop {
-        let (mut sock, _) = listener.accept().expect("Couldn't get client");
+        let (mut sock, _) = match listener.accept() {
+            Ok(a) => a,
+            Err(e) => {
+                println!("Couldn't get client: {:?}", e);
+                continue;
+            }
+        };
 
         println!("New secure connection");
 
         let mut buf: [u8; 4096] = [0; 4096];
 
-        let n = sock.tls_read(&mut buf).expect("Error reading from socket.");
+        let n = match sock.tls_read(&mut buf) {
+            Ok(a) => a,
+            Err(e) => {
+                println!("Error while reading: {:?}", e);
+                continue;
+            }
+        };
+
         println!(
             "--- Request --- \n{}\n---------------",
             String::from_utf8(buf[..n - 4].to_vec()).unwrap()
         );
+
         let data = b"\
 HTTP/1.1 200\r\n\
 Server: AnotherTls/1.0\r\n\
@@ -39,6 +53,9 @@ Content-Type: text/html; charset=utf-8\r\n\
 Content-Length: 12\r\n\
 \r\n\
 Hello world!";
-        sock.tls_write(data).expect("Error writing to socket.");
+
+        if let Err(e) = sock.tls_write(data) {
+            println!("Error writing: {:?}", e);
+        }
     }
 }

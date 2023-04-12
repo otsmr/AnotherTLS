@@ -13,7 +13,7 @@ use crate::{
     net::{
         alert::TlsError,
         client::ClientHello,
-        extensions::{shared::SignatureScheme, ServerExtensions},
+        extensions::{SignatureScheme, ServerExtensions},
         handshake::{
             get_finished_handshake, get_verify_client_finished, Certificate, Handshake,
             HandshakeType,
@@ -159,7 +159,6 @@ impl<'a> ServerHandshake<'a> {
                 ServerHsState::Ready => {}
             },
         }
-
         Ok(())
     }
     fn handle_client_hello(&mut self, record: Record) -> Result<(), TlsError> {

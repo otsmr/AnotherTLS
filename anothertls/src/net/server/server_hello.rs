@@ -18,7 +18,7 @@ use crate::{
     net::{
         alert::TlsError,
         extensions::{
-            shared::KeyShare, shared::{KeyShareEntry, SignatureScheme}, server::ServerExtension, ClientExtension,
+            KeyShare, KeyShareEntry, SignatureScheme, server::ServerExtension, ClientExtension,
             ServerExtensions, SupportedVersions,
         },
         client::ClientHello,
@@ -37,6 +37,10 @@ pub(crate) struct ServerHello<'a> {
 }
 
 impl<'a> ServerHello<'a> {
+
+    pub fn from_raw(buf: &[u8]) -> ServerHello {
+        todo!("Parse ServerHello!");
+    }
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
         rng: &mut dyn RngCore<IBig>,
@@ -111,7 +115,8 @@ impl<'a> ServerHello<'a> {
         }
 
         if named_group.is_none() {
-            todo!("No supported group -> Hello Retry Request");
+            log::error!("No supported group -> Hello Retry Request");
+            return Err(TlsError::InsufficientSecurity);
         }
 
         extensions.push(ServerExtension::SupportedVersion(SupportedVersions::new(

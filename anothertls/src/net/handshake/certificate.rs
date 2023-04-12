@@ -9,9 +9,7 @@ use crate::{
     net::{
         alert::TlsError,
         extensions::{
-            server::ServerExtension,
-            shared::{SignatureAlgorithms, SignatureScheme},
-            ServerExtensions,
+            ServerExtension, ServerExtensions, SignatureAlgorithms, SignatureScheme,
         },
     },
     utils::{log, pem::get_pem_content_from_file, x509::X509},

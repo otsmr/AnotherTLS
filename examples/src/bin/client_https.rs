@@ -9,12 +9,16 @@ use std::net::TcpStream;
 fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
+
+    let server_name = "localhost".to_string();
+
     let config = ClientConfigBuilder::new()
+        .set_server_name(server_name.clone())
         .enable_keylog()
         .build()
         .unwrap();
 
-    let tcp = TcpStream::connect("google.de:443").expect("Error binding to tcp socket.");
+    let tcp = TcpStream::connect(server_name + ":4000").expect("Error binding to tcp socket.");
     let mut sock = ClientConnection::connect(tcp, &config).expect("Couldn't connect to server.");
 
     println!("New secure connection");

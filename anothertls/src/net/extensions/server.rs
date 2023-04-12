@@ -3,9 +3,8 @@
  *
  */
 
-use crate::net::extensions::shared::Extensions;
 // use crate::utils::x509::Extensions;
-use super::shared::{Extension, KeyShare, SignatureAlgorithms, SupportedVersions, ExtensionWrapper};
+use crate::net::extensions::{KeyShare, SupportedVersions, SignatureAlgorithms, Extension, Extensions,ExtensionWrapper};
 
 pub(crate) enum ServerExtension {
     SupportedVersion(SupportedVersions),

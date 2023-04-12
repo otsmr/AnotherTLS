@@ -59,9 +59,9 @@ impl<'a> Handshake<'a> {
         }
         let handshake_type = match HandshakeType::new(buf[0]) {
             Some(a) => a,
-            None => return Err(TlsError::DecodeError)
-
+            None => return Err(TlsError::DecodeError),
         };
+
         let len = ((buf[1] as u32) << 16) | ((buf[2] as u32) << 8) | buf[3] as u32;
         Ok(Handshake {
             handshake_type,

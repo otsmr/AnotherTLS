@@ -8,7 +8,7 @@ use crate::{
     crypto::CipherSuite,
     net::{
         alert::TlsError,
-        extensions::{self, shared::KeyShareEntry, ClientExtension, ClientExtensions},
+        extensions::{KeyShareEntry, ClientExtension, ClientExtensions},
     },
     utils::log,
 };
@@ -23,11 +23,16 @@ pub(crate) struct ClientHello<'a> {
 
 impl<'a> ClientHello<'a> {
     pub fn new(random: &'a [u8]) -> Result<ClientHello, TlsError> {
+        let mut extensions = ClientExtensions::new();
+        extensions.set_is_client();
         Ok(ClientHello {
             random,
-            cipher_suites: vec![CipherSuite::TLS_AES_256_GCM_SHA384, CipherSuite::TLS_AES_128_GCM_SHA256],
+            cipher_suites: vec![
+                CipherSuite::TLS_AES_256_GCM_SHA384,
+                CipherSuite::TLS_AES_128_GCM_SHA256,
+            ],
             legacy_session_id_echo: None,
-            extensions: ClientExtensions::new(),
+            extensions
         })
     }
     pub fn as_bytes(&self) -> Result<Vec<u8>, TlsError> {
@@ -43,7 +48,9 @@ impl<'a> ClientHello<'a> {
         }
 
         // CipherSuites
-        out.push((self.cipher_suites.len() * 2) as u8); // len
+        let len = self.cipher_suites.len() * 2;
+        out.push((len >> 8) as u8); // len
+        out.push(len as u8); // len
         for cipher_suite in self.cipher_suites.iter() {
             let num = cipher_suite.as_u16();
             out.push((num >> 8) as u8);
@@ -60,8 +67,9 @@ impl<'a> ClientHello<'a> {
         Ok(out)
     }
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
-        if buf.len() < 100 {
+        if buf.len() < 45 {
             // FIXME: make this dynamic -> extensions_len...
+            // 45 -> minimum handshake size (without session id, and extensions)
             return Err(TlsError::IllegalParameter);
         }
 
@@ -105,7 +113,7 @@ impl<'a> ClientHello<'a> {
         let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
         consumed += 2;
 
-        let extensions = extensions::ClientExtension::from_client_hello(
+        let extensions = ClientExtension::from_client_hello(
             &buf[consumed..(consumed + extensions_len)],
         )?;
 
