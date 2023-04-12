@@ -4,7 +4,7 @@
  */
 
 // #![cfg(feature = "debug")]
-use anothertls::{ServerConnection, ServerConfigBuilder};
+use anothertls::{ServerConfigBuilder, ServerConnection};
 use std::net::TcpListener;
 
 fn main() {
@@ -20,26 +20,25 @@ fn main() {
     let tcp = TcpListener::bind("127.0.0.1:4000").expect("Error binding to tcp socket.");
     let listener = ServerConnection::new(tcp, config);
 
-    let (mut sock, _) = listener.accept().expect("Couldn't get client");
+    loop {
+        let (mut sock, _) = listener.accept().expect("Couldn't get client");
 
-    println!("New secure connection");
+        println!("New secure connection");
 
-    let mut buf: [u8; 4096] = [0; 4096];
+        let mut buf: [u8; 4096] = [0; 4096];
 
-    let n = sock.read(&mut buf).expect("Error reading from socket.");
-    println!(
-        "--- Request --- \n{}\n---------------",
-        String::from_utf8(buf[..n - 4].to_vec()).unwrap()
-    );
-    let data = b"\
+        let n = sock.tls_read(&mut buf).expect("Error reading from socket.");
+        println!(
+            "--- Request --- \n{}\n---------------",
+            String::from_utf8(buf[..n - 4].to_vec()).unwrap()
+        );
+        let data = b"\
 HTTP/1.1 200\r\n\
 Server: AnotherTls/1.0\r\n\
 Content-Type: text/html; charset=utf-8\r\n\
 Content-Length: 12\r\n\
 \r\n\
 Hello world!";
-    sock
-        .write_all(data)
-        .expect("Error writing to socket.");
+        sock.tls_write(data).expect("Error writing to socket.");
+    }
 }
-

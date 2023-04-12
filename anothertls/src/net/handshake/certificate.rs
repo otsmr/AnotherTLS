@@ -59,7 +59,7 @@ impl Certificate {
         extensions.push(ServerExtension::SignatureAlgorithms(algs));
         let mut out = vec![random.len() as u8];
         out.extend_from_slice(random);
-        out.extend(extensions.to_raw());
+        out.extend(extensions.as_bytes());
         out
     }
 

@@ -24,7 +24,7 @@ pub fn get_finished_handshake(
     let mut verify_data = Hmac::new(hash, &finished_key);
     verify_data.update(&finished_hash);
 
-    Ok(Handshake::to_raw(
+    Ok(Handshake::as_bytes(
         super::HandshakeType::Finished,
         verify_data.result(),
     ))

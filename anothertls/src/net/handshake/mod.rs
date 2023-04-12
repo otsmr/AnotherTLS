@@ -69,7 +69,7 @@ impl<'a> Handshake<'a> {
             fraqment: &buf[4..],
         })
     }
-    pub fn to_raw(typ: HandshakeType, mut data: Vec<u8>) -> Vec<u8> {
+    pub fn as_bytes(typ: HandshakeType, mut data: Vec<u8>) -> Vec<u8> {
         let len = data.len();
         let mut t = vec![typ as u8, (len >> 16) as u8, (len >> 8) as u8, len as u8];
         t.append(&mut data);

@@ -11,7 +11,7 @@ pub trait Extension {
     fn parse(buf: &[u8]) -> Result<Self, TlsError>
     where
         Self: Sized;
-    fn to_raw(&self) -> Vec<u8>;
+    fn as_bytes(&self) -> Vec<u8>;
 }
 
 #[derive(PartialEq, Debug)]
@@ -120,7 +120,7 @@ impl Extension for SignatureAlgorithms {
         }
         Ok(SignatureAlgorithms(out))
     }
-    fn to_raw(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         let len = self.0.len() * 2;
         let mut out = vec![0x00, ExtensionType::SignatureAlgorithms as u8, (len >> 8) as u8, len as u8 +2, (len >> 8) as u8, len as u8];
         for scheme in self.0.iter() {
@@ -155,7 +155,7 @@ impl Extension for SupportedVersions {
         }
         Ok(SupportedVersions::new(false))
     }
-    fn to_raw(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         vec![0x00, 0x2b, 0x00, 0x02, 0x03, 0x04]
     }
 }
@@ -184,7 +184,7 @@ impl KeyShareEntry {
             },
         ))
     }
-    fn to_raw(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         let mut out = vec![];
         match self.group {
             NamedGroup::X25519 => {
@@ -224,11 +224,11 @@ impl Extension for KeyShare {
         }
         Ok(KeyShare(entries))
     }
-    fn to_raw(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         let mut out = vec![0x00, 0x33, 0, 0];
         let mut total_len = 0;
         for ext in self.0.iter() {
-            let mut raw = ext.to_raw();
+            let mut raw = ext.as_bytes();
             total_len += raw.len();
             out.append(&mut raw);
         }

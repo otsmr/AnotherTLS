@@ -35,7 +35,7 @@ fn main() {
 
     let mut buf: [u8; 4096] = [0; 4096];
 
-    let n = sock.read(&mut buf).expect("Error reading from socket.");
+    let n = sock.tls_read(&mut buf).expect("Error reading from socket.");
     println!(
         "--- Request --- \n{}\n---------------",
         String::from_utf8(buf[..n - 4].to_vec()).unwrap()
@@ -49,6 +49,6 @@ Content-Length: {}\r\n\
 \r\n\
 {}", body.len(), body);
     sock
-        .write_all(data.as_bytes())
+        .tls_write(data.as_bytes())
         .expect("Error writing to socket.");
 }

@@ -158,7 +158,7 @@ impl<'a> ServerHello<'a> {
         })
     }
 
-    pub fn to_raw(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut out = vec![0x3, 0x3];
         out.extend_from_slice(&self.random);
 
@@ -175,7 +175,7 @@ impl<'a> ServerHello<'a> {
 
         out.push(00); // Compression Method
 
-        let server_extensions_raw = self.extensions.to_raw();
+        let server_extensions_raw = self.extensions.as_bytes();
         out.extend(server_extensions_raw);
 
         out

@@ -112,10 +112,7 @@ impl<'a> ServerHandshake<'a> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
 
         while self.state != ServerHsState::Ready {
-            let n = match self.stream.read_raw(&mut rx_buf) {
-                Ok(n) => n,
-                Err(_) => return Err(TlsError::DecodeError),
-            };
+            let n = self.stream.tcp_read(&mut rx_buf)?;
             let mut consumed_total = 0;
             while consumed_total < n {
                 let (consumed, record) = Record::from_raw(&rx_buf[consumed_total..n])?;
@@ -189,7 +186,7 @@ impl<'a> ServerHandshake<'a> {
         tshash.update(record.fraqment.as_ref());
 
         // -- ServerHello --
-        let handshake_raw = Handshake::to_raw(HandshakeType::ServerHello, server_hello.to_raw());
+        let handshake_raw = Handshake::as_bytes(HandshakeType::ServerHello, server_hello.as_bytes());
         tshash.update(&handshake_raw);
         self.stream
             .write_record(RecordType::Handshake, &handshake_raw)?;
@@ -224,9 +221,9 @@ impl<'a> ServerHandshake<'a> {
         self.stream.set_protection(protection);
 
         // -- EncryptedExtensions --
-        let encrypted_extensions_raw = ServerExtensions::new().to_raw();
+        let encrypted_extensions_raw = ServerExtensions::new().as_bytes();
         let handshake_raw =
-            Handshake::to_raw(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
+            Handshake::as_bytes(HandshakeType::EncryptedExtensions, encrypted_extensions_raw);
 
         log::debug!("<-- EncryptedExtensions");
         self.stream
@@ -242,7 +239,7 @@ impl<'a> ServerHandshake<'a> {
                 .get_certificate_request(self.certificate_request_context.as_ref().unwrap());
 
             let handshake_raw =
-                Handshake::to_raw(HandshakeType::CertificateRequest, certificate_request);
+                Handshake::as_bytes(HandshakeType::CertificateRequest, certificate_request);
 
             log::debug!("<-- CertificateRequest");
             self.stream
@@ -251,7 +248,7 @@ impl<'a> ServerHandshake<'a> {
         }
 
         // -- Server Certificate --
-        let handshake_raw = Handshake::to_raw(
+        let handshake_raw = Handshake::as_bytes(
             HandshakeType::Certificate,
             self.config.cert.get_certificate_for_handshake(),
         );
@@ -268,7 +265,7 @@ impl<'a> ServerHandshake<'a> {
             .get_certificate_verify_for_handshake(&self.config.privkey, tshash.as_ref())?;
 
         let handshake_raw =
-            Handshake::to_raw(HandshakeType::CertificateVerify, certificate_verify_raw);
+            Handshake::as_bytes(HandshakeType::CertificateVerify, certificate_verify_raw);
 
         tshash.update(&handshake_raw);
         self.stream

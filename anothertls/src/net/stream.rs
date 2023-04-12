@@ -32,7 +32,7 @@ impl TlsStream {
     /// The function write_record buffers the data before sending.
     /// This is useful in the handshake process, where multiple
     /// TLS records are send to the client.
-    pub fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
+    pub(crate) fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
 
         let record = Record::new(typ, Value::Ref(data));
 
@@ -51,27 +51,35 @@ impl TlsStream {
 
     }
 
-    pub fn flush(&mut self) -> Result<(), TlsError>{
-
+    pub(crate) fn flush(&mut self) -> Result<(), TlsError>{
         if self.stream.write_all(&self.buffer).is_err() {
             return Err(TlsError::BrokenPipe);
         };
-
         self.buffer.clear();
-
         Ok(())
-
     }
 
-    pub fn set_protection(&mut self, protection: Option<RecordPayloadProtection>) {
+    pub(crate) fn set_protection(&mut self, protection: Option<RecordPayloadProtection>) {
         self.protection = protection;
     }
 
-    pub fn read_to_end(&mut self) -> Result<(), TlsError> {
-        // TODO: Read to end xD
-        self.write_alert(TlsError::CloseNotify)
+    /// Write directly to the TCP socket
+    pub(crate) fn tcp_write(&mut self, buf: &[u8]) -> Result<usize, TlsError> {
+        match self.stream.write(buf) {
+            Ok(n) => Ok(n),
+            Err(_) => Err(TlsError::BrokenPipe),
+        }
     }
 
+    /// Read directly from the TCP socket
+    pub(crate) fn tcp_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
+        match self.stream.read(buf) {
+            Ok(n) => Ok(n),
+            Err(_) => Err(TlsError::BrokenPipe),
+        }
+    }
+
+    /// Write an TLS Alert message
     pub fn write_alert(&mut self, err: TlsError) -> Result<(), TlsError> {
         let data = vec![AlertLevel::get_from_error(err) as u8, err.as_u8()];
 
@@ -90,23 +98,17 @@ impl TlsStream {
         Ok(())
     }
 
-    pub fn read_raw<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
-        match self.stream.read(buf) {
-            Ok(n) => Ok(n),
-            Err(_) => Err(TlsError::BrokenPipe),
-        }
-    }
-
-    pub fn read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
+    /// Read from the TLS stream.
+    pub fn tls_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
 
-        let n = self.read_raw(&mut rx_buf)?;
+        let n = self.tcp_read(&mut rx_buf)?;
 
         let (_consumed, mut record) = Record::from_raw(&rx_buf[..n])?;
 
         if record.len != record.fraqment.len() {
+            // create internal buffer to store the decrypted TLS packages
             todo!("Problem, when multiple TLS packages in one TCP package");
-            // return Err(TlsError::DecodeError);
         }
 
         if let Some(protection) = self.protection.as_mut() {
@@ -122,15 +124,24 @@ impl TlsStream {
         if record.len > buf.len() {
             todo!("Handle records bigger than the buf.len()");
         }
+
         for (i, b) in record.fraqment.as_ref().iter().enumerate() {
             buf[i] = *b;
         }
+
         Ok(record.fraqment.len())
     }
 
-    pub fn write_all<'b>(&'b mut self, src: &'b [u8]) -> Result<(), TlsError> {
-        let record = Record::new(RecordType::ApplicationData, Value::Ref(src));
+    /// Write to the TLS stream.
+    pub fn tls_write<'b>(&'b mut self, src: &'b [u8]) -> Result<(), TlsError> {
 
+        if self.protection.is_none() {
+            // Don't write to the socket, if no secure
+            // channel is present.
+            return Err(TlsError::InternalError);
+        }
+
+        let record = Record::new(RecordType::ApplicationData, Value::Ref(src));
         let record = self.protection.as_mut().unwrap().encrypt(record)?;
 
         if self.stream.write_all(&record).is_err() {

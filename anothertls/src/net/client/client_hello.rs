@@ -7,9 +7,10 @@
 use crate::{
     crypto::CipherSuite,
     net::{
-        extensions::{self, ClientExtension, shared::KeyShareEntry},
         alert::TlsError,
-    }, utils::log,
+        extensions::{self, shared::KeyShareEntry, ClientExtension},
+    },
+    utils::log,
 };
 use std::result::Result;
 
@@ -21,6 +22,17 @@ pub(crate) struct ClientHello<'a> {
 }
 
 impl<'a> ClientHello<'a> {
+    pub fn new(random: &'a [u8]) -> Result<ClientHello, TlsError> {
+        Ok(ClientHello {
+            random,
+            cipher_suites: vec![CipherSuite::TLS_AES_256_GCM_SHA384, CipherSuite::TLS_AES_128_GCM_SHA256],
+            legacy_session_id_echo: None,
+            extensions: vec![],
+        })
+    }
+    pub fn as_bytes(&self) -> Result<Vec<u8>, TlsError> {
+        Ok(vec![])
+    }
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
         if buf.len() < 100 {
             // FIXME: make this dynamic -> extensions_len...
@@ -51,9 +63,7 @@ impl<'a> ClientHello<'a> {
         let mut cipher_suites = vec![];
         log::debug!("Clients CipherSuites:");
         for i in (consumed..(consumed + cipher_suites_len as usize)).step_by(2) {
-            let cs = CipherSuite::new(
-                ((buf[i] as u16) << 8) | (buf[i + 1] as u16),
-            );
+            let cs = CipherSuite::new(((buf[i] as u16) << 8) | (buf[i + 1] as u16));
             if let Ok(cs) = cs {
                 log::debug!("  {cs:?}");
                 cipher_suites.push(cs);

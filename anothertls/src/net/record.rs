@@ -101,17 +101,11 @@ impl<'a> Record<'a> {
         }))
     }
     pub fn as_bytes(&self) -> Vec<u8> {
-        Record::to_raw(self.content_type, self.fraqment.as_ref())
-    }
-    pub fn to_raw(typ: RecordType, data: &[u8]) -> Vec<u8> {
-        let len = data.len();
-        let mut t = vec![typ as u8, 0x3, 0x3, (len >> 8) as u8, len as u8];
-        t.extend_from_slice(data);
+        let len = self.fraqment.len();
+        let mut t = vec![self.content_type as u8, 0x3, 0x3, (len >> 8) as u8, len as u8];
+        t.extend_from_slice(self.fraqment.as_ref());
         t
     }
-    // pub fn is_full(&self) -> bool {
-    //     self.len == self.fraqment.len() as u16
-    // }
 }
 
 pub struct RecordPayloadProtection {

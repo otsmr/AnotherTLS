@@ -22,16 +22,16 @@ impl ServerExtensions {
         self.0.push(ext)
     }
 
-    pub fn to_raw(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut out = vec![0x00, 0x00];
         if self.0.is_empty() {
             return out; // Length of the extension list (0 bytes)
         }
         for ext in self.0.iter() {
             match ext {
-                ServerExtension::SupportedVersion(sv) => out.extend(sv.to_raw()),
-                ServerExtension::KeyShare(ks) => out.extend(ks.to_raw()),
-                ServerExtension::SignatureAlgorithms(sa) => out.extend(sa.to_raw()),
+                ServerExtension::SupportedVersion(sv) => out.extend(sv.as_bytes()),
+                ServerExtension::KeyShare(ks) => out.extend(ks.as_bytes()),
+                ServerExtension::SignatureAlgorithms(sa) => out.extend(sa.as_bytes()),
             }
         }
         let extension_len = out.len() - 2;
