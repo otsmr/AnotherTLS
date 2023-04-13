@@ -112,12 +112,6 @@ impl<'a> ClientHandshake<'a> {
                 return Err(TlsError::BrokenPipe);
             }
 
-            println!("Got {n} bytes.");
-
-            // if !defragmented.is_empty() {
-            //     defragmented.extend_from_slice(&rxbuf[..n]);
-            // }
-
             let mut offset = 0;
 
             if !defragmented.is_empty() {
@@ -125,42 +119,28 @@ impl<'a> ClientHandshake<'a> {
             }
 
             while offset < n || !defragmented.is_empty() {
-                println!("Starting @ {offset}");
-
-                // let mut last_offset = 0;
 
                 let record_buf = if defragmented.is_empty() {
                     &rxbuf[offset..n]
                 } else {
-                    //     last_offset = defragmented.len();
                     &defragmented[offset..]
                 };
 
-                println!("Record_start = {:?}", &record_buf[..5]);
                 if let Ok((consumed, record)) = Record::from_raw(record_buf) {
                     self.handle_handshake_record(record)?;
-                    println!("This consumed = {consumed}");
                     offset += consumed;
                     if offset == defragmented.len() {
                         defragmented.clear();
                         break;
                     }
                 } else {
-                    println!("Got Error");
                     if defragmented.is_empty() {
                         defragmented.extend_from_slice(&rxbuf[offset..n]);
                     }
                     break;
                 }
             }
-            println!(
-                "Consumed {offset} bytes. defragmented={}",
-                defragmented.len()
-            );
 
-            if !defragmented.is_empty() {
-                // defragmented = defragmented[offset..].to_vec();
-            }
             // send server handshake records to the client
             self.stream.flush()?;
         }
@@ -314,11 +294,7 @@ impl<'a> ClientHandshake<'a> {
         log::debug!("=> Encrypted");
         let (content_type, content) = self.stream.protection.as_mut().unwrap().decrypt(record)?;
 
-        println!("content_type={content_type:?}");
-
         let record = Record::new(content_type, crate::net::record::Value::Owned(content));
-
-        println!("record={}", record.fraqment.len());
 
         if record.content_type != RecordType::Handshake {
             if record.content_type == RecordType::Alert {
@@ -376,11 +352,9 @@ impl<'a> ClientHandshake<'a> {
             }
         };
 
-        println!("Got {} server certificates", certs.len());
-
-        let cert = certs.pop().unwrap();
-
-        // Validate client cert against the CA
+        // Get last certificate, which is testet
+        // against the CAs installed on the systems
+        let mut cert = certs.pop().unwrap();
         log::error!("Validate server certificate with system!!!");
         // if self
         //     .config
@@ -392,7 +366,12 @@ impl<'a> ClientHandshake<'a> {
         // {
         //     self.state = ServerHsState::FinishWithError(TlsError::UnknownCa)
         // }
-        //
+
+        // get only the first certificate
+        // TODO: find better solution to get first element
+        while !certs.is_empty() {
+            cert = certs.pop().unwrap();
+        }
         self.server_cert = Some(cert);
         self.state = ClientHsState::ServerCertificateVerify;
 

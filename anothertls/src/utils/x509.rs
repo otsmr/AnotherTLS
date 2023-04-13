@@ -480,7 +480,7 @@ fn parse(
                     0x00 => {
                         res.tbs_certificate.version = Some(Version::parse(&body[2..])?);
                     }
-                    0x03 => log::debug!("TODO: certificate extenstions"),
+                    0x03 => log::error!("TODO: certificate extenstions"),
                     _ => (),
                 }
                 *consumed += size;

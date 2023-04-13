@@ -83,11 +83,9 @@ impl<'a> Record<'a> {
             return Err(TlsError::DecodeError);
         }
         let content_type = RecordType::new(buf[0])?;
-        println!("content_type={content_type:?}");
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
         let len = (((buf[3] as u16) << 8) | buf[4] as u16) as usize;
         if buf.len() < (2 + len) {
-            println!("buf.len()={} = {}", buf.len(), (2+len));
             return Err(TlsError::DecodeError);
         }
         let consumed = 5 + len;

@@ -69,6 +69,7 @@ impl Certificate {
 
         #[allow(clippy::never_loop)]
         while certs_len > (consumed-prev_len) {
+
             let cert_len = bytes::to_u128_le_fill(&buf[consumed..consumed + 3]) as usize;
             consumed += 3;
             let cert = Certificate::from_raw_x509(buf[consumed..consumed + cert_len].to_vec())?;
@@ -102,8 +103,10 @@ impl Certificate {
 
             certs.push(cert);
 
-            log::error!("Check other certificates");
-            break;
+            if certs_len > (consumed-prev_len) {
+                log::error!("More then one certificate. Ignoring them!");
+                break;
+            }
         }
         // if certs_len != cert_len + 5 {
         //     // todo!("Add support for multiple certs");

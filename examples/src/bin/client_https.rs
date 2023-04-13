@@ -10,9 +10,10 @@ fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
     let server_name = "one.one.one.one".to_string();
+    // let server_name = "www.google.de".to_string();
     let host = server_name.clone() + ":443";
-    // let server_name = "localhost".to_string();
-    // let host = server_name.clone() + ":4000";
+    let server_name = "localhost".to_string();
+    let host = server_name.clone() + ":4000";
 
     let config = ClientConfigBuilder::new()
         .set_server_name(server_name.clone())
