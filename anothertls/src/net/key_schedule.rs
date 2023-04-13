@@ -3,7 +3,7 @@
  *
  */
 
-use crate::net::server::ServerHello;
+use crate::crypto::ellipticcurve::PrivateKey;
 use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
@@ -13,7 +13,7 @@ use crate::{
 };
 use ibig::ibig;
 
-use super::client::ClientHello;
+use super::extensions::KeyShareEntry;
 use std::result::Result;
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
@@ -121,14 +121,9 @@ pub struct KeySchedule {
 impl KeySchedule {
     pub(crate) fn from_handshake(
         tshash: &dyn TranscriptHash,
-        client_hello: &ClientHello,
-        server_hello: &ServerHello,
+        private_key: &PrivateKey,
+        key_share_entry: &KeyShareEntry,
     ) -> Result<KeySchedule, TlsError> {
-        let key_share_entry = match client_hello.get_public_key_share() {
-            Some(kse) => kse,
-            None => return Err(TlsError::HandshakeFailure),
-        };
-
         if key_share_entry.group != NamedGroup::X25519 {
             // TODO: add support for other curves
             return Err(TlsError::HandshakeFailure);
@@ -137,13 +132,13 @@ impl KeySchedule {
         let client_public_key = bytes::to_ibig_le(&key_share_entry.opaque);
         let client_public_key = Point::new(client_public_key, ibig!(0));
 
-        let server_private_key = server_hello.private_key.secret.clone();
-        let curve = &server_hello.private_key.curve;
+        let server_private_key = private_key.secret.clone();
+        let curve = &private_key.curve;
 
         let shared_secret = math::multiply(&client_public_key, server_private_key, curve);
         let shared_secret = bytes::ibig_to_32bytes(shared_secret.x, bytes::ByteOrder::Big);
 
-        match Self::do_key_schedule(server_hello.hash, &tshash.finalize(), &shared_secret) {
+        match Self::do_key_schedule(tshash.get_type(), &tshash.finalize(), &shared_secret) {
             Some(keys) => Ok(keys),
             None => Err(TlsError::HandshakeFailure),
         }

@@ -7,16 +7,17 @@ use crate::crypto::ellipticcurve::{Curve, PrivateKey};
 use crate::hash::TranscriptHash;
 use crate::net::alert::TlsError;
 use crate::net::client::ClientHello;
-use crate::net::extensions::{ClientExtension, ServerName, SignatureAlgorithms, SupportedVersions};
-use crate::net::extensions::{KeyShare, KeyShareEntry, NamedGroup};
+use crate::net::extensions::{
+    ClientExtension, KeyShare, KeyShareEntry, NamedGroup, ServerName, SignatureAlgorithms,
+    SupportedVersions,
+};
 use crate::net::handshake::{Handshake, HandshakeType};
-use crate::net::record::{Record, RecordType, Value};
-use crate::net::TlsStream;
+use crate::net::record::{Record, RecordPayloadProtection, RecordType, Value};
 use crate::net::server::ServerHello;
+use crate::net::{KeySchedule, TlsStream};
 use crate::rand::{RngCore, URandomRng};
 use crate::utils::keylog::KeyLog;
-use crate::utils::log;
-use crate::utils::{bytes, bytes::ByteOrder};
+use crate::utils::{bytes, bytes::ByteOrder, log};
 use crate::ClientConfig;
 
 use ibig::IBig;
@@ -55,6 +56,8 @@ pub struct ClientHandshake<'a> {
     rng: Box<dyn RngCore<IBig>>,
     tshash: Option<Box<dyn TranscriptHash>>,
     private_key: PrivateKey,
+    client_hello_bytes: Option<Vec<u8>>,
+    client_hello_random: Option<Vec<u8>>,
 }
 
 impl<'a> ClientHandshake<'a> {
@@ -71,6 +74,8 @@ impl<'a> ClientHandshake<'a> {
             rng,
             tshash: None,
             private_key,
+            client_hello_bytes: None,
+            client_hello_random: None,
         }
     }
 
@@ -143,7 +148,14 @@ impl<'a> ClientHandshake<'a> {
 
         let handshake_raw =
             Handshake::as_bytes(HandshakeType::ClientHello, client_hello.as_bytes()?);
-        let record = Record::new(RecordType::Handshake, Value::Owned(handshake_raw));
+
+        self.client_hello_random = Some(random);
+        self.client_hello_bytes = Some(handshake_raw);
+
+        let record = Record::new(
+            RecordType::Handshake,
+            Value::Ref(self.client_hello_bytes.as_ref().unwrap()),
+        );
 
         self.stream.tcp_write(&record.as_bytes())?;
         Ok(())
@@ -186,7 +198,6 @@ impl<'a> ClientHandshake<'a> {
         Ok(())
     }
     pub fn handle_server_hello(&mut self, record: Record) -> Result<(), TlsError> {
-
         let handshake = Handshake::from_raw(record.fraqment.as_ref())?;
 
         if handshake.handshake_type != HandshakeType::ServerHello {
@@ -194,14 +205,78 @@ impl<'a> ClientHandshake<'a> {
         }
 
         log::debug!("--> ServerHello");
-        let server_hello = ServerHello::from_raw(record.fraqment.as_ref());
 
+        let server_hello = ServerHello::from_raw(record.fraqment.as_ref())?;
+
+        let mut tshash = server_hello.cipher_suite.get_tshash()?;
+
+        tshash.update(self.client_hello_bytes.as_ref().unwrap());
+
+        let key_share_entry = match server_hello.get_public_key_share() {
+            Some(kse) => kse,
+            None => return Err(TlsError::HandshakeFailure),
+        };
+        let key_schedule =
+            KeySchedule::from_handshake(tshash.as_ref(), &self.private_key, key_share_entry)?;
+
+        let protection = RecordPayloadProtection::new(key_schedule);
+
+        if let Some(filepath) = &self.config.keylog {
+            if protection.is_some() {
+                let protection = protection.as_ref().unwrap();
+                let keylog = KeyLog::new(
+                    filepath.to_owned(),
+                    self.client_hello_random.as_ref().unwrap(),
+                );
+                keylog.append_handshake_traffic_secrets(
+                    &protection.handshake_keys.server.traffic_secret,
+                    &protection.handshake_keys.client.traffic_secret,
+                );
+                self.keylog = Some(keylog);
+            }
+        }
+
+        self.stream.set_protection(protection);
+        self.tshash = Some(tshash);
 
         self.state = ClientHsState::ServerCertificate;
+
         Ok(())
     }
+
     fn handle_handshake_encrypted_record(&mut self, record: Record) -> Result<(), TlsError> {
         log::debug!("==> Encrypted handshake record");
+
+        let (content_type, content) = self.stream.protection.as_mut().unwrap().decrypt(record)?;
+
+        let record = Record::new(content_type, crate::net::record::Value::Owned(content));
+
+        if record.content_type != RecordType::Handshake {
+            if record.content_type == RecordType::Alert {
+                return Err(TlsError::GotAlert(record.fraqment.as_ref()[1]));
+            }
+            return Err(TlsError::UnexpectedMessage);
+        }
+
+        match self.state {
+            ClientHsState::ServerCertificate => self.handle_server_certificate(record)?,
+            ClientHsState::ServerCertificateVerify => {
+                self.handle_server_certificate_verify(record)?
+            }
+            ClientHsState::Finished | ClientHsState::FinishWithError(_) => {
+                self.handle_client_finish(record)?
+            }
+            _ => (),
+        }
         Ok(())
+    }
+    pub fn handle_server_certificate(&mut self, record: Record) -> Result<(), TlsError> {
+        todo!()
+    }
+    pub fn handle_server_certificate_verify(&mut self, record: Record) -> Result<(), TlsError> {
+        todo!()
+    }
+    pub fn handle_client_finish(&mut self, record: Record) -> Result<(), TlsError> {
+        todo!()
     }
 }

@@ -8,8 +8,8 @@ use crate::net::TlsStream;
 use crate::rand::URandomRng;
 use crate::ServerConfig;
 use crate::{
-    crypto::{ellipticcurve::Signature, CipherSuite},
-    hash::{sha256::Sha256, sha384::Sha384, TranscriptHash},
+    crypto::ellipticcurve::Signature,
+    hash::TranscriptHash,
     net::{
         alert::TlsError,
         client::ClientHello,
@@ -171,16 +171,10 @@ impl<'a> ServerHandshake<'a> {
         log::debug!("--> ClientHello");
         let client_hello = ClientHello::from_raw(handshake.fraqment)?;
 
-        let server_hello =
+        let (server_hello, private_key) =
             ServerHello::from_client_hello(&client_hello, &mut *self.rng, self.config)?;
 
-        let mut tshash: Box<dyn TranscriptHash> = match server_hello.cipher_suite {
-            CipherSuite::TLS_AES_256_GCM_SHA384 => Box::new(Sha384::new()),
-            CipherSuite::TLS_AES_128_GCM_SHA256 => Box::new(Sha256::new()),
-            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => todo!(),
-            _ => return Err(TlsError::InsufficientSecurity),
-        };
-
+        let mut tshash = server_hello.cipher_suite.get_tshash()?;
         // Add ClientHello
         tshash.update(record.fraqment.as_ref());
 
@@ -200,8 +194,12 @@ impl<'a> ServerHandshake<'a> {
         }
 
         // -- Handshake Keys Calc --
+        let key_share_entry = match client_hello.get_public_key_share() {
+            Some(kse) => kse,
+            None => return Err(TlsError::HandshakeFailure),
+        };
         let key_schedule =
-            KeySchedule::from_handshake(tshash.as_ref(), &client_hello, &server_hello)?;
+            KeySchedule::from_handshake(tshash.as_ref(), &private_key, key_share_entry)?;
 
         let protection = RecordPayloadProtection::new(key_schedule);
 
@@ -273,7 +271,7 @@ impl<'a> ServerHandshake<'a> {
 
         // -- FINISHED --
         let handshake_raw = get_finished_handshake(
-            server_hello.hash,
+            tshash.get_type(),
             &self
                 .stream
                 .protection
@@ -383,7 +381,6 @@ impl<'a> ServerHandshake<'a> {
             .update(record.fraqment.as_ref());
         log::debug!("--> ClientCertificate");
 
-        let mut consumed = 1;
         let cert_request_context_len = handshake.fraqment[0] as usize;
         let cert_request_context = &handshake.fraqment[1..cert_request_context_len + 1];
 
@@ -391,48 +388,15 @@ impl<'a> ServerHandshake<'a> {
             return Err(TlsError::HandshakeFailure);
         }
 
-        consumed += cert_request_context_len;
+        let mut certs = match Certificate::from_hello(handshake.fraqment) {
+            Ok(e) => e,
+            Err(e) => {
+                self.state = ServerHsState::FinishWithError(e);
+                return Ok(())
+            }
+        };
 
-        let certs_len =
-            bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
-        consumed += 3;
-
-        if certs_len == 0 {
-            log::debug!("Client send no certificate!");
-            self.state = ServerHsState::FinishWithError(TlsError::CertificateRequired);
-            return Ok(());
-        }
-
-        let cert_len = bytes::to_u128_le_fill(&handshake.fraqment[consumed..consumed + 3]) as usize;
-        consumed += 3;
-
-        if certs_len != cert_len + 5 {
-            todo!("Add support for multiple certs");
-        }
-
-        let cert =
-            Certificate::from_raw_x509(handshake.fraqment[consumed..consumed + cert_len].to_vec())?;
-
-        if !cert
-            .x509
-            .as_ref()
-            .unwrap()
-            .tbs_certificate
-            .validity
-            .is_valid()
-        {
-            log::debug!("Certificate is not valid");
-            self.state = ServerHsState::FinishWithError(TlsError::CertificateExpired);
-            return Ok(());
-        }
-
-        log::debug!("Client certificate:");
-        // TODO: only in debug
-        let issuer = &cert.x509.as_ref().unwrap().tbs_certificate.issuer;
-        let subject = &cert.x509.as_ref().unwrap().tbs_certificate.subject;
-
-        log::debug!("   subject: {subject}");
-        log::debug!("   issuer: {issuer}");
+        let cert = certs.pop().unwrap();
 
         if let Some(f) = self.config.client_cert_custom_verify_fn.as_ref() {
             if !f(cert.x509.as_ref().unwrap()) {
@@ -441,6 +405,7 @@ impl<'a> ServerHandshake<'a> {
                 return Ok(());
             }
         }
+
 
         self.client_cert = Some(cert);
         self.state = ServerHsState::ClientCertificateVerify;

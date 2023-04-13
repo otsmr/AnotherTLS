@@ -9,7 +9,9 @@ pub mod hkdf;
 pub mod hmac;
 
 pub use sha256::sha256;
+pub use sha256::Sha256;
 pub use sha384::sha384;
+pub use sha384::Sha384;
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]

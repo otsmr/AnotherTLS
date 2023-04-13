@@ -14,7 +14,6 @@ use crate::{
         ellipticcurve::{Curve, PrivateKey},
         CipherSuite,
     },
-    hash::HashType,
     net::{
         alert::TlsError,
         extensions::{
@@ -31,36 +30,50 @@ pub(crate) struct ServerHello<'a> {
     pub random: [u8; 32],
     pub legacy_session_id_echo: Option<&'a [u8]>,
     pub cipher_suite: CipherSuite,
-    pub hash: HashType,
-    pub private_key: PrivateKey,
     pub extensions: ServerExtensions,
 }
 
 impl<'a> ServerHello<'a> {
 
     pub fn from_raw(buf: &[u8]) -> Result<ServerHello, TlsError> {
-        let mut consumed = 0;
+        if buf.len() < 36 {
+            return Err(TlsError::IllegalParameter);
+        }
 
+        let legacy_version = ((buf[0] as u16) << 8) | buf[1] as u16;
+        if legacy_version != 0x0303 {
+            return Err(TlsError::ProtocolVersion);
+        }
+
+        let random = buf[2..34].try_into().unwrap();
+        let session_id_length = buf[35];
+        let mut consumed = 35;
+        // let mut legacy_session_id_echo = None;
+
+        if session_id_length != 0 {
+            consumed += 32;
+            // legacy_session_id_echo = Some(&buf[35..(35 + 32)]);
+        }
+
+        let cipher_suite = CipherSuite::new(((buf[consumed] as u16) << 8) | (buf[consumed + 1] as u16))?;
+
+        consumed += 3; // CipherSuite + Compression Method
 
         let extensions = ServerExtensions::from_server_hello(&buf[consumed..])?;
-
-        todo!("Parse ServerHello");
 
         Ok(ServerHello {
             random,
             legacy_session_id_echo: None,
             cipher_suite,
-            hash,
-            private_key: None,
             extensions
-        };
+        })
 
     }
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
         rng: &mut dyn RngCore<IBig>,
         config: &'a ServerConfig
-    ) -> Result<ServerHello<'a>, TlsError> {
+    ) -> Result<(ServerHello<'a>, PrivateKey), TlsError> {
         let mut extensions = ServerExtensions::new();
         let mut private_key = None;
         let mut named_group = None;
@@ -139,16 +152,16 @@ impl<'a> ServerHello<'a> {
         )));
 
         let mut cipher_suite_to_use = None;
-        let mut hash = None;
+        // let mut hash = None;
         for cs in client_hello.cipher_suites.iter() {
             match cs {
                 CipherSuite::TLS_AES_256_GCM_SHA384 => {
                     cipher_suite_to_use = Some(CipherSuite::TLS_AES_256_GCM_SHA384);
-                    hash = Some(HashType::SHA384);
+                    // hash = Some(HashType::SHA384);
                     break; // Break because server best choice
                 }
                 CipherSuite::TLS_AES_128_GCM_SHA256 => {
-                    hash = Some(HashType::SHA256);
+                    // hash = Some(HashType::SHA256);
                     cipher_suite_to_use = Some(CipherSuite::TLS_AES_128_GCM_SHA256)
                 }
                 _ => (),
@@ -168,14 +181,13 @@ impl<'a> ServerHello<'a> {
 
         log::debug!("TLS connection using {cipher_suite:?}");
 
-        Ok(ServerHello {
+        Ok((ServerHello {
             random,
             legacy_session_id_echo: client_hello.legacy_session_id_echo,
-            private_key,
             cipher_suite,
-            hash: hash.unwrap(),
+            // hash: hash.unwrap(),
             extensions,
-        })
+        }, private_key))
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -200,4 +212,15 @@ impl<'a> ServerHello<'a> {
 
         out
     }
+    pub fn get_public_key_share(&self) -> Option<&KeyShareEntry> {
+        for ext in self.extensions.as_vec().iter() {
+            if let ServerExtension::KeyShare(key_share) = ext {
+                if !key_share.0.is_empty() {
+                    return Some(&key_share.0[0]);
+                }
+            }
+        }
+        None
+    }
+
 }

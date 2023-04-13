@@ -31,3 +31,4 @@ pub(crate) mod extensions;
 pub(crate) mod record;
 pub(crate) mod key_schedule;
 
+pub(crate) use key_schedule::KeySchedule;
