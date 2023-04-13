@@ -3,7 +3,6 @@
  *
  */
 
-
 use crate::net::alert::TlsError;
 use crate::net::extensions::{Extension, ExtensionType};
 use crate::utils::bytes;
@@ -19,7 +18,26 @@ impl ServerName {
     }
 }
 impl Extension for ServerName {
-    fn parse(buf: &[u8]) -> Result<Self, TlsError>
+    fn server_as_bytes(&self) -> Vec<u8> {
+        let hostname_len = self.get().len();
+        let list_entry_len = hostname_len + 3;
+        let list_len = list_entry_len + 2;
+        let mut out = vec![
+            0x00,
+            ExtensionType::ServerName as u8,
+            (list_len >> 8) as u8,
+            list_len as u8,
+            (list_entry_len >> 8) as u8,
+            list_entry_len as u8,
+            0x00,
+            (hostname_len >> 8) as u8,
+            hostname_len as u8,
+        ];
+        out.extend_from_slice(self.get().as_bytes());
+        out
+    }
+
+    fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
     where
         Self: Sized,
     {
@@ -41,24 +59,5 @@ impl Extension for ServerName {
                 };
         }
         Ok(ServerName(server_name))
-    }
-
-    fn server_as_bytes(&self) -> Vec<u8> {
-        let hostname_len = self.get().len();
-        let list_entry_len = hostname_len + 3;
-        let list_len = list_entry_len + 2;
-        let mut out = vec![
-            0x00,
-            ExtensionType::ServerName as u8,
-            (list_len >> 8) as u8,
-            list_len as u8,
-            (list_entry_len >> 8) as u8,
-            list_entry_len as u8,
-            0x00,
-            (hostname_len >> 8) as u8,
-            hostname_len as u8,
-        ];
-        out.extend_from_slice(self.get().as_bytes());
-        out
     }
 }

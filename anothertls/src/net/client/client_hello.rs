@@ -22,7 +22,7 @@ pub(crate) struct ClientHello<'a> {
 }
 
 impl<'a> ClientHello<'a> {
-    pub fn new(random: &'a [u8]) -> Result<ClientHello, TlsError> {
+    pub fn new(random: &'a [u8], session_id: Option<&'a [u8]>) -> Result<ClientHello<'a>, TlsError> {
         let mut extensions = ClientExtensions::new();
         extensions.set_is_client();
         Ok(ClientHello {
@@ -31,7 +31,7 @@ impl<'a> ClientHello<'a> {
                 CipherSuite::TLS_AES_256_GCM_SHA384,
                 CipherSuite::TLS_AES_128_GCM_SHA256,
             ],
-            legacy_session_id_echo: None,
+            legacy_session_id_echo: session_id,
             extensions
         })
     }

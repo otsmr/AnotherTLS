@@ -6,9 +6,14 @@
 use crate::net::alert::TlsError;
 
 pub trait Extension {
-    fn parse(buf: &[u8]) -> Result<Self, TlsError>
+    fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
     where
         Self: Sized;
+    fn client_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized {
+        Extension::server_parse(buf)
+    }
     fn server_as_bytes(&self) -> Vec<u8>;
     fn client_as_bytes(&self) -> Vec<u8> {
         self.server_as_bytes()
@@ -62,7 +67,7 @@ impl<T: ExtensionWrapper> Extensions<T> {
 pub enum ExtensionType {
     ServerName = 0x00,
     // ECPointFormats = 0x0b,
-    // SupportedGroups = 0x0a,
+    SupportedGroups = 0x0a,
     // SessionTicket = 0x23,
     // EncryptThenMac = 0x16,
     // ExtendedMasterSecret = 0x17,

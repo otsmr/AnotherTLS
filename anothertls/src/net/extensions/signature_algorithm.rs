@@ -75,17 +75,6 @@ impl SignatureAlgorithms {
 }
 
 impl Extension for SignatureAlgorithms {
-    fn parse(buf: &[u8]) -> Result<SignatureAlgorithms, TlsError> {
-        let len = bytes::to_u16(buf) as usize;
-        let mut out = vec![];
-        if len % 2 == 0 {
-            for i in (2..len).step_by(2) {
-                let tes = bytes::to_u16(&buf[i..(i + 2)]);
-                out.push(SignatureScheme::new(tes)?);
-            }
-        }
-        Ok(SignatureAlgorithms(out))
-    }
     fn server_as_bytes(&self) -> Vec<u8> {
         let len = self.0.len() * 2;
         let mut out = vec![
@@ -102,6 +91,20 @@ impl Extension for SignatureAlgorithms {
             out.push(v as u8);
         }
         out
+    }
+
+    fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized {
+        let len = bytes::to_u16(buf) as usize;
+        let mut out = vec![];
+        if len % 2 == 0 {
+            for i in (2..len).step_by(2) {
+                let tes = bytes::to_u16(&buf[i..(i + 2)]);
+                out.push(SignatureScheme::new(tes)?);
+            }
+        }
+        Ok(SignatureAlgorithms(out))
     }
 }
 

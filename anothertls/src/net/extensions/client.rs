@@ -6,7 +6,7 @@
 use crate::net::alert::TlsError;
 use crate::net::extensions::{
     Extension, ExtensionType, ExtensionWrapper, Extensions, KeyShare, ServerName,
-    SignatureAlgorithms, SupportedVersions,
+    SignatureAlgorithms, SupportedVersions, SupportedGroups
 };
 use crate::utils::bytes;
 
@@ -15,6 +15,7 @@ pub(crate) type ClientExtensions = Extensions<ClientExtension>;
 // #[derive(Debug)]
 pub(crate) enum ClientExtension {
     SupportedVersion(SupportedVersions),
+    SupportedGroups(SupportedGroups),
     KeyShare(KeyShare),
     ServerName(ServerName),
     SignatureAlgorithms(SignatureAlgorithms),
@@ -27,6 +28,7 @@ impl ExtensionWrapper for ClientExtension {
             ClientExtension::KeyShare(ks) => Box::new(ks),
             ClientExtension::SignatureAlgorithms(sa) => Box::new(sa),
             ClientExtension::ServerName(sn) => Box::new(sn),
+            ClientExtension::SupportedGroups(sn) => Box::new(sn),
         }
     }
 }
@@ -47,19 +49,19 @@ impl ClientExtension {
             let extension_type = extension_type.unwrap();
 
             let extension = match extension_type {
-                ExtensionType::ServerName => {
-                    ClientExtension::ServerName(ServerName::parse(&buf[consumed..consumed + size])?)
-                }
-                ExtensionType::KeyShare => {
-                    ClientExtension::KeyShare(KeyShare::parse(&buf[consumed..consumed + size])?)
-                }
-                ExtensionType::SupportedVersions => {
-                    ClientExtension::SupportedVersion(SupportedVersions::parse(&buf[consumed..])?)
-                }
+                ExtensionType::ServerName => ClientExtension::ServerName(ServerName::server_parse(
+                    &buf[consumed..consumed + size],
+                )?),
+                ExtensionType::KeyShare => ClientExtension::KeyShare(KeyShare::server_parse(
+                    &buf[consumed..consumed + size],
+                )?),
+                ExtensionType::SupportedVersions => ClientExtension::SupportedVersion(
+                    SupportedVersions::server_parse(&buf[consumed..])?,
+                ),
                 ExtensionType::SignatureAlgorithms => ClientExtension::SignatureAlgorithms(
-                    SignatureAlgorithms::parse(&buf[consumed..])?,
-                ), // ExtensionType::SupportedGroups => continue, // TODO
-                   // ExtensionType::PSKKeyExchangeMode => continue, // TODO
+                    SignatureAlgorithms::server_parse(&buf[consumed..])?,
+                ),
+                ExtensionType::SupportedGroups => continue
             };
             consumed += size;
             extensions.push(extension);

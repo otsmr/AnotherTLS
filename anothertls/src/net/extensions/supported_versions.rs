@@ -18,7 +18,17 @@ impl SupportedVersions {
     }
 }
 impl Extension for SupportedVersions {
-    fn parse(buf: &[u8]) -> Result<SupportedVersions, TlsError> {
+    fn server_as_bytes(&self) -> Vec<u8> {
+        vec![0x00, 0x2b, 0x00, 0x02, 0x03, 0x04]
+    }
+    fn client_as_bytes(&self) -> Vec<u8> {
+        vec![0x00, 0x2b, 0x00, 0x03, 0x02, 0x03, 0x04]
+    }
+
+    fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized,
+    {
         let len = buf[0] as usize;
         if len % 2 == 0 {
             for i in (1..len + 1).step_by(2) {
@@ -29,10 +39,13 @@ impl Extension for SupportedVersions {
         }
         Ok(SupportedVersions::new(false))
     }
-    fn server_as_bytes(&self) -> Vec<u8> {
-        vec![0x00, 0x2b, 0x00, 0x02, 0x03, 0x04]
-    }
-    fn client_as_bytes(&self) -> Vec<u8> {
-        vec![0x00, 0x2b, 0x00, 0x03, 0x02, 0x03, 0x04]
+    fn client_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized,
+    {
+        if bytes::to_u16(&buf[0..2]) == 0x0304 {
+            return Ok(SupportedVersions::new(true));
+        }
+        Ok(SupportedVersions::new(false))
     }
 }

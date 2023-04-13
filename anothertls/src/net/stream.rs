@@ -3,10 +3,10 @@
  *
  */
 
-use crate::net::{
+use crate::{net::{
     alert::{AlertLevel, TlsError},
     record::{Record, RecordPayloadProtection, RecordType, Value},
-};
+}, utils::log};
 
 use std::{
     io::{Read, Write},
@@ -106,6 +106,8 @@ impl TlsStream {
 
         let (_consumed, mut record) = Record::from_raw(&rx_buf[..n])?;
 
+        log::debug!("--> EncryptedData");
+
         if record.len != record.fraqment.len() {
             // create internal buffer to store the decrypted TLS packages
             todo!("Problem, when multiple TLS packages in one TCP package");
@@ -144,6 +146,7 @@ impl TlsStream {
         let record = Record::new(RecordType::ApplicationData, Value::Ref(src));
         let record = self.protection.as_mut().unwrap().encrypt(record)?;
 
+        log::debug!("<-- EncryptedData");
         if self.stream.write_all(&record).is_err() {
             return Err(TlsError::BrokenPipe);
         };

@@ -17,11 +17,13 @@ pub(crate) mod signature_algorithm;
 pub(crate) mod key_share;
 pub(crate) mod server_name;
 pub(crate) mod supported_versions;
+pub(crate) mod supported_groups;
 
 
 pub(crate) use server_name::ServerName;
 pub(crate) use shared::ExtensionType;
 pub(crate) use supported_versions::SupportedVersions;
+pub(crate) use supported_groups::SupportedGroups;
 pub(crate) use signature_algorithm::{SignatureAlgorithms, SignatureScheme};
 pub(crate) use key_share::{KeyShare, KeyShareEntry};
 

@@ -5,8 +5,8 @@
 
 use crate::{utils::log, ServerConfig};
 
-use ibig::IBig;
 use crate::rand::RngCore;
+use ibig::IBig;
 use std::result::Result;
 
 use crate::{
@@ -16,12 +16,12 @@ use crate::{
     },
     net::{
         alert::TlsError,
-        extensions::{
-            KeyShare, KeyShareEntry, SignatureScheme, server::ServerExtension, ClientExtension,
-            ServerExtensions, SupportedVersions,
-        },
         client::ClientHello,
         extensions::NamedGroup,
+        extensions::{
+            server::ServerExtension, ClientExtension, KeyShare, KeyShareEntry, ServerExtensions,
+            SignatureScheme, SupportedVersions,
+        },
     },
     utils::bytes::{self, ByteOrder},
 };
@@ -34,7 +34,6 @@ pub(crate) struct ServerHello<'a> {
 }
 
 impl<'a> ServerHello<'a> {
-
     pub fn from_raw(buf: &[u8]) -> Result<ServerHello, TlsError> {
         if buf.len() < 36 {
             return Err(TlsError::IllegalParameter);
@@ -42,11 +41,12 @@ impl<'a> ServerHello<'a> {
 
         let legacy_version = ((buf[0] as u16) << 8) | buf[1] as u16;
         if legacy_version != 0x0303 {
+            println!("legacy_version={:#x}", legacy_version);
             return Err(TlsError::ProtocolVersion);
         }
 
-        let random = buf[2..34].try_into().unwrap();
-        let session_id_length = buf[35];
+        let random: [u8; 32] = buf[2..34].try_into().unwrap();
+        let session_id_length = buf[34];
         let mut consumed = 35;
         // let mut legacy_session_id_echo = None;
 
@@ -55,37 +55,56 @@ impl<'a> ServerHello<'a> {
             // legacy_session_id_echo = Some(&buf[35..(35 + 32)]);
         }
 
-        let cipher_suite = CipherSuite::new(((buf[consumed] as u16) << 8) | (buf[consumed + 1] as u16))?;
+        let cipher_suite =
+            CipherSuite::new(((buf[consumed] as u16) << 8) | (buf[consumed + 1] as u16))?;
 
         consumed += 3; // CipherSuite + Compression Method
 
-        let extensions = ServerExtensions::from_server_hello(&buf[consumed..])?;
+        let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
+        consumed += 2;
+
+        let extensions =
+            ServerExtensions::from_server_hello(&buf[consumed..(consumed + extensions_len)])?;
+
+        let mut tls13_is_supported = false;
+        for ext in extensions.as_vec().iter() {
+            if let ServerExtension::SupportedVersions(ext) = ext {
+                if ext.is_tls13_supported() {
+                    tls13_is_supported = true;
+                }
+                break;
+            }
+        }
+
+        if !tls13_is_supported {
+            return Err(TlsError::ProtocolVersion);
+        }
 
         Ok(ServerHello {
             random,
             legacy_session_id_echo: None,
             cipher_suite,
-            extensions
+            extensions,
         })
-
     }
     pub fn from_client_hello(
         client_hello: &'a ClientHello,
         rng: &mut dyn RngCore<IBig>,
-        config: &'a ServerConfig
+        config: &'a ServerConfig,
     ) -> Result<(ServerHello<'a>, PrivateKey), TlsError> {
         let mut extensions = ServerExtensions::new();
         let mut private_key = None;
         let mut named_group = None;
 
-        let mut random: [u8; 32] = rng.between_bytes(32).try_into().unwrap();
+        let random: [u8; 32] = rng.between_bytes(32).try_into().unwrap();
 
         // Value is: DOWNGRD
-        let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
+        // Only needed if negotiating TLSv1.2
+        // let downgrade_protection = [0x44, 0x4F, 0x57, 0x4E, 0x47, 0x52, 0x44, 0x01];
 
-        for (i, b) in downgrade_protection.iter().enumerate() {
-            random[(32 - 8) + i] = *b;
-        }
+        // for (i, b) in downgrade_protection.iter().enumerate() {
+        //     random[(32 - 8) + i] = *b;
+        // }
 
         for ext in client_hello.extensions.as_vec().iter() {
             match ext {
@@ -138,7 +157,8 @@ impl<'a> ServerHello<'a> {
                     if !supported {
                         return Err(TlsError::InsufficientSecurity);
                     }
-                }
+                },
+                ClientExtension::SupportedGroups(_sg) => ()
             }
         }
 
@@ -173,7 +193,6 @@ impl<'a> ServerHello<'a> {
             None => return Err(TlsError::HandshakeFailure),
         };
 
-
         let private_key = match private_key {
             Some(pk) => pk,
             None => return Err(TlsError::HandshakeFailure),
@@ -181,13 +200,16 @@ impl<'a> ServerHello<'a> {
 
         log::debug!("TLS connection using {cipher_suite:?}");
 
-        Ok((ServerHello {
-            random,
-            legacy_session_id_echo: client_hello.legacy_session_id_echo,
-            cipher_suite,
-            // hash: hash.unwrap(),
-            extensions,
-        }, private_key))
+        Ok((
+            ServerHello {
+                random,
+                legacy_session_id_echo: client_hello.legacy_session_id_echo,
+                cipher_suite,
+                // hash: hash.unwrap(),
+                extensions,
+            },
+            private_key,
+        ))
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -222,5 +244,4 @@ impl<'a> ServerHello<'a> {
         }
         None
     }
-
 }

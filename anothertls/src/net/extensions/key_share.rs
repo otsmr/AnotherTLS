@@ -55,12 +55,14 @@ impl KeyShare {
     pub fn new(kse: KeyShareEntry) -> KeyShare {
         KeyShare(vec![kse])
     }
-}
-impl Extension for KeyShare {
-    fn parse(buf: &[u8]) -> Result<Self, TlsError> {
+    fn parse(buf: &[u8], is_client: bool) -> Result<Self, TlsError> {
         let mut entries = vec![];
-        let mut consumed = 2;
-        let len = bytes::to_u16(buf) as usize;
+        let mut len = 0;
+        let mut consumed = 0;
+        if !is_client {
+            len = bytes::to_u16(buf) as usize;
+            consumed += 2;
+        }
         loop {
             let (used, entry) = KeyShareEntry::parse(&buf[consumed..])?;
             if used <= 7 {
@@ -68,11 +70,26 @@ impl Extension for KeyShare {
             }
             entries.push(entry);
             consumed += used;
+            // len is for server 0, so it should always break here
             if consumed >= len {
                 break;
             }
         }
         Ok(KeyShare(entries))
+    }
+}
+impl Extension for KeyShare {
+    fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized,
+    {
+        KeyShare::parse(buf, false)
+    }
+    fn client_parse(buf: &[u8]) -> Result<Self, TlsError>
+    where
+        Self: Sized,
+    {
+        KeyShare::parse(buf, true)
     }
     fn server_as_bytes(&self) -> Vec<u8> {
         let mut out = vec![0x00, ExtensionType::KeyShare as u8, 0x00, 0x00];
