@@ -524,7 +524,6 @@ impl<'a> ClientHandshake<'a> {
         }
 
         let handshake_raw = Handshake::to_bytes(HandshakeType::Certificate, response);
-        log::fixme!("Add client certificate to hash!");
         self.stream
             .write_record(RecordType::Handshake, &handshake_raw)?;
 
