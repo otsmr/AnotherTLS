@@ -85,7 +85,7 @@ impl Ecdsa {
         // ??
 
         // Check Signature
-        if sign.s <= ibig!(0) {
+        if sign.s <= ibig!(0) && sign.r <= ibig!(0) {
             return false;
         }
 
