@@ -30,6 +30,8 @@ pub enum ParseError {
     Version,
     UTF8String,
     TimeStamp,
+    MissingObjectIdentifier,
+    NotYetImplemented,
 }
 
 #[derive(Debug)]
@@ -144,14 +146,21 @@ pub struct Extension {
 #[derive(Debug, PartialEq)]
 pub enum Algorithms {
     EcdsaWithSha256,
+    EcdsaWithSha384,
     EcPublicKey,
+    Sha256WithRSAEncryption,
 }
 impl Algorithms {
     pub fn new(s: &str) -> Result<Algorithms, ParseError> {
         Ok(match s {
             "ecdsaWithSHA256" => Algorithms::EcdsaWithSha256,
+            "ecdsaWithSHA384" => Algorithms::EcdsaWithSha384,
             "ecPublicKey" => Algorithms::EcPublicKey,
-            _ => return Err(ParseError::Algorithms),
+            "sha256WithRSAEncryption" => Algorithms::Sha256WithRSAEncryption,
+            e => {
+                log::error!("Add algorithm: {e} (x509.rs)");
+                return Err(ParseError::Algorithms);
+            }
         })
     }
 }
@@ -202,12 +211,19 @@ fn parse_object_identifier(id: &[u8]) -> Result<String, ParseError> {
         0x55040a => "organizationName".to_string(),
         0x550403 => "commonName".to_string(),
         0x2a8648ce3d040302 => "ecdsaWithSHA256".to_string(),
+        0x2a8648ce3d040303 => "ecdsaWithSHA384".to_string(),
         0x2a8648ce3d030107 => "prime256v1".to_string(),
         0x2a8648ce3d0201 => "ecPublicKey".to_string(),
         0x2a864886f70d010901 => "emailAddress".to_string(),
+        0x2a864886f70d01010b => "sha256WithRSAEncryption".to_string(),
+        0x2a864886f70d010101 => "sha256WithRSAEncryption".to_string(),
         0x550407 => "localityName".to_string(),
         0x55040B => "organizationalUnitName".to_string(),
-        _ => todo!("Missing ObjectIdentifier = {id:#x}"),
+        _ => {
+            log::error!("Missing ObjectIdentifier: = {id:#x} (x509.rs)");
+            "UNKOWN".to_string()
+            // return Err(ParseError::MissingObjectIdentifier);
+        }
     })
 }
 
@@ -464,7 +480,7 @@ fn parse(
                     0x00 => {
                         res.tbs_certificate.version = Some(Version::parse(&body[2..])?);
                     }
-                    0x03 => println!("GOT Extenstions"),
+                    0x03 => log::error!("TODO: certificate extenstions"),
                     _ => (),
                 }
                 *consumed += size;
@@ -591,8 +607,12 @@ fn parse(
                     *consumed += size;
                 }
             }
+            DerType::Null => {
+                todo!("Null");
+            }
             _ => {
-                todo!("prim={prim:?}");
+                log::error!("not yet implemented: prim={prim:?}");
+                return Err(ParseError::NotYetImplemented);
             }
         },
     }

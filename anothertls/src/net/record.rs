@@ -4,14 +4,12 @@
  * https://www.rfc-editor.org/rfc/rfc8446#section-5.1
  */
 
-use crate::{
-    crypto::aes::gcm::Gcm,
-    hash::TranscriptHash,
-    net::key_schedule::KeySchedule,
-    utils::bytes,
-};
+use crate::crypto::aes::gcm::Gcm;
+use crate::hash::TranscriptHash;
+use crate::net::key_schedule::KeySchedule;
+use crate::net::{alert::TlsError, key_schedule::WriteKeys};
+use crate::utils::bytes;
 
-use super::{key_schedule::WriteKeys, alert::TlsError};
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum RecordType {
     Invalid = 0,
@@ -84,69 +82,74 @@ impl<'a> Record<'a> {
         if buf.len() < 5 {
             return Err(TlsError::DecodeError);
         }
-
         let content_type = RecordType::new(buf[0])?;
         let version = ((buf[1] as u16) << 8) | buf[2] as u16;
         let len = (((buf[3] as u16) << 8) | buf[4] as u16) as usize;
         if buf.len() < (2 + len) {
             return Err(TlsError::DecodeError);
         }
-        if content_type == RecordType::Alert {
-            return Err(TlsError::GotAlert(buf[1]));
-        }
         let consumed = 5 + len;
-        Ok((consumed, Record {
-            content_type,
-            version,
-            header: buf[..5].try_into().unwrap(),
-            len,
-            fraqment: Value::Ref(&buf[5..consumed]),
-        }))
+        Ok((
+            consumed,
+            Record {
+                content_type,
+                version,
+                header: buf[..5].try_into().unwrap(),
+                len,
+                fraqment: Value::Ref(&buf[5..consumed]),
+            },
+        ))
     }
     pub fn as_bytes(&self) -> Vec<u8> {
-        Record::to_raw(self.content_type, self.fraqment.as_ref())
-    }
-    pub fn to_raw(typ: RecordType, data: &[u8]) -> Vec<u8> {
-        let len = data.len();
-        let mut t = vec![typ as u8, 0x3, 0x3, (len >> 8) as u8, len as u8];
-        t.extend_from_slice(data);
+        let len = self.fraqment.len();
+        let mut t = vec![
+            self.content_type as u8,
+            0x3,
+            0x3,
+            (len >> 8) as u8,
+            len as u8,
+        ];
+        t.extend_from_slice(self.fraqment.as_ref());
         t
     }
-    // pub fn is_full(&self) -> bool {
-    //     self.len == self.fraqment.len() as u16
-    // }
 }
 
 pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
-    handshake_keys: WriteKeys,
+    pub handshake_keys: WriteKeys,
+    pub is_client: bool,
     pub(crate) application_keys: Option<WriteKeys>,
 }
 
 impl RecordPayloadProtection {
-    pub fn new(key_schedule: KeySchedule) -> Option<Self> {
+    pub fn new(key_schedule: KeySchedule, is_client: bool) -> Option<Self> {
         Some(Self {
             handshake_keys: WriteKeys::handshake_keys(&key_schedule)?,
             // FIMXE: use application_keys
             application_keys: None,
             // application_keys: WriteKeys::handshake_keys(&key_schedule)?,
             key_schedule,
+            is_client,
         })
     }
 
     pub fn generate_application_keys(
         &mut self,
-        ts_hash: &dyn TranscriptHash,
+        tshash: &dyn TranscriptHash,
     ) -> Result<(), TlsError> {
-        let handshake_hash = ts_hash.clone().finalize();
         self.application_keys = WriteKeys::application_keys_from_master_secret(
             &self.key_schedule.hkdf_master_secret,
-            &handshake_hash,
+            &tshash.finalize(),
         );
         if self.application_keys.is_none() {
             return Err(TlsError::InternalError);
         }
         Ok(())
+    }
+
+    pub fn encrypt_handshake(&mut self, buf: &[u8]) -> Result<Vec<u8>, TlsError> {
+        let record = Record::new(RecordType::Handshake, Value::Ref(buf));
+        self.encrypt(record)
     }
 
     pub fn encrypt(&mut self, record: Record) -> Result<Vec<u8>, TlsError> {
@@ -172,10 +175,20 @@ impl RecordPayloadProtection {
             len as u8,
         ];
 
-        let nonce = keys.server.get_per_record_nonce();
+        let nonce = if self.is_client {
+            keys.client.get_per_record_nonce()
+        } else {
+            keys.server.get_per_record_nonce()
+        };
+
+        let key = if self.is_client {
+            keys.client.key
+        } else {
+            keys.server.key
+        };
 
         let (encrypted_record, ahead) =
-            match Gcm::encrypt(&keys.server.key, &nonce, &inner_plaintext, &tls_cipher_text) {
+            match Gcm::encrypt(&key, &nonce, &inner_plaintext, &tls_cipher_text) {
                 Ok(e) => e,
                 Err(_) => return Err(TlsError::InternalError),
             };
@@ -186,7 +199,8 @@ impl RecordPayloadProtection {
         Ok(tls_cipher_text)
     }
 
-    pub fn decrypt(&mut self, record: Record) -> Result<Record, TlsError> {
+    /// Returns Vec instead of a Record because of the borrow checker <3
+    pub fn decrypt(&mut self, record: Record) -> Result<(RecordType, Vec<u8>), TlsError> {
         let keys = if self.application_keys.is_some() {
             self.application_keys.as_mut().unwrap()
         } else {
@@ -197,14 +211,22 @@ impl RecordPayloadProtection {
         let ahead = &record.fraqment.as_ref()[ciphertext.len()..];
         let ahead = bytes::to_u128_le(ahead);
 
-        let nonce = keys.client.get_per_record_nonce();
+        let nonce = if self.is_client {
+            keys.server.get_per_record_nonce()
+        } else {
+            keys.client.get_per_record_nonce()
+        };
 
-        let plaintext =
-            match Gcm::decrypt(&keys.client.key, &nonce, ciphertext, &record.header, ahead) {
-                Ok(e) => e,
-                Err(_) => return Err(TlsError::DecryptError),
-            };
+        let key = if self.is_client {
+            keys.server.key
+        } else {
+            keys.client.key
+        };
 
+        let plaintext = match Gcm::decrypt(&key, &nonce, ciphertext, &record.header, ahead) {
+            Ok(e) => e,
+            Err(_) => return Err(TlsError::DecryptError),
+        };
 
         // 5.4. Record Padding
         // The receiving implementation scans the field from the end toward the beginning until it
@@ -220,6 +242,6 @@ impl RecordPayloadProtection {
             }
         }
 
-        Ok(Record::new(content_type, Value::Owned(plaintext[..record_len].to_vec())))
+        Ok((content_type, plaintext[..record_len].to_vec()))
     }
 }

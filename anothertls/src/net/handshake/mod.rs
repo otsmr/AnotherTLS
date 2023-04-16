@@ -3,16 +3,12 @@
  *
  */
 
-mod client_hello;
-mod server_hello;
 mod certificate;
 mod finished;
 
-pub(crate) use client_hello::ClientHello;
-pub(crate) use server_hello::ServerHello;
 pub(crate) use certificate::Certificate;
 pub(crate) use finished::get_finished_handshake;
-pub(crate) use finished::get_verify_client_finished;
+pub(crate) use finished::get_verify_data_for_finished;
 
 use super::alert::TlsError;
 
@@ -52,8 +48,8 @@ impl HandshakeType {
 
 pub struct Handshake<'a> {
     pub handshake_type: HandshakeType,
-    pub len: u32,
     pub fraqment: &'a [u8],
+    pub raw: &'a [u8],
 }
 
 impl<'a> Handshake<'a> {
@@ -63,17 +59,20 @@ impl<'a> Handshake<'a> {
         }
         let handshake_type = match HandshakeType::new(buf[0]) {
             Some(a) => a,
-            None => return Err(TlsError::DecodeError)
-
+            None => return Err(TlsError::DecodeError),
         };
-        let len = ((buf[1] as u32) << 16) | ((buf[2] as u32) << 8) | buf[3] as u32;
+
+        let len = (((buf[1] as u32) << 16) | ((buf[2] as u32) << 8) | buf[3] as u32) as usize;
         Ok(Handshake {
             handshake_type,
-            len,
-            fraqment: &buf[4..],
+            fraqment: &buf[4..(len + 4)],
+            raw: &buf[..(len + 4)]
         })
     }
-    pub fn to_raw(typ: HandshakeType, mut data: Vec<u8>) -> Vec<u8> {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.raw
+    }
+    pub fn to_bytes(typ: HandshakeType, mut data: Vec<u8>) -> Vec<u8> {
         let len = data.len();
         let mut t = vec![typ as u8, (len >> 16) as u8, (len >> 8) as u8, len as u8];
         t.append(&mut data);

@@ -7,9 +7,10 @@
 use crate::{
     crypto::CipherSuite,
     net::{
-        extensions::{self, ClientExtension, shared::KeyShareEntry},
         alert::TlsError,
-    }, utils::log,
+        extensions::{KeyShareEntry, ClientExtension, ClientExtensions},
+    },
+    utils::log,
 };
 use std::result::Result;
 
@@ -17,12 +18,58 @@ pub(crate) struct ClientHello<'a> {
     pub random: &'a [u8],
     pub cipher_suites: Vec<CipherSuite>,
     pub legacy_session_id_echo: Option<&'a [u8]>,
-    pub extensions: Vec<ClientExtension>,
+    pub extensions: ClientExtensions,
 }
+
 impl<'a> ClientHello<'a> {
+    pub fn new(random: &'a [u8], session_id: Option<&'a [u8]>) -> Result<ClientHello<'a>, TlsError> {
+        let mut extensions = ClientExtensions::new();
+        extensions.set_is_client();
+        Ok(ClientHello {
+            random,
+            cipher_suites: vec![
+                CipherSuite::TLS_AES_256_GCM_SHA384,
+                CipherSuite::TLS_AES_128_GCM_SHA256,
+            ],
+            legacy_session_id_echo: session_id,
+            extensions
+        })
+    }
+    pub fn as_bytes(&self) -> Result<Vec<u8>, TlsError> {
+        let mut out = vec![0x3, 0x3]; // ClientVersion
+                                      //
+        out.extend_from_slice(self.random);
+
+        if let Some(session_id) = self.legacy_session_id_echo {
+            out.push(session_id.len() as u8);
+            out.extend_from_slice(session_id);
+        } else {
+            out.push(0x00);
+        }
+
+        // CipherSuites
+        let len = self.cipher_suites.len() * 2;
+        out.push((len >> 8) as u8); // len
+        out.push(len as u8); // len
+        for cipher_suite in self.cipher_suites.iter() {
+            let num = cipher_suite.as_u16();
+            out.push((num >> 8) as u8);
+            out.push(num as u8);
+        }
+
+        // Compression Methodes
+        out.push(0x01);
+        out.push(0x00);
+
+        // ClientExtensions
+        out.extend_from_slice(&self.extensions.as_bytes());
+
+        Ok(out)
+    }
     pub fn from_raw(buf: &[u8]) -> Result<ClientHello, TlsError> {
-        if buf.len() < 100 {
+        if buf.len() < 45 {
             // FIXME: make this dynamic -> extensions_len...
+            // 45 -> minimum handshake size (without session id, and extensions)
             return Err(TlsError::IllegalParameter);
         }
 
@@ -50,9 +97,7 @@ impl<'a> ClientHello<'a> {
         let mut cipher_suites = vec![];
         log::debug!("Clients CipherSuites:");
         for i in (consumed..(consumed + cipher_suites_len as usize)).step_by(2) {
-            let cs = CipherSuite::new(
-                ((buf[i] as u16) << 8) | (buf[i + 1] as u16),
-            );
+            let cs = CipherSuite::new(((buf[i] as u16) << 8) | (buf[i + 1] as u16));
             if let Ok(cs) = cs {
                 log::debug!("  {cs:?}");
                 cipher_suites.push(cs);
@@ -68,7 +113,7 @@ impl<'a> ClientHello<'a> {
         let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
         consumed += 2;
 
-        let extensions = extensions::ClientExtension::from_client_hello(
+        let extensions = ClientExtension::from_client_hello(
             &buf[consumed..(consumed + extensions_len)],
         )?;
 
@@ -81,7 +126,7 @@ impl<'a> ClientHello<'a> {
     }
 
     pub fn get_public_key_share(&self) -> Option<&KeyShareEntry> {
-        for ext in self.extensions.iter() {
+        for ext in self.extensions.as_vec().iter() {
             if let ClientExtension::KeyShare(key_share) = ext {
                 if !key_share.0.is_empty() {
                     return Some(&key_share.0[0]);

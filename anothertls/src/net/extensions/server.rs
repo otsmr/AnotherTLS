@@ -3,40 +3,64 @@
  *
  */
 
-use super::shared::{Extension, KeyShare, SignatureAlgorithms, SupportedVersions};
+// use crate::utils::x509::Extensions;
+use crate::net::extensions::{
+    Extension, ExtensionWrapper, Extensions, KeyShare, SignatureAlgorithms, SupportedVersions, ExtensionType
+};
+use crate::net::alert::TlsError;
+use crate::utils::bytes;
 
 pub(crate) enum ServerExtension {
-    SupportedVersion(SupportedVersions),
+    SupportedVersions(SupportedVersions),
     KeyShare(KeyShare),
     SignatureAlgorithms(SignatureAlgorithms),
 }
 
-pub(crate) struct ServerExtensions(Vec<ServerExtension>);
+impl ExtensionWrapper for ServerExtension {
+    fn get_extension(&self) -> Box<&dyn Extension> {
+        match self {
+            ServerExtension::SupportedVersions(sv) => Box::new(sv),
+            ServerExtension::KeyShare(ks) => Box::new(ks),
+            ServerExtension::SignatureAlgorithms(sa) => Box::new(sa),
+        }
+    }
+}
+
+pub(crate) type ServerExtensions = Extensions<ServerExtension>;
 
 impl ServerExtensions {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
+    pub fn from_server_hello(buf: &[u8]) -> Result<ServerExtensions, TlsError> {
+        let mut consumed = 0;
+        let mut extensions = ServerExtensions::new();
+        extensions.set_is_client();
 
-    pub fn push(&mut self, ext: ServerExtension) {
-        self.0.push(ext)
-    }
-
-    pub fn to_raw(&self) -> Vec<u8> {
-        let mut out = vec![0x00, 0x00];
-        if self.0.is_empty() {
-            return out; // Length of the extension list (0 bytes)
-        }
-        for ext in self.0.iter() {
-            match ext {
-                ServerExtension::SupportedVersion(sv) => out.extend(sv.to_raw()),
-                ServerExtension::KeyShare(ks) => out.extend(ks.to_raw()),
-                ServerExtension::SignatureAlgorithms(sa) => out.extend(sa.to_raw()),
+        while consumed < buf.len() {
+            let extension_type = bytes::to_u16(&buf[consumed..consumed + 2]);
+            let extension_type = ExtensionType::new(extension_type);
+            let size = bytes::to_u16(&buf[consumed + 2..consumed + 4]) as usize;
+            consumed += 4;
+            if extension_type.is_none() {
+                consumed += size;
+                continue;
             }
+            let extension_type = extension_type.unwrap();
+
+            let extension = match extension_type {
+                ExtensionType::KeyShare => {
+                    ServerExtension::KeyShare(KeyShare::client_parse(&buf[consumed..consumed + size])?)
+                }
+                ExtensionType::SupportedVersions => {
+                    ServerExtension::SupportedVersions(SupportedVersions::client_parse(&buf[consumed..])?)
+                }
+                ExtensionType::SignatureAlgorithms => ServerExtension::SignatureAlgorithms(
+                    SignatureAlgorithms::client_parse(&buf[consumed..])?,
+                ), // ExtensionType::SupportedGroups => continue, // TODO
+                _ => continue
+                   // ExtensionType::PSKKeyExchangeMode => continue, // TODO
+            };
+            consumed += size;
+            extensions.push(extension);
         }
-        let extension_len = out.len() - 2;
-        out[0] = (extension_len >> 8) as u8;
-        out[1] = extension_len as u8;
-        out
+        Ok(extensions)
     }
 }

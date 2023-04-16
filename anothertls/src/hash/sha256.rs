@@ -154,13 +154,20 @@ impl TranscriptHash for Sha256 {
         }
     }
 
-    fn finalize(&mut self) -> Vec<u8> {
-        self.padd_input();
+    fn finalize(&self) -> Vec<u8> {
+        let mut copy = Self {
+            input: self.input,
+            input_len: self.input_len,
+            state: self.state,
+            length: self.length,
+        };
+
+        copy.padd_input();
         let mut out: [u8; 32] = [0; 32];
 
         for i in 0u8..32u8 {
             out[i as usize] =
-                (self.state[(i >> 2) as usize] >> (8 * (3 - (i & 0x03))) as u32) as u8;
+                (copy.state[(i >> 2) as usize] >> (8 * (3 - (i & 0x03))) as u32) as u8;
         }
 
         out.to_vec()

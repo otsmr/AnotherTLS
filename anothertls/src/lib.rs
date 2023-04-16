@@ -37,7 +37,12 @@ pub(crate) mod utils;
 pub(crate) mod rand;
 pub(crate) mod hash;
 
-pub use net::config::TlsConfig;
-pub use net::config::TlsConfigBuilder;
-pub use net::TlsListener;
+pub use net::server::ServerConfig;
+pub use net::server::ServerConfigBuilder;
+pub use net::server::ServerConnection;
+
+pub use net::client::ClientConfig;
+pub use net::client::ClientConfigBuilder;
+pub use net::client::ClientConnection;
+
 pub use net::TlsStream;

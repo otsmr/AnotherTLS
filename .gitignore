@@ -2,6 +2,7 @@
 
 /Cargo.lock
 
-
+.idea
+.vscode
 .DS_Store
 keylog.txt
