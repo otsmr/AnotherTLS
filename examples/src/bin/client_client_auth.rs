@@ -7,17 +7,15 @@ use anothertls::{ClientConnection, ClientConfigBuilder};
 use std::net::TcpStream;
 
 fn main() {
-    // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
     anothertls::log::init();
 
-    // let server_name = "one.one.one.one".to_string();
-    // let server_name = "www.google.de".to_string();
-    // let host = server_name.clone() + ":443";
     let server_name = "localhost".to_string();
     let host = server_name.clone() + ":4000";
 
     let config = ClientConfigBuilder::new()
+        .add_client_cert_pem("./examples/src/bin/config/client_cert/client.signed.cert".to_string())
+        .add_client_key_pem("./examples/src/bin/config/client_cert/client.key".to_string())
         .set_server_name(server_name.clone())
         .enable_keylog()
         .build()

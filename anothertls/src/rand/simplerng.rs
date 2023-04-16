@@ -53,8 +53,6 @@ impl RngCore<IBig> for SimpleRng<IBig> {
     fn between(&mut self, min: usize, max: usize) -> IBig {
         let min = ibig!(2).pow(min * 8);
         let max = ibig!(2).pow(max * 8);
-        println!("min={min}");
-        println!("max={max}");
         self.next() % (max - min.clone()) + min
     }
     fn between_bytes(&mut self, size: usize) -> Vec<u8> {

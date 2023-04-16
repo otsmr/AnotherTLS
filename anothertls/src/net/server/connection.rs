@@ -244,7 +244,7 @@ impl<'a> ServerHandshake<'a> {
         // -- Server Certificate --
         let handshake_raw = Handshake::to_bytes(
             HandshakeType::Certificate,
-            self.config.cert.get_certificate_for_handshake(),
+            self.config.cert.get_certificate_for_handshake(vec![0x00]),
         );
 
         log::debug!("<-- Certificate");
@@ -374,9 +374,10 @@ impl<'a> ServerHandshake<'a> {
             .is_err()
         {
             self.state = ServerHsState::FinishWithError(TlsError::UnknownCa)
+        } else {
+            self.client_cert = Some(cert);
+            self.state = ServerHsState::ClientCertificateVerify;
         }
-        self.client_cert = Some(cert);
-        self.state = ServerHsState::ClientCertificateVerify;
 
         Ok(())
     }
@@ -455,7 +456,6 @@ impl<'a> ServerHandshake<'a> {
         )?);
 
         if fraqment != verify_data.unwrap() {
-            println!("ERROR");
             return Err(TlsError::DecryptError);
         }
 
@@ -473,6 +473,7 @@ impl<'a> ServerHandshake<'a> {
         }
 
         if let ServerHsState::FinishWithError(err) = self.state {
+            log::error!("Abort connection: {err:?}");
             return Err(err);
         }
 

@@ -11,7 +11,8 @@ pub trait Extension {
         Self: Sized;
     fn client_parse(buf: &[u8]) -> Result<Self, TlsError>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         Extension::server_parse(buf)
     }
     fn server_as_bytes(&self) -> Vec<u8>;
@@ -26,14 +27,17 @@ pub trait ExtensionWrapper {
     fn get_extension(&self) -> Box<&dyn Extension>;
 }
 
-pub(crate) struct Extensions<T: ExtensionWrapper>{
+pub(crate) struct Extensions<T: ExtensionWrapper> {
     extensions: Vec<T>,
-    is_client: bool
+    is_client: bool,
 }
 
 impl<T: ExtensionWrapper> Extensions<T> {
     pub fn new() -> Self {
-        Self { extensions: vec![], is_client: false }
+        Self {
+            extensions: vec![],
+            is_client: false,
+        }
     }
     pub fn as_vec(&self) -> &Vec<T> {
         &self.extensions
@@ -94,4 +98,3 @@ impl ExtensionType {
         })
     }
 }
-

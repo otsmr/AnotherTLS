@@ -10,6 +10,8 @@ use std::net::TcpListener;
 fn main() {
     // openssl x509 -noout -text -in src/bin/config/anothertls.local.cert
 
+    anothertls::log::init();
+
     let config = ServerConfigBuilder::new()
         .enable_keylog()
         .add_cert_pem("./examples/src/bin/config/server.cert".to_string())

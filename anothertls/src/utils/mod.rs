@@ -10,6 +10,6 @@ pub(crate) mod der;
 pub(crate) mod keylog;
 
 #[macro_use]
-pub(crate) mod log;
+pub mod log;
 pub(crate) mod x509;
 

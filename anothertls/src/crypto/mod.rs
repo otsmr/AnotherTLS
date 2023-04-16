@@ -35,11 +35,10 @@ impl CipherSuite {
             CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => 0x1303,
             CipherSuite::TLS_AES_128_GCM_SHA256 => 0x1301,
             CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => 0x00ff,
-            _ => 0x0000,
         }
     }
     pub fn get_tshash(&self) -> Result<Box<dyn TranscriptHash>, TlsError> {
-        let mut tshash: Box<dyn TranscriptHash> = match self {
+        let tshash: Box<dyn TranscriptHash> = match self {
             CipherSuite::TLS_AES_256_GCM_SHA384 => Box::new(Sha384::new()),
             CipherSuite::TLS_AES_128_GCM_SHA256 => Box::new(Sha256::new()),
             CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => todo!(),
