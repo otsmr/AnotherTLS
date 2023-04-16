@@ -356,14 +356,6 @@ impl<'a> ServerHandshake<'a> {
 
         let cert = certs.pop().unwrap();
 
-        if let Some(f) = self.config.client_cert_custom_verify_fn.as_ref() {
-            if !f(cert.x509.as_ref().unwrap()) {
-                log::debug!("Certificate denied by custom verify function");
-                self.state = ServerHsState::FinishWithError(TlsError::AccessDenied);
-                return Ok(());
-            }
-        }
-
         // Validate client cert against the CA
         if self
             .config
@@ -375,6 +367,13 @@ impl<'a> ServerHandshake<'a> {
         {
             self.state = ServerHsState::FinishWithError(TlsError::UnknownCa)
         } else {
+            if let Some(f) = self.config.client_cert_custom_verify_fn.as_ref() {
+                if !f(cert.x509.as_ref().unwrap()) {
+                    log::debug!("Certificate denied by custom verify function");
+                    self.state = ServerHsState::FinishWithError(TlsError::AccessDenied);
+                    return Ok(());
+                }
+            }
             self.client_cert = Some(cert);
             self.state = ServerHsState::ClientCertificateVerify;
         }
@@ -441,10 +440,12 @@ impl<'a> ServerHandshake<'a> {
         if handshake.handshake_type != HandshakeType::Finished {
             if let ServerHsState::FinishWithError(_) = self.state {
                 // When error in Certificate, then CertificateVerify will follow
+                self.tshash.as_mut().unwrap().update(handshake.as_bytes());
                 return Ok(());
             }
             return Err(TlsError::UnexpectedMessage);
         }
+
 
         let protection = self.stream.protection.as_mut().unwrap();
         log::debug!("--> ClientFinished");
