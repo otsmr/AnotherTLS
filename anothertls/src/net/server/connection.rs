@@ -374,9 +374,10 @@ impl<'a> ServerHandshake<'a> {
             .is_err()
         {
             self.state = ServerHsState::FinishWithError(TlsError::UnknownCa)
+        } else {
+            self.client_cert = Some(cert);
+            self.state = ServerHsState::ClientCertificateVerify;
         }
-        self.client_cert = Some(cert);
-        self.state = ServerHsState::ClientCertificateVerify;
 
         Ok(())
     }
