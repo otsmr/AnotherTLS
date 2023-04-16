@@ -83,6 +83,7 @@ impl Ecdsa {
         }
         // 3. n * pub_key.point == 0
         // ??
+
         // Check Signature
         if sign.s <= ibig!(0) {
             return false;
