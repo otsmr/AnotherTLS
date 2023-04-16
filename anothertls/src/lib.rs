@@ -46,3 +46,4 @@ pub use net::client::ClientConfigBuilder;
 pub use net::client::ClientConnection;
 
 pub use net::TlsStream;
+pub use utils::log;

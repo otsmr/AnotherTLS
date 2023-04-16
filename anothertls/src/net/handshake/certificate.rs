@@ -68,8 +68,7 @@ impl Certificate {
         let prev_len = consumed;
 
         #[allow(clippy::never_loop)]
-        while certs_len > (consumed-prev_len) {
-
+        while certs_len > (consumed - prev_len) {
             let cert_len = bytes::to_u128_le_fill(&buf[consumed..consumed + 3]) as usize;
             consumed += 3;
             let cert = Certificate::from_raw_x509(buf[consumed..consumed + cert_len].to_vec())?;
@@ -83,11 +82,11 @@ impl Certificate {
 
             if !cert
                 .x509
-                    .as_ref()
-                    .unwrap()
-                    .tbs_certificate
-                    .validity
-                    .is_valid()
+                .as_ref()
+                .unwrap()
+                .tbs_certificate
+                .validity
+                .is_valid()
             {
                 log::debug!("Certificate is not valid");
                 return Err(TlsError::CertificateExpired);
@@ -103,15 +102,11 @@ impl Certificate {
 
             certs.push(cert);
 
-            if certs_len > (consumed-prev_len) {
-                log::error!("More then one certificate. Ignoring them!");
+            if certs_len > (consumed - prev_len) {
+                log::error!("More then one certificate. NOT YET IMPLEMENTED, so ignoring them!");
                 break;
             }
         }
-        // if certs_len != cert_len + 5 {
-        //     // todo!("Add support for multiple certs");
-        // }
-
 
         Ok(certs)
     }
@@ -126,11 +121,10 @@ impl Certificate {
         out
     }
 
-    pub fn get_certificate_for_handshake(&self) -> Vec<u8> {
+    pub fn get_certificate_for_handshake(&self, mut certificates_raw: Vec<u8>) -> Vec<u8> {
         let len = self.raw.len();
         let lens = len + 5;
-        let mut certificate_raw = vec![
-            0x00,
+        certificates_raw.extend_from_slice(&[
             // Certificates Length + Extensions
             (lens >> 16) as u8,
             (lens >> 8) as u8,
@@ -139,11 +133,11 @@ impl Certificate {
             (len >> 16) as u8,
             (len >> 8) as u8,
             (len as u8),
-        ];
-        certificate_raw.extend_from_slice(&self.raw);
+        ]);
+        certificates_raw.extend_from_slice(&self.raw);
         // Certificate Extensions
-        certificate_raw.extend_from_slice(&[0x00, 0x00]);
-        certificate_raw
+        certificates_raw.extend_from_slice(&[0x00, 0x00]);
+        certificates_raw
     }
 
     pub fn get_certificate_verify_for_handshake(
