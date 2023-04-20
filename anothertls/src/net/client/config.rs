@@ -9,11 +9,11 @@
 use crate::{crypto::ellipticcurve::PrivateKey, log, net::handshake::Certificate};
 
 pub struct ClientConfig {
-    pub(crate) server_name: Option<String>,
-    pub(crate) client_cert: Option<Certificate>,
-    pub(crate) client_key: Option<PrivateKey>,
+    pub server_name: Option<String>,
+    pub client_cert: Option<Certificate>,
+    pub client_key: Option<PrivateKey>,
     // #[allow(unused)]
-    pub(crate) keylog: Option<String>,
+    pub keylog: Option<String>,
 }
 
 pub struct ClientConfigBuilder {

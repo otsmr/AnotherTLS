@@ -31,11 +31,11 @@
 // TODO: Write documentation
 
 
-pub(crate) mod crypto;
-pub(crate) mod net;
-pub(crate) mod utils;
-pub(crate) mod rand;
-pub(crate) mod hash;
+pub mod crypto;
+pub mod net;
+pub mod utils;
+pub mod rand;
+pub mod hash;
 
 pub use net::server::ServerConfig;
 pub use net::server::ServerConfigBuilder;

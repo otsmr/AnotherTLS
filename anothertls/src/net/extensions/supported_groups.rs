@@ -11,9 +11,9 @@ use crate::net::extensions::shared::Extension;
 use super::NamedGroup;
 
 #[derive(Debug)]
-pub(crate) struct SupportedGroups(Vec<NamedGroup>);
+pub struct SupportedGroups(Vec<NamedGroup>);
 impl SupportedGroups {
-    pub(crate) fn supported() -> Self {
+    pub fn supported() -> Self {
         SupportedGroups(vec![NamedGroup::Secp256r1, NamedGroup::X25519])
     }
 }

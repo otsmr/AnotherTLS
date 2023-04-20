@@ -34,11 +34,11 @@ pub fn init() {
     }
 }
 
-// #[macro_export]
+#[macro_export]
 macro_rules! fixme {
     ($($x: expr),*) => {{
         $(
-            if crate::utils::log::check_log_level(crate::utils::log::LogLevel::Fixme) {
+            if $crate::utils::log::check_log_level($crate::utils::log::LogLevel::Fixme) {
                 print!("\x1b[36;2m! ");
                 println!($x);
                 print!("\x1b[0m");
@@ -46,13 +46,13 @@ macro_rules! fixme {
         )*
     }}
 }
-pub(crate) use fixme;
+pub use fixme;
 
-// #[macro_export]
+#[macro_export]
 macro_rules! debug {
     ($($x: expr),*) => {{
         $(
-            if crate::utils::log::check_log_level(crate::utils::log::LogLevel::Debug) {
+            if $crate::utils::log::check_log_level($crate::utils::log::LogLevel::Debug) {
                     print!("\x1b[33;2m* ");
                     println!($x);
                     print!("\x1b[0m");
@@ -60,14 +60,14 @@ macro_rules! debug {
         )*
     }}
 }
-pub(crate) use debug;
+pub use debug;
 
-// #[macro_export]
+#[macro_export]
 macro_rules! error {
     ($($x: expr),*) => {{
         $(
 
-            if crate::utils::log::check_log_level(crate::utils::log::LogLevel::Error) {
+            if $crate::utils::log::check_log_level($crate::utils::log::LogLevel::Error) {
                 print!("\x1b[31;1m* ");
                 println!($x);
                 print!("\x1b[0m");
@@ -76,4 +76,4 @@ macro_rules! error {
         )*
     }}
 }
-pub(crate) use error;
+pub use error;

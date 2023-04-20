@@ -26,7 +26,7 @@ use crate::{
     utils::bytes::{self, ByteOrder},
 };
 
-pub(crate) struct ServerHello<'a> {
+pub struct ServerHello<'a> {
     pub random: [u8; 32],
     pub legacy_session_id_echo: Option<&'a [u8]>,
     pub cipher_suite: CipherSuite,

@@ -27,7 +27,7 @@ pub trait ExtensionWrapper {
     fn get_extension(&self) -> Box<&dyn Extension>;
 }
 
-pub(crate) struct Extensions<T: ExtensionWrapper> {
+pub struct Extensions<T: ExtensionWrapper> {
     extensions: Vec<T>,
     is_client: bool,
 }
@@ -64,6 +64,12 @@ impl<T: ExtensionWrapper> Extensions<T> {
         out[0] = (extension_len >> 8) as u8;
         out[1] = extension_len as u8;
         out
+    }
+}
+
+impl<T: ExtensionWrapper> Default for Extensions<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

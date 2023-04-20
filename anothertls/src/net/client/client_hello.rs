@@ -14,7 +14,7 @@ use crate::{
 };
 use std::result::Result;
 
-pub(crate) struct ClientHello<'a> {
+pub struct ClientHello<'a> {
     pub random: &'a [u8],
     pub cipher_suites: Vec<CipherSuite>,
     pub legacy_session_id_echo: Option<&'a [u8]>,

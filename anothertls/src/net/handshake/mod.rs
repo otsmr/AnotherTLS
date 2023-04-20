@@ -6,9 +6,9 @@
 mod certificate;
 mod finished;
 
-pub(crate) use certificate::Certificate;
-pub(crate) use finished::get_finished_handshake;
-pub(crate) use finished::get_verify_data_for_finished;
+pub use certificate::Certificate;
+pub use finished::get_finished_handshake;
+pub use finished::get_verify_data_for_finished;
 
 use super::alert::TlsError;
 

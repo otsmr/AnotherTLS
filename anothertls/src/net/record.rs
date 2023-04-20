@@ -47,9 +47,9 @@ impl<'a> AsRef<[u8]> for Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    // pub fn is_empty(&self) -> bool {
-    //     self.len() == 0
-    // }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     pub fn len(&self) -> usize {
         match self {
@@ -118,7 +118,7 @@ pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
     pub handshake_keys: WriteKeys,
     pub is_client: bool,
-    pub(crate) application_keys: Option<WriteKeys>,
+    pub application_keys: Option<WriteKeys>,
 }
 
 impl RecordPayloadProtection {
