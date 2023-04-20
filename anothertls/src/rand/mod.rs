@@ -5,9 +5,11 @@
 
 pub mod simplerng;
 pub mod urandom;
+pub mod triple_ec;
 
 pub use simplerng::SimpleRng;
 pub use urandom::URandomRng;
+pub use triple_ec::TripleEc;
 
 pub trait RngCore<T> {
     fn next(&mut self) -> T;
