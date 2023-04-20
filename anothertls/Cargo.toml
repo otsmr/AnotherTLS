@@ -2,12 +2,14 @@
 name = "anothertls"
 version = "0.1.0"
 edition = "2021"
+authors = ["Tobias Müller <git@tsmr.eu>"]
+readme = "../README.md"
+description = "Yet another TLS implementation, but written from scratch (including the crypto) in pure Rust - of course."
+repository = "https://github.com/otsmr/AnotherTLS"
+categories = ["Network", "Cryptography"]
+license-file = "../LICENCE"
 
 [dependencies]
 ibig = { version = "0.3.6", default-features = false }
 
-[profile.release]
-debug = true
 # log = {version = "0.4.17", optional = true }
-# [features]
-# debug = ["dep:log"]
