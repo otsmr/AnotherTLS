@@ -7,7 +7,7 @@ readme = "../README.md"
 description = "Yet another TLS implementation, but written from scratch (including the crypto) in pure Rust - of course."
 repository = "https://github.com/otsmr/AnotherTLS"
 categories = ["Network", "Cryptography"]
-license-file = "../LICENCE"
+license-file = "../LICENSE"
 
 [dependencies]
 ibig = { version = "0.3.6", default-features = false }
