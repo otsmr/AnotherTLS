@@ -6,7 +6,7 @@ authors = ["Tobias Müller <git@tsmr.eu>"]
 readme = "../README.md"
 description = "Yet another TLS implementation, but written from scratch (including the crypto) in pure Rust - of course."
 repository = "https://github.com/otsmr/AnotherTLS"
-categories = ["Network", "Cryptography"]
+categories = ["network", "cryptography"]
 license-file = "../LICENSE"
 
 [dependencies]
