@@ -120,6 +120,7 @@ pub fn to_u128_le(bytes: &[u8]) -> u128 {
     }
     res
 }
+#[allow(dead_code)]
 pub fn to_u64_le(bytes: &[u8]) -> u64 {
     let mut res: u64 = 0;
     for (i, byte) in bytes[..8].iter().enumerate() {

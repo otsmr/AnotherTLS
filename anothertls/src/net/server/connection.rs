@@ -16,7 +16,7 @@ use crate::net::{
     },
 };
 use crate::net::{KeySchedule, TlsStream};
-use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng};
+use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng, TripleEc};
 use crate::utils::{bytes, keylog::KeyLog, log};
 use crate::ServerConfig;
 use ibig::{IBig, ibig};
@@ -87,7 +87,8 @@ impl<'a> ServerHandshake<'a> {
             certificate_request_context: None,
             rng: match config.prng_type {
                 PRNG::Simple => Box::new(SimpleRng::from_seed(ibig!(0))),
-                PRNG::URandom  => Box::new(URandomRng::new())
+                PRNG::URandom  => Box::new(URandomRng::new()),
+                PRNG::TripleEc => Box::new(TripleEc::new())
             },
             tshash: None,
             tshash_clienthello_serverfinished: None,

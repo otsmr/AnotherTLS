@@ -27,12 +27,6 @@ impl URandomRng {
             .expect("Reading from /dev/urandom");
         buffer
     }
-    fn next(&mut self) -> IBig {
-        let rand_bytes = self.read_from_urandom();
-        let size = bytes::to_u64_le(&rand_bytes[..8]) as usize;
-        let size = size % 50 + 50;
-        bytes::to_ibig_le(&rand_bytes[8..size])
-    }
 }
 
 impl Default for URandomRng {

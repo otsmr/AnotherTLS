@@ -16,6 +16,7 @@ pub use triple_ec::TripleEc;
 pub enum PRNG {
     Simple,
     URandom,
+    TripleEc
 }
 
 pub trait RngCore<T> {

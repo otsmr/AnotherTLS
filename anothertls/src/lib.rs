@@ -47,3 +47,4 @@ pub use net::client::ClientConnection;
 
 pub use net::TlsStream;
 pub use utils::log;
+pub use rand::PRNG;
