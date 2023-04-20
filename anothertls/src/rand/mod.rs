@@ -11,6 +11,13 @@ pub use simplerng::SimpleRng;
 pub use urandom::URandomRng;
 pub use triple_ec::TripleEc;
 
+#[derive(PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum PRNG {
+    Simple,
+    URandom,
+}
+
 pub trait RngCore<T> {
     fn between(&mut self, min: usize, max: usize) -> T;
     fn bytes(&mut self, size: usize) -> Vec<u8>;

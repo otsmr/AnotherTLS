@@ -16,10 +16,10 @@ use crate::net::{
     },
 };
 use crate::net::{KeySchedule, TlsStream};
-use crate::rand::{RngCore, URandomRng};
+use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng};
 use crate::utils::{bytes, keylog::KeyLog, log};
 use crate::ServerConfig;
-use ibig::IBig;
+use ibig::{IBig, ibig};
 use std::net::SocketAddr;
 use std::net::TcpListener;
 
@@ -85,7 +85,10 @@ impl<'a> ServerHandshake<'a> {
             keylog: None,
             client_cert: None,
             certificate_request_context: None,
-            rng: Box::new(URandomRng::new()),
+            rng: match config.prng_type {
+                PRNG::Simple => Box::new(SimpleRng::from_seed(ibig!(0))),
+                PRNG::URandom  => Box::new(URandomRng::new())
+            },
             tshash: None,
             tshash_clienthello_serverfinished: None,
         }

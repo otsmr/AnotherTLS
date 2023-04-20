@@ -3,6 +3,8 @@
  *
  */
 
+use crate::log;
+use crate::rand::PRNG;
 use crate::utils::x509::X509;
 use crate::net::handshake::Certificate;
 use crate::crypto::ellipticcurve::PrivateKey;
@@ -31,6 +33,7 @@ pub struct ServerConfig {
     pub(crate) client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
     pub(crate) keylog: Option<String>,
     pub(crate) server_name: Option<String>,
+    pub(crate) prng_type: PRNG,
 }
 
 pub struct ServerConfigBuilder {
@@ -39,6 +42,7 @@ pub struct ServerConfigBuilder {
     keylog: Option<String>,
     server_name: Option<String>,
     client_cert_ca: Option<Certificate>,
+    prng_type: PRNG,
     client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
 }
 impl Default for ServerConfigBuilder {
@@ -55,6 +59,7 @@ impl ServerConfigBuilder {
             keylog: None,
             server_name: None,
             client_cert_ca: None,
+            prng_type: PRNG::URandom,
             client_cert_custom_verify_fn: None
         }
     }
@@ -96,6 +101,10 @@ impl ServerConfigBuilder {
         self.server_name = Some(server_name);
         self
     }
+    pub fn set_prng(mut self, prng: PRNG) -> Self {
+        self.prng_type = prng;
+        self
+    }
     pub fn build(self) -> std::result::Result<ServerConfig, String> {
         if self.cert.is_none() {
             return Err("No cert provided".to_string());
@@ -106,11 +115,15 @@ impl ServerConfigBuilder {
         if self.client_cert_custom_verify_fn.is_some() && self.client_cert_ca.is_none() {
             return Err("No client certificate CA found. Custom verify fn useless.".to_string());
         }
+        if self.prng_type == PRNG::Simple {
+            log::error!("The selected random number generator is insecure!");
+        }
         Ok(ServerConfig {
             client_cert_ca: self.client_cert_ca,
             cert: self.cert.unwrap(),
             privkey: self.privkey.unwrap(),
             keylog: self.keylog,
+            prng_type: self.prng_type,
             server_name: self.server_name,
             client_cert_custom_verify_fn: self.client_cert_custom_verify_fn
         })
