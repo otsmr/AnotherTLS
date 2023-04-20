@@ -228,7 +228,7 @@ impl<'a> ServerHandshake<'a> {
         if let Some(client_cert_ca) = &self.config.client_cert_ca {
             // prevent an attacker who has temporary access to the client's
             // private key from pre-computing valid CertificateVerify messages
-            self.certificate_request_context = Some(self.rng.between_bytes(32));
+            self.certificate_request_context = Some(self.rng.bytes(32));
             let certificate_request = client_cert_ca
                 .get_certificate_request(self.certificate_request_context.as_ref().unwrap());
 

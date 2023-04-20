@@ -10,9 +10,8 @@ pub use simplerng::SimpleRng;
 pub use urandom::URandomRng;
 
 pub trait RngCore<T> {
-    fn next(&mut self) -> T;
     fn between(&mut self, min: usize, max: usize) -> T;
-    fn between_bytes(&mut self, size: usize) -> Vec<u8>;
+    fn bytes(&mut self, size: usize) -> Vec<u8>;
 }
 
 pub trait SeedableRng<T> {
