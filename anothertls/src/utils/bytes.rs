@@ -24,13 +24,16 @@ pub enum ByteOrder {
     Little,
     Big
 }
-pub fn ibig_to_32bytes(num: IBig, order: ByteOrder) -> [u8; 32] {
+pub fn ibig_to_vec(num: IBig, order: ByteOrder) -> Vec<u8> {
     let b = <ibig::UBig as std::convert::TryFrom<IBig>>::try_from(num).unwrap();
-    let b = if order == ByteOrder::Big {
+    if order == ByteOrder::Big {
         b.to_be_bytes()
     } else {
         b.to_le_bytes()
-    };
+    }
+}
+pub fn ibig_to_32bytes(num: IBig, order: ByteOrder) -> [u8; 32] {
+    let b = ibig_to_vec(num, order);
     let mut c = [0; 32];
     for (i, d) in b.iter().enumerate() {
         if i >= 32 {
