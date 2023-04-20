@@ -6,33 +6,38 @@ Rust, cryptography and network protocols. So don't use it in production, just
 **use [rustls](https://crates.io/crates/rustls)** as it is the better choice
 and will be forever.
 
-**If you are interested in hacking TLS, you should checkout the my
+**If you are interested in hacking TLS, you should in any case checkout the my
 [VulnTLS](https://github.com/otsmr/VulnTLS) project.**
 
-What makes AnotherTLS unique? It depends only on the standard library and the
-following crates (`cargo tree`). So you will find **the entire TLSv1.3 stack in a
-single repo** to play around with, as I do with my VulnTLS implementation.
+## What makes AnotherTLS unique?
+It depends only on the standard library and the ibig crate. So you will find
+**the entire TLSv1.3 stack in a single repo** to play around with, as I do with
+my VulnTLS implementation. Also, everything is public, so you can use
+AnotherTLS to easily simulate parts of TLS for example to write an exploit :^).
 
-```bash
-anothertls v0.1.0
-└── ibig v0.3.6
-    ├── cfg-if v1.0.0
-    └── static_assertions v1.1.0
-```
 
-The current implementation has full (server-side) handshake support, which can
-be tested with the following command.
+With the current version it is possible to connect via curl or the browser with
+the AnotherTLS server. AnotherTLS can also be used as a client. Since the
+parsing of certificates is still WIP, it is not yet possible to connect
+(securely) to known websites.
+
 
 **handshake and application data**
 ```bash
-curl -iv --insecure https://localhost:4000/
+$ cargo run --bin server_https
+# other window
+$ curl -iv --insecure https://localhost:4000/
 ```
 
 **client certificate**
 ```bash
-cd ./examples/src/bin/config/client_cert/
-curl --cert client.signed.cert --key client.key -iv --insecure https://localhost:4000/
+$ cargo run --bin server_client_auth
+# other window
+$ cd ./examples/src/bin/config/client_cert/
+$ curl --cert client.signed.cert --key client.key -iv --insecure https://localhost:4000/
 ```
+
+For more information about using AnotherTLS, see the `./examples` folder.
 
 ## security
 Currently, the focus of this implementation is to be TLS-complaint according to
@@ -40,9 +45,6 @@ the [RFC8446](https://datatracker.ietf.org/doc/html/rfc8446), but when all
 requirements are implemented, I will switch the focus to the security part,
 because this is one of the main reasons I started this project.
 
-Then you can find also a VulnTLS repository where typical security
-vulnerabilities in TLS implementations like timing attacks on ECDSA can be
-attacked and demonstrated.
 
 **Todo**
 - setup [tlsfuzzer](https://github.com/tlsfuzzer/tlsfuzzer)
@@ -131,6 +133,3 @@ tracked in the following section.
    X25519 ✓
 ```
 
-
-## Infos
-find . -name '*.rs' | xargs wc -l | sort -nr
