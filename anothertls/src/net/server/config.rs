@@ -13,9 +13,9 @@ pub struct ServerConfig {
 
     // Required
     // (1) openssl ecparam -out server.key -name prime256v1 -genkey
-    pub(crate) privkey: PrivateKey,
+    pub privkey: PrivateKey,
     // (2) openssl req -new -key server.key -x509 -nodes -days 365 -out server.cert
-    pub(crate) cert: Certificate,
+    pub cert: Certificate,
 
     // Optional
     // pub server_name: Option<String>,
@@ -29,11 +29,11 @@ pub struct ServerConfig {
     //      (b) openssl req -new -key client.key -out client.cert
     // (3) Sign client cert
     //      (a) openssl x509 -req -in client.cert -days 365 -CA ca.cert -CAkey ca.key -CAcreateserial -out client.signed.cert
-    pub(crate) client_cert_ca: Option<Certificate>,
-    pub(crate) client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
-    pub(crate) keylog: Option<String>,
-    pub(crate) server_name: Option<String>,
-    pub(crate) prng_type: PRNG,
+    pub client_cert_ca: Option<Certificate>,
+    pub client_cert_custom_verify_fn: Option<fn(cert: &X509) -> bool>,
+    pub keylog: Option<String>,
+    pub server_name: Option<String>,
+    pub prng_type: PRNG,
 }
 
 pub struct ServerConfigBuilder {

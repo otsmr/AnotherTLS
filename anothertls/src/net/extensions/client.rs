@@ -10,10 +10,10 @@ use crate::net::extensions::{
 };
 use crate::utils::bytes;
 
-pub(crate) type ClientExtensions = Extensions<ClientExtension>;
+pub type ClientExtensions = Extensions<ClientExtension>;
 
 // #[derive(Debug)]
-pub(crate) enum ClientExtension {
+pub enum ClientExtension {
     SupportedVersion(SupportedVersions),
     SupportedGroups(SupportedGroups),
     KeyShare(KeyShare),

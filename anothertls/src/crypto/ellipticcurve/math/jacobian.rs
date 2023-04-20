@@ -5,7 +5,7 @@ use crate::crypto::ellipticcurve::Curve;
 use crate::crypto::ellipticcurve::JacobianPoint;
 use ibig::ibig;
 
-pub(crate) fn jacobian_double(p: &JacobianPoint, curve: &Curve) -> JacobianPoint {
+pub fn jacobian_double(p: &JacobianPoint, curve: &Curve) -> JacobianPoint {
     let a = curve.a.clone();
     let prime = &curve.p;
 
@@ -34,7 +34,7 @@ pub(crate) fn jacobian_double(p: &JacobianPoint, curve: &Curve) -> JacobianPoint
     }
 }
 
-pub(crate) fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> JacobianPoint {
+pub fn jacobian_add(p: &JacobianPoint, q: &JacobianPoint, curve: &Curve) -> JacobianPoint {
     if p.y == ibig!(0) {
         return q.clone();
     }

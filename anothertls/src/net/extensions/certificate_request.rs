@@ -9,7 +9,7 @@ use crate::net::extensions::{
 };
 use crate::utils::bytes;
 
-pub(crate) enum CertificateRequestExtension {
+pub enum CertificateRequestExtension {
     SignatureAlgorithms(SignatureAlgorithms),
 }
 impl ExtensionWrapper for CertificateRequestExtension {
@@ -19,7 +19,7 @@ impl ExtensionWrapper for CertificateRequestExtension {
         }
     }
 }
-pub(crate) type CertificateRequestExtensions = Extensions<CertificateRequestExtension>;
+pub type CertificateRequestExtensions = Extensions<CertificateRequestExtension>;
 
 impl CertificateRequestExtensions {
     pub fn from_request(buf: &[u8]) -> Result<CertificateRequestExtensions, TlsError> {

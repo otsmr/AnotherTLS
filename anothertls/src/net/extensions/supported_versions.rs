@@ -8,12 +8,12 @@ use crate::net::extensions::shared::Extension;
 use crate::utils::bytes;
 
 #[derive(Debug)]
-pub(crate) struct SupportedVersions(bool);
+pub struct SupportedVersions(bool);
 impl SupportedVersions {
-    pub(crate) fn is_tls13_supported(&self) -> bool {
+    pub fn is_tls13_supported(&self) -> bool {
         self.0
     }
-    pub(crate) fn new(tls13: bool) -> SupportedVersions {
+    pub fn new(tls13: bool) -> SupportedVersions {
         SupportedVersions(tls13)
     }
 }

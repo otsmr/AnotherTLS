@@ -340,6 +340,12 @@ impl TBSCertificateBuilder {
     }
 }
 
+impl Default for TBSCertificateBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct X509 {
     pub tbs_certificate: TBSCertificate,
     pub tbs_certificate_size: usize,

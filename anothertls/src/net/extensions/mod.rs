@@ -3,29 +3,29 @@
  *
  */
 
-pub(crate) mod certificate_request;
-pub(crate) mod client;
-pub(crate) mod server;
-pub(crate) mod shared;
+pub mod certificate_request;
+pub mod client;
+pub mod server;
+pub mod shared;
 
-pub(crate) use certificate_request::CertificateRequestExtensions;
-pub(crate) use client::{ClientExtension, ClientExtensions};
-pub(crate) use server::{ServerExtension, ServerExtensions};
-pub(crate) use shared::{Extension, ExtensionWrapper, Extensions};
+pub use certificate_request::CertificateRequestExtensions;
+pub use client::{ClientExtension, ClientExtensions};
+pub use server::{ServerExtension, ServerExtensions};
+pub use shared::{Extension, ExtensionWrapper, Extensions};
 
 // Extensions
-pub(crate) mod key_share;
-pub(crate) mod named_groups;
-pub(crate) mod server_name;
-pub(crate) mod signature_algorithm;
-pub(crate) mod supported_groups;
-pub(crate) mod supported_versions;
+pub mod key_share;
+pub mod named_groups;
+pub mod server_name;
+pub mod signature_algorithm;
+pub mod supported_groups;
+pub mod supported_versions;
 
-pub(crate) use key_share::{KeyShare, KeyShareEntry};
-pub(crate) use server_name::ServerName;
-pub(crate) use shared::ExtensionType;
-pub(crate) use signature_algorithm::{SignatureAlgorithms, SignatureScheme};
-pub(crate) use supported_groups::SupportedGroups;
-pub(crate) use supported_versions::SupportedVersions;
+pub use key_share::{KeyShare, KeyShareEntry};
+pub use server_name::ServerName;
+pub use shared::ExtensionType;
+pub use signature_algorithm::{SignatureAlgorithms, SignatureScheme};
+pub use supported_groups::SupportedGroups;
+pub use supported_versions::SupportedVersions;
 
-pub(crate) use named_groups::NamedGroup;
+pub use named_groups::NamedGroup;

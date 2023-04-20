@@ -10,7 +10,7 @@ use crate::net::extensions::{
 use crate::net::alert::TlsError;
 use crate::utils::bytes;
 
-pub(crate) enum ServerExtension {
+pub enum ServerExtension {
     SupportedVersions(SupportedVersions),
     KeyShare(KeyShare),
     SignatureAlgorithms(SignatureAlgorithms),
@@ -26,7 +26,7 @@ impl ExtensionWrapper for ServerExtension {
     }
 }
 
-pub(crate) type ServerExtensions = Extensions<ServerExtension>;
+pub type ServerExtensions = Extensions<ServerExtension>;
 
 impl ServerExtensions {
     pub fn from_server_hello(buf: &[u8]) -> Result<ServerExtensions, TlsError> {

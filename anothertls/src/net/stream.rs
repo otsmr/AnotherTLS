@@ -32,7 +32,7 @@ impl TlsStream {
     /// The function write_record buffers the data before sending.
     /// This is useful in the handshake process, where multiple
     /// TLS records are send to the client.
-    pub(crate) fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
+    pub fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
 
         let record = Record::new(typ, Value::Ref(data));
 
@@ -51,7 +51,7 @@ impl TlsStream {
 
     }
 
-    pub(crate) fn flush(&mut self) -> Result<(), TlsError>{
+    pub fn flush(&mut self) -> Result<(), TlsError>{
         if self.stream.write_all(&self.buffer).is_err() {
             return Err(TlsError::BrokenPipe);
         };
@@ -59,12 +59,12 @@ impl TlsStream {
         Ok(())
     }
 
-    pub(crate) fn set_protection(&mut self, protection: Option<RecordPayloadProtection>) {
+    pub fn set_protection(&mut self, protection: Option<RecordPayloadProtection>) {
         self.protection = protection;
     }
 
     /// Write directly to the TCP socket
-    pub(crate) fn tcp_write(&mut self, buf: &[u8]) -> Result<usize, TlsError> {
+    pub fn tcp_write(&mut self, buf: &[u8]) -> Result<usize, TlsError> {
         match self.stream.write(buf) {
             Ok(n) => Ok(n),
             Err(_) => Err(TlsError::BrokenPipe),
@@ -72,7 +72,7 @@ impl TlsStream {
     }
 
     /// Read directly from the TCP socket
-    pub(crate) fn tcp_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
+    pub fn tcp_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
         match self.stream.read(buf) {
             Ok(n) => Ok(n),
             Err(_) => Err(TlsError::BrokenPipe),

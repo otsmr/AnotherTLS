@@ -112,14 +112,14 @@ pub struct KeySchedule {
     // Early Secret
     // hkdf_early_secret: Hkdf,
     // Handshake Secret
-    pub(crate) client_handshake_traffic_secret: Hkdf,
-    pub(crate) server_handshake_traffic_secret: Hkdf,
+    pub client_handshake_traffic_secret: Hkdf,
+    pub server_handshake_traffic_secret: Hkdf,
     // Master Secret
-    pub(crate) hkdf_master_secret: Hkdf,
+    pub hkdf_master_secret: Hkdf,
 }
 
 impl KeySchedule {
-    pub(crate) fn from_handshake(
+    pub fn from_handshake(
         tshash: &dyn TranscriptHash,
         private_key: &PrivateKey,
         key_share_entry: &KeyShareEntry,

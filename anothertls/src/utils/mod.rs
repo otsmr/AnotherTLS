@@ -3,13 +3,13 @@
  *
  */
 
-pub(crate) mod base64;
-pub(crate) mod bytes;
-pub(crate) mod pem;
-pub(crate) mod der;
-pub(crate) mod keylog;
+pub mod base64;
+pub mod bytes;
+pub mod pem;
+pub mod der;
+pub mod keylog;
 
 #[macro_use]
 pub mod log;
-pub(crate) mod x509;
+pub mod x509;
 
