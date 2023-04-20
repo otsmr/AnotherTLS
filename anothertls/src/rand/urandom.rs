@@ -27,6 +27,12 @@ impl URandomRng {
             .expect("Reading from /dev/urandom");
         buffer
     }
+    fn next(&mut self) -> IBig {
+        let rand_bytes = self.read_from_urandom();
+        let size = bytes::to_u64_le(&rand_bytes[..8]) as usize;
+        let size = size % 50 + 50;
+        bytes::to_ibig_le(&rand_bytes[8..size])
+    }
 }
 
 impl Default for URandomRng {
@@ -36,20 +42,13 @@ impl Default for URandomRng {
 }
 
 impl RngCore<IBig> for URandomRng {
-    fn next(&mut self) -> IBig {
-        let rand_bytes = self.read_from_urandom();
-        let size = bytes::to_u64_le(&rand_bytes[..8]) as usize;
-        let size = size % 50 + 50;
-        bytes::to_ibig_le(&rand_bytes[8..size])
-    }
-
     fn between(&mut self, min: usize, max: usize) -> IBig {
         let rand_bytes = self.read_from_urandom();
         let count = rand_bytes[0] as usize;
         let count = (count % (max - min)) + min;
         bytes::to_ibig_le(&rand_bytes[1..count])
     }
-    fn between_bytes(&mut self, size: usize) -> Vec<u8> {
+    fn bytes(&mut self, size: usize) -> Vec<u8> {
         let rand_bytes = self.read_from_urandom();
         rand_bytes[..size].to_owned()
     }

@@ -151,8 +151,8 @@ impl<'a> ClientHandshake<'a> {
 
     fn send_client_hello(&mut self) -> Result<(), TlsError> {
         // Create ClientHello and send it to the Server
-        let random = self.rng.between_bytes(32);
-        let session_id = self.rng.between_bytes(32);
+        let random = self.rng.bytes(32);
+        let session_id = self.rng.bytes(32);
 
         let mut client_hello = ClientHello::new(&random, Some(&session_id))?;
         // TODO: push ClientExtensions

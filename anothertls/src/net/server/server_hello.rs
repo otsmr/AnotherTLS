@@ -96,7 +96,7 @@ impl<'a> ServerHello<'a> {
         let mut private_key = None;
         let mut named_group = None;
 
-        let random: [u8; 32] = rng.between_bytes(32).try_into().unwrap();
+        let random: [u8; 32] = rng.bytes(32).try_into().unwrap();
 
         // Value is: DOWNGRD
         // Only needed if negotiating TLSv1.2
