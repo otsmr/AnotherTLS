@@ -13,31 +13,25 @@ use crate::crypto::ellipticcurve::{math, Curve, Point};
 use crate::rand::RngCore;
 use crate::utils::bytes;
 
-/// Based on Dual_EC, but improved to use three multiplications, to prevent NSA using this as an
-/// backdoor.
-pub struct TripleEc {
+/// Changed point Q, to stop the NSA using there backdoor
+pub struct DualECRng {
     s: IBig,
     curve: Curve,
-    D: Point,
     Q: Point,
 }
 
-impl TripleEc {
+impl DualECRng {
     pub fn new() -> Self {
         // Generate initial seed
         let random = Self::read_from_urandom();
         let secret = bytes::to_ibig_le(&random[0..32]);
         let curve = Curve::secp256r1();
         let s = math::multiply(&curve.g, secret, &curve).x;
-        let D = Point::new(
-            ibig!(_89cfbf8401e39ec991ad1e313c28c95c87c0e2013af5cd0107cfc925c14b96ad base 16),
-            ibig!(_f1e7e06a2a7f3ba02c7bf8f7da2823088e39a94f6ccfce11a820ecda0ca7532a base 16),
-        );
         let Q = Point::new(
-            ibig!(_2eb8c6abf83456f93e08eb1417e01e3e587ca6d7a8ac20ccd4ea35e592ffa48f base 16),
-            ibig!(_5db2de5d37257b34249eeb386bcc5ca199bb8e4fa355aae9f3c4e162ed7492c8 base 16),
+          ibig!(_fbfbce7a8c184ca69d3431ab45ab81f67c787ccb695f53a6dfd52c9a31a615ff base 16),
+          ibig!(_7e35599b872f0a69d1d54631b2d4077bf7543baa4a4bd4a2f28edc768eb891a5 base 16),
         );
-        Self { s, curve, D, Q }
+        Self { s, curve, Q }
     }
     fn read_from_urandom() -> [u8; 100] {
         let mut buffer: [u8; 100] = [0; 100];
@@ -49,19 +43,18 @@ impl TripleEc {
         buffer
     }
     fn next(&mut self) -> IBig {
-        let r = math::multiply(&self.Q, self.s.clone(), &self.curve).x;
-        self.s = math::multiply(&self.Q, r.clone(), &self.curve).x;
-        math::multiply(&self.D, r, &self.curve).x
+        self.s = math::multiply(&self.Q, self.s.clone(), &self.curve).x;
+        math::multiply(&self.curve.g, self.s.clone(), &self.curve).x
     }
 }
 
-impl Default for TripleEc {
+impl Default for DualECRng {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RngCore<IBig> for TripleEc {
+impl RngCore<IBig> for DualECRng {
     fn between(&mut self, _min: usize, _max: usize) -> IBig {
         self.next()
     }

@@ -5,18 +5,18 @@
 
 pub mod simplerng;
 pub mod urandom;
-pub mod triple_ec;
+pub mod dual_ec;
 
 pub use simplerng::SimpleRng;
 pub use urandom::URandomRng;
-pub use triple_ec::TripleEc;
+pub use dual_ec::DualECRng;
 
 #[derive(PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum PRNG {
     Simple,
     URandom,
-    TripleEc
+    DualEC
 }
 
 pub trait RngCore<T> {
