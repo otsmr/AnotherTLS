@@ -6,7 +6,7 @@
 use crate::crypto::ellipticcurve::{Curve, PrivateKey, Signature};
 use crate::hash::TranscriptHash;
 use crate::net::alert::TlsError;
-use crate::net::client::ClientHello;
+use crate::net::client::{ClientConfig, ClientHello};
 use crate::net::extensions::{
     CertificateRequestExtensions, ClientExtension, KeyShare, KeyShareEntry, NamedGroup, ServerName,
     SignatureAlgorithms, SignatureScheme, SupportedGroups, SupportedVersions,
@@ -20,8 +20,6 @@ use crate::net::{KeySchedule, TlsStream};
 use crate::rand::{RngCore, URandomRng};
 use crate::utils::keylog::KeyLog;
 use crate::utils::{bytes, bytes::ByteOrder, log};
-use crate::ClientConfig;
-
 use ibig::IBig;
 use std::net::TcpStream;
 use std::result::Result;

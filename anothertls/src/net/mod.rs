@@ -6,18 +6,18 @@
 pub mod stream;
 
 pub mod server {
-    mod config;
-    mod connection;
-    mod server_hello;
+    pub mod config;
+    pub mod connection;
+    pub mod server_hello;
     pub use server_hello::ServerHello;
     pub use config::{ServerConfig, ServerConfigBuilder};
     pub use connection::ServerConnection;
 }
 
 pub mod client {
-    mod connection;
-    mod config;
-    mod client_hello;
+    pub mod connection;
+    pub mod config;
+    pub mod client_hello;
     pub use client_hello::ClientHello;
     pub use config::{ClientConfig, ClientConfigBuilder};
     pub use connection::ClientConnection;

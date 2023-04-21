@@ -56,7 +56,7 @@ pub mod hash;
 pub use net::server::ServerConfigBuilder;
 pub use net::server::ServerConnection;
 
-pub use net::client::ClientConfig;
+// pub use net::client::ClientConfig;
 pub use net::client::ClientConfigBuilder;
 pub use net::client::ClientConnection;
 

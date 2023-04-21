@@ -3,8 +3,8 @@
  *
  */
 
-mod certificate;
-mod finished;
+pub mod certificate;
+pub mod finished;
 
 pub use certificate::Certificate;
 pub use finished::get_finished_handshake;
