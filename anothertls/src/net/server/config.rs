@@ -3,14 +3,13 @@
  *
  */
 
+use crate::crypto::ellipticcurve::PrivateKey;
 use crate::log;
+use crate::net::handshake::Certificate;
 use crate::rand::PRNG;
 use crate::utils::x509::X509;
-use crate::net::handshake::Certificate;
-use crate::crypto::ellipticcurve::PrivateKey;
 
 pub struct ServerConfig {
-
     // Required
     // (1) openssl ecparam -out server.key -name prime256v1 -genkey
     pub privkey: PrivateKey,
@@ -60,7 +59,7 @@ impl ServerConfigBuilder {
             server_name: None,
             client_cert_ca: None,
             prng_type: PRNG::URandom,
-            client_cert_custom_verify_fn: None
+            client_cert_custom_verify_fn: None,
         }
     }
     pub fn add_cert_pem(mut self, filepath: String) -> Self {
@@ -125,8 +124,7 @@ impl ServerConfigBuilder {
             keylog: self.keylog,
             prng_type: self.prng_type,
             server_name: self.server_name,
-            client_cert_custom_verify_fn: self.client_cert_custom_verify_fn
+            client_cert_custom_verify_fn: self.client_cert_custom_verify_fn,
         })
     }
 }
-

@@ -6,5 +6,9 @@ cargo run --bin [example id]
 ```
 
 ## TLS Server
-- Basic https example: `server_https`
-- Client authentication: `server_client_auth`
+- Basic server: `server_https`
+- Server with client auth: `server_client_auth`
+
+## TLS Client
+- Basic client: `client_https`
+- Client with client auth: `client_client_auth`

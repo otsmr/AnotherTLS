@@ -6,7 +6,7 @@
 use crate::crypto::ellipticcurve::Signature;
 use crate::hash::TranscriptHash;
 use crate::net::record::{Record, RecordPayloadProtection, RecordType};
-use crate::net::server::ServerHello;
+use crate::net::server::{ServerHello, ServerConfig};
 use crate::net::{
     alert::TlsError,
     client::ClientHello,
@@ -18,7 +18,6 @@ use crate::net::{
 use crate::net::{KeySchedule, TlsStream};
 use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng};
 use crate::utils::{bytes, keylog::KeyLog, log};
-use crate::ServerConfig;
 use ibig::{IBig, ibig};
 use std::net::SocketAddr;
 use std::net::TcpListener;

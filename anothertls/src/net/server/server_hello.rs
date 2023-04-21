@@ -3,28 +3,20 @@
  *
  */
 
-use crate::{utils::log, ServerConfig};
-
+use crate::crypto::ellipticcurve::{Curve, PrivateKey};
+use crate::crypto::CipherSuite;
+use crate::net::alert::TlsError;
+use crate::net::client::ClientHello;
+use crate::net::extensions::{
+    server::ServerExtension, ClientExtension, KeyShare, KeyShareEntry, NamedGroup,
+    ServerExtensions, SignatureScheme, SupportedVersions,
+};
+use crate::net::server::ServerConfig;
 use crate::rand::RngCore;
+use crate::utils::bytes::{self, ByteOrder};
+use crate::utils::log;
 use ibig::IBig;
 use std::result::Result;
-
-use crate::{
-    crypto::{
-        ellipticcurve::{Curve, PrivateKey},
-        CipherSuite,
-    },
-    net::{
-        alert::TlsError,
-        client::ClientHello,
-        extensions::NamedGroup,
-        extensions::{
-            server::ServerExtension, ClientExtension, KeyShare, KeyShareEntry, ServerExtensions,
-            SignatureScheme, SupportedVersions,
-        },
-    },
-    utils::bytes::{self, ByteOrder},
-};
 
 pub struct ServerHello<'a> {
     pub random: [u8; 32],
@@ -157,8 +149,8 @@ impl<'a> ServerHello<'a> {
                     if !supported {
                         return Err(TlsError::InsufficientSecurity);
                     }
-                },
-                ClientExtension::SupportedGroups(_sg) => ()
+                }
+                ClientExtension::SupportedGroups(_sg) => (),
             }
         }
 
