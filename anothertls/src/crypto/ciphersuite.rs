@@ -10,6 +10,7 @@ use crate::net::alert::TlsError;
 
 
 pub trait Cipher {
+    // FIXME: How to use traits without self
     fn encrypt(
         &self,
         key: &[u8],
