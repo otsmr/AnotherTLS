@@ -64,11 +64,10 @@ implemented in this repository.
 - [HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
 - [X.509](https://www.rfc-editor.org/rfc/rfc5280#section-4.1)
-<!-- ### work in progress -->
-### maybe
-- Cipher suite: [TLS_CHACHA20_POLY1305_SHA256]()
-- TLS curves: [secp384r1]()
+- [CHACHA20_POLY1305](https://datatracker.ietf.org/doc/html/rfc8439)
 
+### open
+- TLS curves: [secp384r1]()
 
 ## status of [RFC8446](https://datatracker.ietf.org/doc/html/rfc8446)
 The Implementation is currently work in progress. The current state is
