@@ -3,10 +3,32 @@
  *
  */
 
-use crate::hash::{TranscriptHash, Sha384, Sha256};
+use crate::crypto::aes::gcm::Gcm;
+use crate::crypto::chacha20::Poly1305;
+use crate::hash::{Sha256, Sha384, TranscriptHash};
 use crate::net::alert::TlsError;
 
-#[derive(Debug, Clone, Copy)]
+
+pub trait Cipher {
+    fn encrypt(
+        &self,
+        key: &[u8],
+        iv: &[u8],
+        plaintext: &[u8],
+        additional_data: &[u8],
+    ) -> Result<(Vec<u8>, u128), String>;
+
+    fn decrypt(
+        &self,
+        key: &[u8],
+        iv: &[u8],
+        ciphertext: &[u8],
+        additional_data: &[u8],
+        auth_tag: u128,
+    ) -> Result<Vec<u8>, String>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum CipherSuite {
     TLS_AES_256_GCM_SHA384 = 0x1302,
@@ -37,9 +59,18 @@ impl CipherSuite {
         let tshash: Box<dyn TranscriptHash> = match self {
             CipherSuite::TLS_AES_256_GCM_SHA384 => Box::new(Sha384::new()),
             CipherSuite::TLS_AES_128_GCM_SHA256 => Box::new(Sha256::new()),
-            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => todo!(),
+            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => Box::new(Sha256::new()),
             _ => return Err(TlsError::InsufficientSecurity),
         };
         Ok(tshash)
+    }
+    pub fn get_cipher(&self) -> Result<Box<dyn Cipher>, TlsError> {
+        let cipher: Box<dyn Cipher> = match self {
+            CipherSuite::TLS_AES_256_GCM_SHA384 => Box::<Gcm>::default(),
+            CipherSuite::TLS_AES_128_GCM_SHA256 => Box::<Gcm>::default(),
+            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => Box::<Poly1305>::default(),
+            _ => return Err(TlsError::InsufficientSecurity),
+        };
+        Ok(cipher)
     }
 }

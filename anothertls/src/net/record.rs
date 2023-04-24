@@ -4,7 +4,7 @@
  * https://www.rfc-editor.org/rfc/rfc8446#section-5.1
  */
 
-use crate::crypto::aes::gcm::Gcm;
+use crate::crypto::Cipher;
 use crate::hash::TranscriptHash;
 use crate::net::key_schedule::KeySchedule;
 use crate::net::{alert::TlsError, key_schedule::WriteKeys};
@@ -116,17 +116,19 @@ impl<'a> Record<'a> {
 
 pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
+    pub cipher: Box<dyn Cipher>,
     pub handshake_keys: WriteKeys,
     pub is_client: bool,
     pub application_keys: Option<WriteKeys>,
 }
 
 impl RecordPayloadProtection {
-    pub fn new(key_schedule: KeySchedule, is_client: bool) -> Option<Self> {
+    pub fn new(key_schedule: KeySchedule, cipher: Box<dyn Cipher>, is_client: bool) -> Option<Self> {
         Some(Self {
             handshake_keys: WriteKeys::handshake_keys(&key_schedule)?,
             // FIMXE: use application_keys
             application_keys: None,
+            cipher,
             // application_keys: WriteKeys::handshake_keys(&key_schedule)?,
             key_schedule,
             is_client,
@@ -188,7 +190,7 @@ impl RecordPayloadProtection {
         };
 
         let (encrypted_record, ahead) =
-            match Gcm::encrypt(&key, &nonce, &inner_plaintext, &tls_cipher_text) {
+            match self.cipher.encrypt(&key, &nonce, &inner_plaintext, &tls_cipher_text) {
                 Ok(e) => e,
                 Err(_) => return Err(TlsError::InternalError),
             };
@@ -223,7 +225,7 @@ impl RecordPayloadProtection {
             keys.client.key
         };
 
-        let plaintext = match Gcm::decrypt(&key, &nonce, ciphertext, &record.header, ahead) {
+        let plaintext = match self.cipher.decrypt(&key, &nonce, ciphertext, &record.header, ahead) {
             Ok(e) => e,
             Err(_) => return Err(TlsError::DecryptError),
         };

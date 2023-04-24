@@ -200,7 +200,8 @@ impl<'a> ServerHandshake<'a> {
         let key_schedule =
             KeySchedule::from_handshake(tshash.as_ref(), &private_key, key_share_entry)?;
 
-        let protection = RecordPayloadProtection::new(key_schedule, false);
+        let cipher = server_hello.cipher_suite.get_cipher()?;
+        let protection = RecordPayloadProtection::new(key_schedule, cipher, false);
 
         if let Some(filepath) = &self.config.keylog {
             if protection.is_some() {

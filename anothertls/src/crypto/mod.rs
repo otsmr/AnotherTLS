@@ -10,4 +10,5 @@ pub mod ellipticcurve;
 pub mod ciphersuite;
 
 pub use ciphersuite::CipherSuite;
+pub use ciphersuite::Cipher;
 

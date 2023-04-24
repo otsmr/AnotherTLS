@@ -164,19 +164,17 @@ impl<'a> ServerHello<'a> {
         )));
 
         let mut cipher_suite_to_use = None;
-        // let mut hash = None;
         for cs in client_hello.cipher_suites.iter() {
-            match cs {
-                CipherSuite::TLS_AES_256_GCM_SHA384 => {
-                    cipher_suite_to_use = Some(CipherSuite::TLS_AES_256_GCM_SHA384);
-                    // hash = Some(HashType::SHA384);
-                    break; // Break because server best choice
-                }
-                CipherSuite::TLS_AES_128_GCM_SHA256 => {
-                    // hash = Some(HashType::SHA256);
-                    cipher_suite_to_use = Some(CipherSuite::TLS_AES_128_GCM_SHA256)
-                }
-                _ => (),
+            cipher_suite_to_use = Some(match cs {
+                CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
+                CipherSuite::TLS_AES_256_GCM_SHA384 => CipherSuite::TLS_AES_256_GCM_SHA384,
+                CipherSuite::TLS_AES_128_GCM_SHA256 => CipherSuite::TLS_AES_128_GCM_SHA256,
+                CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => continue
+            });
+            // servers best choice (add to options?)
+            // if cipher_suite_to_use.unwrap() == CipherSuite::TLS_AES_256_GCM_SHA384 {
+            if cipher_suite_to_use.unwrap() == CipherSuite::TLS_CHACHA20_POLY1305_SHA256 {
+                break;
             }
         }
 
@@ -197,7 +195,6 @@ impl<'a> ServerHello<'a> {
                 random,
                 legacy_session_id_echo: client_hello.legacy_session_id_echo,
                 cipher_suite,
-                // hash: hash.unwrap(),
                 extensions,
             },
             private_key,
