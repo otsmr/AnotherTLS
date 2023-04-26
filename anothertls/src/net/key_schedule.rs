@@ -129,7 +129,7 @@ impl KeySchedule {
             return Err(TlsError::HandshakeFailure);
         }
 
-        let client_public_key = bytes::to_ibig_le(&key_share_entry.opaque);
+        let client_public_key = bytes::to_ibig_be(&key_share_entry.opaque);
         let client_public_key = Point::new(client_public_key, ibig!(0));
 
         let server_private_key = private_key.secret.clone();

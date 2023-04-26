@@ -33,7 +33,7 @@ impl Ecdsa {
         privkey: &PrivateKey,
         hashed_message: &[u8],
     ) -> Result<Signature, String> {
-        let msg = bytes::to_ibig_le(hashed_message);
+        let msg = bytes::to_ibig_be(hashed_message);
         let curve = privkey.curve.clone();
         let d = privkey.secret.clone();
 
@@ -92,7 +92,7 @@ impl Ecdsa {
             return false;
         }
 
-        let z = bytes::to_ibig_le(hashed_message);
+        let z = bytes::to_ibig_be(hashed_message);
         let curve = pub_key.curve;
 
         let s_inv = math::inv(&sign.s, &curve.n);
@@ -137,8 +137,7 @@ mod tests {
         );
 
         let hashed_message: Vec<u8> =
-            bytes::from_hex("a582e8c28249fe7d7990bfa0afebd2da9185a9f831d4215b4efec74f355b301a")
-                .unwrap();
+            bytes::from_hex("a582e8c28249fe7d7990bfa0afebd2da9185a9f831d4215b4efec74f355b301a");
 
         let mut ecdsa = Ecdsa::unsecure();
 

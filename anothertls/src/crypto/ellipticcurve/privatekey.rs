@@ -19,7 +19,7 @@ impl PrivateKey {
     pub fn from_pem(filepath: String) -> Option<PrivateKey> {
         let raw = get_pem_content_from_file(filepath)?;
         let secret = raw.get("EC PRIVATE KEY")?;
-        let secret = bytes::to_ibig_le(&secret[7..39]);
+        let secret = bytes::to_ibig_be(&secret[7..39]);
         // FIXME: PARSE ASN1 OID
         Some(PrivateKey {
             curve: Curve::secp256r1(),

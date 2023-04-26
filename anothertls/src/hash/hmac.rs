@@ -123,8 +123,8 @@ mod tests {
         ];
 
         for (i, test_case) in test_cases.iter().enumerate() {
-            let key = bytes::from_hex(test_case.key).unwrap();
-            let data = bytes::from_hex(test_case.data).unwrap();
+            let key = bytes::from_hex(test_case.key);
+            let data = bytes::from_hex(test_case.data);
 
             println!("Test Case {i}");
             for res in test_case.result.iter() {

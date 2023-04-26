@@ -160,10 +160,10 @@ mod tests {
 
     #[test]
     fn test_decrypt() {
-        let K = from_hex("feffe9928665731c6d6a8f9467308308").unwrap();
-        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255").unwrap();
-        let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
-        let A = from_hex("").unwrap();
+        let K = from_hex("feffe9928665731c6d6a8f9467308308");
+        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255");
+        let IV = from_hex("cafebabefacedbaddecaf888");
+        let A = from_hex("");
         let cipher = Gcm::default();
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
@@ -175,10 +175,10 @@ mod tests {
     #[test]
     fn test_encrypt() {
         // Test Case 1
-        let K = from_hex("00000000000000000000000000000000").unwrap();
-        let P = from_hex("").unwrap();
-        let IV = from_hex("000000000000000000000000").unwrap();
-        let A = from_hex("").unwrap();
+        let K = from_hex("00000000000000000000000000000000");
+        let P = from_hex("");
+        let IV = from_hex("000000000000000000000000");
+        let A = from_hex("");
 
         let cipher = Gcm::default();
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
@@ -186,46 +186,46 @@ mod tests {
         assert_eq!(T, 0x58e2fccefa7e3061367f1d57a4e7455a);
 
         // Test Case 2
-        let P = from_hex("00000000000000000000000000000000").unwrap();
+        let P = from_hex("00000000000000000000000000000000");
         println!("len(P)={}", P.len());
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0xAB6E47D42CEC13BDF53A67B21257BDDF);
 
         // Test Case 3
-        let K = from_hex("feffe9928665731c6d6a8f9467308308").unwrap();
-        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255").unwrap();
-        let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
+        let K = from_hex("feffe9928665731c6d6a8f9467308308");
+        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255");
+        let IV = from_hex("cafebabefacedbaddecaf888");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
 
         // Test Case 4
-        let K = from_hex("feffe9928665731c6d6a8f9467308308").unwrap();
-        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39").unwrap();
-        let IV = from_hex("cafebabefacedbaddecaf888").unwrap();
-        let A = from_hex("feedfacedeadbeeffeedfacedeadbeefabaddad2").unwrap();
+        let K = from_hex("feffe9928665731c6d6a8f9467308308");
+        let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
+        let IV = from_hex("cafebabefacedbaddecaf888");
+        let A = from_hex("feedfacedeadbeeffeedfacedeadbeefabaddad2");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x5bc94fbc3221a5db94fae95ae7121a47);
 
         // Test Case 5
-        let IV = from_hex("cafebabefacedbad").unwrap();
+        let IV = from_hex("cafebabefacedbad");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x3612d2e79e3b0785561be14aaca2fccb);
 
         // Test Case 6
-        let IV = from_hex("9313225df88406e555909c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0c95156809539fcf0e2429a6b525416aedbf5a0de6a57a637b39b").unwrap();
+        let IV = from_hex("9313225df88406e555909c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0c95156809539fcf0e2429a6b525416aedbf5a0de6a57a637b39b");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x619cc5aefffe0bfa462af43c1699d050);
 
         // Test Case 7
-        let K = from_hex("000000000000000000000000000000000000000000000000").unwrap();
-        let IV = from_hex("000000000000000000000000").unwrap();
-        let P = from_hex("").unwrap();
-        let A = from_hex("").unwrap();
+        let K = from_hex("000000000000000000000000000000000000000000000000");
+        let IV = from_hex("000000000000000000000000");
+        let P = from_hex("");
+        let A = from_hex("");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0xcd33b28ac773f74ba00ed1f312572435);
 
         // Test Case 8
-        let P = from_hex("00000000000000000000000000000000").unwrap();
+        let P = from_hex("00000000000000000000000000000000");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(T, 0x2ff58d80033927ab8ef4d4587514f0fb);
 

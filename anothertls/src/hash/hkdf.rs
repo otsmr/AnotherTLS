@@ -106,10 +106,10 @@ mod tests {
 
         for (i, test_case) in test_cases.iter().enumerate() {
             println!("Trying TestCase {}", i+1);
-            let ikm = bytes::from_hex(test_case.ikm).unwrap();
-            let salt = bytes::from_hex(test_case.salt).unwrap();
-            let info = bytes::from_hex(test_case.info).unwrap();
-            let okm_expected = bytes::from_hex(test_case.okm).unwrap();
+            let ikm = bytes::from_hex(test_case.ikm);
+            let salt = bytes::from_hex(test_case.salt);
+            let info = bytes::from_hex(test_case.info);
+            let okm_expected = bytes::from_hex(test_case.okm);
 
             let hkdf = Hkdf::extract(test_case.hash, &salt, &ikm);
 

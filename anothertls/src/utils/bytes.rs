@@ -5,14 +5,14 @@
 
 use ibig::{ibig, IBig};
 
-// pub fn to_ibig_be(bytes: &[u8]) -> IBig {
-//     let mut res = ibig!(0);
-//     for (i, byte) in bytes.iter().enumerate() {
-//         res += IBig::from(*byte) << (i * 8);
-//     }
-//     res
-// }
 pub fn to_ibig_le(bytes: &[u8]) -> IBig {
+    let mut res = ibig!(0);
+    for (i, byte) in bytes.iter().enumerate() {
+        res += IBig::from(*byte) << (i * 8);
+    }
+    res
+}
+pub fn to_ibig_be(bytes: &[u8]) -> IBig {
     let mut res = ibig!(0);
     for (i, byte) in bytes.iter().enumerate() {
         res += IBig::from(*byte) << (((bytes.len() - 1) * 8) - i * 8);
@@ -137,16 +137,18 @@ pub fn to_hex(b: &[u8]) -> String {
 }
 
 #[allow(dead_code)]
-pub fn from_hex(s: &str) -> Option<Vec<u8>> {
+/// Panics, use only for tests
+pub fn from_hex(s: &str) -> Vec<u8> {
     if s.len() % 2 == 0 {
-        (0..s.len())
+        let a: Option<Vec<u8>> = (0..s.len())
             .step_by(2)
             .map(|i| {
                 s.get(i..i + 2)
                     .and_then(|sub| u8::from_str_radix(sub, 16).ok())
             })
-            .collect()
+            .collect();
+        a.unwrap()
     } else {
-        None
+        panic!("This should not happen!")
     }
 }

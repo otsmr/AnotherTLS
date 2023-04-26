@@ -41,7 +41,7 @@ impl Signature {
                     return Err(TlsError::BadCertificate);
                 }
             } else {
-                let int = bytes::to_ibig_le(&buf[consumed..consumed + size]);
+                let int = bytes::to_ibig_be(&buf[consumed..consumed + size]);
                 consumed += size;
                 if r.is_none() {
                     r = Some(int);

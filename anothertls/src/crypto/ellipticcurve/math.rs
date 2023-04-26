@@ -103,7 +103,7 @@ pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
             let x = bytes::ibig_to_32bytes(p.x.clone(), bytes::ByteOrder::Big);
             let res = curve25519::scalarmult(x, &a);
             Point {
-                x: bytes::to_ibig_le(&res),
+                x: bytes::to_ibig_be(&res),
                 y: ibig!(0)
             }
         }
