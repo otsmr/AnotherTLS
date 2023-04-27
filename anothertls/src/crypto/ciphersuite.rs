@@ -17,7 +17,7 @@ pub trait Cipher {
         iv: &[u8],
         plaintext: &[u8],
         additional_data: &[u8],
-    ) -> Result<(Vec<u8>, u128), String>;
+    ) -> Result<(Vec<u8>, [u8; 16]), String>;
 
     fn decrypt(
         &self,
@@ -25,7 +25,7 @@ pub trait Cipher {
         iv: &[u8],
         ciphertext: &[u8],
         additional_data: &[u8],
-        auth_tag: u128,
+        auth_tag: &[u8],
     ) -> Result<Vec<u8>, String>;
 }
 
@@ -33,7 +33,7 @@ pub trait Cipher {
 #[allow(non_camel_case_types)]
 pub enum CipherSuite {
     TLS_AES_256_GCM_SHA384 = 0x1302,
-    TLS_CHACHA20_POLY1305_SHA256 = 1303,
+    TLS_CHACHA20_POLY1305_SHA256 = 0x1303,
     TLS_AES_128_GCM_SHA256 = 0x1301,
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00ff,
 }

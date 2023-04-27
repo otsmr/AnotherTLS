@@ -52,6 +52,7 @@ implemented in this repository.
 - [HMAC](https://www.rfc-editor.org/rfc/rfc2104)
 - [X.509](https://www.rfc-editor.org/rfc/rfc5280#section-4.1)
 - [CHACHA20_POLY1305](https://datatracker.ietf.org/doc/html/rfc8439)
+- [CHACHA20_POLY1305_TLS](https://www.rfc-editor.org/rfc/rfc7905)
 
 ### open
 - TLS curves: [secp384r1]()

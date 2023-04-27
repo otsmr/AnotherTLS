@@ -1,4 +1,8 @@
-// FROM https://martin.kleppmann.com/papers/curve25519.pdf
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ * Code based (almost completely) on https://martin.kleppmann.com/papers/curve25519.pdf
+ */
 
 
 type FieldElem = [i64; 16];

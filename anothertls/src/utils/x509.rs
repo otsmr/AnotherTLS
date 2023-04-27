@@ -204,7 +204,7 @@ impl SubjectPublicKeyInfoBuilder {
     }
 }
 fn parse_object_identifier(id: &[u8]) -> Result<String, ParseError> {
-    let id = bytes::to_u128_le_fill(id);
+    let id = bytes::to_u128_be_fill(id);
     Ok(match id {
         0x550406 => "countryName".to_string(),
         0x550408 => "stateOrProvinceName".to_string(),

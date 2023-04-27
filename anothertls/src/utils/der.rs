@@ -91,7 +91,7 @@ fn get_len(len: &[u8], consumed: &mut usize) -> usize {
     if len[*consumed] >> 7 & 1 == 1 {
         let consume_len = len[*consumed] & 0x7F;
         *consumed += 1;
-        size = bytes::to_u128_le_fill(&len[*consumed..*consumed + consume_len as usize]) as usize;
+        size = bytes::to_u128_be_fill(&len[*consumed..*consumed + consume_len as usize]) as usize;
         *consumed += consume_len as usize;
     } else {
         size = len[*consumed] as usize;

@@ -8,6 +8,7 @@ pub mod bytes;
 pub mod pem;
 pub mod der;
 pub mod keylog;
+pub mod error;
 
 #[macro_use]
 pub mod log;

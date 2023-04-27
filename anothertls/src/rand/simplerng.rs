@@ -41,7 +41,7 @@ impl RngCore<u32> for SimpleRng<u32> {
 
 impl SimpleRng<IBig> {
     fn next(&mut self) -> IBig {
-        let mut a = SimpleRng::<u32>::from_seed(bytes::to_u128_le(&bytes::ibig_to_32bytes(
+        let mut a = SimpleRng::<u32>::from_seed(bytes::to_u128_be(&bytes::ibig_to_32bytes(
                     self.0.clone(),
                     bytes::ByteOrder::Little,
         )) as u32);

@@ -43,7 +43,7 @@ pub fn ibig_to_32bytes(num: IBig, order: ByteOrder) -> [u8; 32] {
     }
     c
 }
-pub fn to_bytes(num: u128) -> [u8; 16] {
+pub fn u128_to_bytes_be(num: u128) -> [u8; 16] {
     let mut res = [0u8; 16];
     for (i, r) in res.iter_mut().enumerate() {
         *r = (num >> ((15 * 8) - i * 8)) as u8;
@@ -94,7 +94,7 @@ pub fn to_u16(buf: &[u8]) -> u16 {
     }
     ((buf[0] as u16) << 8) | buf[1] as u16
 }
-pub fn to_u128_le_fill(bytes: &[u8]) -> u128 {
+pub fn to_u128_be_fill(bytes: &[u8]) -> u128 {
     let mut new = [0; 16];
     let bytes: &[u8] = match bytes.len() {
         a if a < 16 => {
@@ -106,9 +106,9 @@ pub fn to_u128_le_fill(bytes: &[u8]) -> u128 {
         a if a > 16 => &bytes[..16],
         _ => bytes
     };
-    to_u128_le(bytes)
+    to_u128_be(bytes)
 }
-pub fn to_u128_le(bytes: &[u8]) -> u128 {
+pub fn to_u128_be(bytes: &[u8]) -> u128 {
     // if bytes.len() < 128/8 filling 0 at the END
     let mut res: u128 = 0;
     let bytes: &[u8] = match bytes.len() {
@@ -120,10 +120,29 @@ pub fn to_u128_le(bytes: &[u8]) -> u128 {
     }
     res
 }
+pub fn to_u128_le(bytes: &[u8]) -> u128 {
+    // if bytes.len() < 128/8 filling 0 at the END
+    let mut res: u128 = 0;
+    let bytes: &[u8] = match bytes.len() {
+        a if a > 16 => &bytes[..16],
+        _ => bytes
+    };
+    for (i, byte) in bytes.iter().enumerate() {
+        res += (*byte as u128) << (i * 8);
+    }
+    res
+}
 pub fn to_u64_le(bytes: &[u8]) -> u64 {
     let mut res: u64 = 0;
     for (i, byte) in bytes[..8].iter().enumerate() {
         res += (*byte as u64) << ((7 * 8) - i * 8);
+    }
+    res
+}
+pub fn u64_to_bytes_le(num: u64) -> [u8; 8] {
+    let mut res = [0u8; 8];
+    for (i, r) in res.iter_mut().enumerate() {
+        *r = (num >> (i * 8)) as u8;
     }
     res
 }

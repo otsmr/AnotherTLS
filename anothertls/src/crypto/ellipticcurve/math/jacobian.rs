@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
+ *
+ */
 
 use super::rem_euclid;
 use crate::crypto::ellipticcurve::math::IBig;

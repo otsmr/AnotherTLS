@@ -8,7 +8,6 @@ use crate::crypto::Cipher;
 use crate::hash::TranscriptHash;
 use crate::net::key_schedule::KeySchedule;
 use crate::net::{alert::TlsError, key_schedule::WriteKeys};
-use crate::utils::bytes;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum RecordType {
@@ -196,7 +195,7 @@ impl RecordPayloadProtection {
             };
 
         tls_cipher_text.extend(encrypted_record);
-        tls_cipher_text.extend(bytes::to_bytes(ahead));
+        tls_cipher_text.extend(ahead);
 
         Ok(tls_cipher_text)
     }
@@ -211,7 +210,6 @@ impl RecordPayloadProtection {
 
         let ciphertext = &record.fraqment.as_ref()[..record.fraqment.len() - 16]; // 1 = Inner ContentType
         let ahead = &record.fraqment.as_ref()[ciphertext.len()..];
-        let ahead = bytes::to_u128_le(ahead);
 
         let nonce = if self.is_client {
             keys.server.get_per_record_nonce()

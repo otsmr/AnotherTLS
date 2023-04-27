@@ -88,7 +88,8 @@ impl ChaCha20Block {
 pub struct ChaCha20();
 
 impl ChaCha20 {
-    pub fn encrypt(mut input: Vec<u8>, key: &[u8], iv: &[u8], counter: usize) -> Option<Vec<u8>> {
+    pub fn encrypt(input: &[u8], key: &[u8], iv: &[u8], counter: usize) -> Option<Vec<u8>> {
+        let mut output = input.to_vec();
         let chacha20 = ChaCha20Block::init(key, iv, 0);
         let blocks_len = (input.len() as f32 / 64.0).ceil() as usize;
         for j in 0..blocks_len {
@@ -100,12 +101,12 @@ impl ChaCha20 {
                 count = input.len() % 64;
             }
             for i in 0..count {
-                input[j * 64 + i] ^= key_stream[i];
+                output[j * 64 + i] ^= key_stream[i];
             }
         }
-        Some(input)
+        Some(output)
     }
-    pub fn decrypt(input: Vec<u8>, key: &[u8], iv: &[u8], counter: usize) -> Option<Vec<u8>> {
+    pub fn decrypt(input: &[u8], key: &[u8], iv: &[u8], counter: usize) -> Option<Vec<u8>> {
         Self::encrypt(input, key, iv, counter)
     }
 }
@@ -122,13 +123,13 @@ mod tests {
 
         let plaintext = bytes::from_hex("4c616469657320616e642047656e746c656d656e206f662074686520636c617373206f66202739393a204966204920636f756c64206f6666657220796f75206f6e6c79206f6e652074697020666f7220746865206675747572652c2073756e73637265656e20776f756c642062652069742e");
 
-        let encrypted = ChaCha20::encrypt(plaintext.clone(), &key, &iv, 1).unwrap();
+        let encrypted = ChaCha20::encrypt(&plaintext, &key, &iv, 1).unwrap();
 
         let expected = bytes::from_hex("6e2e359a2568f98041ba0728dd0d6981e97e7aec1d4360c20a27afccfd9fae0bf91b65c5524733ab8f593dabcd62b3571639d624e65152ab8f530c359f0861d807ca0dbf500d6a6156a38e088a22b65e52bc514d16ccf806818ce91ab77937365af90bbf74a35be6b40b8eedf2785e42874d");
 
         assert_eq!(&encrypted, &expected);
 
-        let decrypted = ChaCha20::decrypt(encrypted, &key, &iv, 1).unwrap();
+        let decrypted = ChaCha20::decrypt(&encrypted, &key, &iv, 1).unwrap();
 
         assert_eq!(&decrypted, &plaintext);
     }

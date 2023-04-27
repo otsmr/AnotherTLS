@@ -42,7 +42,7 @@ impl Gcm {
         data: &[u8],
         additional_data: &[u8],
         encrypt: bool,
-    ) -> Result<(Vec<u8>, u128), String> {
+    ) -> Result<(Vec<u8>, [u8; 16]), String> {
         let blocksize = Blocksize::new(key.len() * 8)?;
 
         let mut output = Vec::default();
@@ -50,7 +50,7 @@ impl Gcm {
         let mut counter = 0u128;
         let mut X = 0u128; // for i == 0
 
-        let H = bytes::to_u128_le(&aes.encrypt([0; 16]));
+        let H = bytes::to_u128_be(&aes.encrypt([0; 16]));
 
         let iv_len = iv.len();
         let Yi = if iv_len * 8 != 96 {
@@ -61,16 +61,16 @@ impl Gcm {
                 } else {
                     &iv[i..]
                 };
-                N = Gcm::gmult(N ^ bytes::to_u128_le(add), H);
+                N = Gcm::gmult(N ^ bytes::to_u128_be(add), H);
             }
             let len = (iv.len() * 8) as u128;
             Gcm::gmult(N ^ len, H)
         } else {
             counter = 1;
-            bytes::to_u128_le(iv) | 1
+            bytes::to_u128_be(iv) | 1
         };
 
-        let mut auth_tag = bytes::to_u128_le(&aes.encrypt(bytes::to_bytes(Yi)));
+        let mut auth_tag = bytes::to_u128_be(&aes.encrypt(bytes::u128_to_bytes_be(Yi)));
 
         let m = additional_data.len();
         for i in (0..m).step_by(16) {
@@ -79,7 +79,7 @@ impl Gcm {
             } else {
                 &additional_data[i..]
             };
-            X = Gcm::gmult(X ^ bytes::to_u128_le(add), H);
+            X = Gcm::gmult(X ^ bytes::to_u128_be(add), H);
         }
 
         let n = data.len();
@@ -92,7 +92,7 @@ impl Gcm {
                 (Yi & !0xFFFFFFFF) | counter
             };
 
-            let Ek_Y = aes.encrypt(bytes::to_bytes(Yi));
+            let Ek_Y = aes.encrypt(bytes::u128_to_bytes_be(Yi));
 
             let data_slice = if n > i + 16 {
                 &data[i..i + 16]
@@ -100,11 +100,11 @@ impl Gcm {
                 &data[i..]
             };
 
-            let data_u128 = bytes::to_u128_le(data_slice);
+            let data_u128 = bytes::to_u128_be(data_slice);
             let overflow = (16 - data_slice.len()) * 8;
-            let out_i = (data_u128 ^ bytes::to_u128_le(&Ek_Y)) >> overflow;
+            let out_i = (data_u128 ^ bytes::to_u128_be(&Ek_Y)) >> overflow;
 
-            let out_i_bytes = &bytes::to_bytes(out_i)[16 - data_slice.len()..];
+            let out_i_bytes = &bytes::u128_to_bytes_be(out_i)[16 - data_slice.len()..];
 
             output.append(&mut out_i_bytes.to_vec());
 
@@ -119,6 +119,8 @@ impl Gcm {
 
         auth_tag ^= Gcm::gmult(X ^ len, H);
 
+        let auth_tag = bytes::u128_to_bytes_be(auth_tag);
+
         Ok((output, auth_tag))
     }
 }
@@ -130,7 +132,7 @@ impl Cipher for Gcm {
         iv: &[u8],
         plaintext: &[u8],
         additional_data: &[u8],
-    ) -> Result<(Vec<u8>, u128), String> {
+    ) -> Result<(Vec<u8>, [u8; 16]), String> {
         Gcm::gcm(key, iv, plaintext, additional_data, true)
     }
 
@@ -140,7 +142,7 @@ impl Cipher for Gcm {
         iv: &[u8],
         ciphertext: &[u8],
         additional_data: &[u8],
-        auth_tag: u128,
+        auth_tag: &[u8],
     ) -> Result<Vec<u8>, String> {
         let (P, T) = Gcm::gcm(key, iv, ciphertext, additional_data, false)?;
 
@@ -166,9 +168,9 @@ mod tests {
         let A = from_hex("");
         let cipher = Gcm::default();
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
+        assert_eq!(&T, from_hex("4d5c2af327cd64a62cf35abd2ba6fab4").as_slice());
 
-        let P1 = cipher.decrypt(&K, &IV, &C, &A, T).unwrap();
+        let P1 = cipher.decrypt(&K, &IV, &C, &A, &T).unwrap();
         assert_eq!(P, P1);
     }
 
@@ -183,20 +185,20 @@ mod tests {
         let cipher = Gcm::default();
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(C, vec![]);
-        assert_eq!(T, 0x58e2fccefa7e3061367f1d57a4e7455a);
+        assert_eq!(T, from_hex("58e2fccefa7e3061367f1d57a4e7455a").as_slice());
 
         // Test Case 2
         let P = from_hex("00000000000000000000000000000000");
         println!("len(P)={}", P.len());
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0xAB6E47D42CEC13BDF53A67B21257BDDF);
+        assert_eq!(T, from_hex("AB6E47D42CEC13BDF53A67B21257BDDF").as_slice());
 
         // Test Case 3
         let K = from_hex("feffe9928665731c6d6a8f9467308308");
         let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255");
         let IV = from_hex("cafebabefacedbaddecaf888");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x4d5c2af327cd64a62cf35abd2ba6fab4);
+        assert_eq!(T, from_hex("4d5c2af327cd64a62cf35abd2ba6fab4").as_slice());
 
         // Test Case 4
         let K = from_hex("feffe9928665731c6d6a8f9467308308");
@@ -204,17 +206,17 @@ mod tests {
         let IV = from_hex("cafebabefacedbaddecaf888");
         let A = from_hex("feedfacedeadbeeffeedfacedeadbeefabaddad2");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x5bc94fbc3221a5db94fae95ae7121a47);
+        assert_eq!(T, from_hex("5bc94fbc3221a5db94fae95ae7121a47").as_slice());
 
         // Test Case 5
         let IV = from_hex("cafebabefacedbad");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x3612d2e79e3b0785561be14aaca2fccb);
+        assert_eq!(T, from_hex("3612d2e79e3b0785561be14aaca2fccb").as_slice());
 
         // Test Case 6
         let IV = from_hex("9313225df88406e555909c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0c95156809539fcf0e2429a6b525416aedbf5a0de6a57a637b39b");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x619cc5aefffe0bfa462af43c1699d050);
+        assert_eq!(T, from_hex("619cc5aefffe0bfa462af43c1699d050").as_slice());
 
         // Test Case 7
         let K = from_hex("000000000000000000000000000000000000000000000000");
@@ -222,12 +224,12 @@ mod tests {
         let P = from_hex("");
         let A = from_hex("");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0xcd33b28ac773f74ba00ed1f312572435);
+        assert_eq!(T, from_hex("cd33b28ac773f74ba00ed1f312572435").as_slice());
 
         // Test Case 8
         let P = from_hex("00000000000000000000000000000000");
         let (_, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
-        assert_eq!(T, 0x2ff58d80033927ab8ef4d4587514f0fb);
+        assert_eq!(T, from_hex("2ff58d80033927ab8ef4d4587514f0fb").as_slice());
 
         // Test Case 9
         // TODO: ADD the other test cases

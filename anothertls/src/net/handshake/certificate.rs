@@ -55,7 +55,7 @@ impl Certificate {
 
         consumed += cert_request_context_len;
 
-        let certs_len = bytes::to_u128_le_fill(&buf[consumed..consumed + 3]) as usize;
+        let certs_len = bytes::to_u128_be_fill(&buf[consumed..consumed + 3]) as usize;
         consumed += 3;
 
         if certs_len == 0 {
@@ -69,7 +69,7 @@ impl Certificate {
 
         #[allow(clippy::never_loop)]
         while certs_len > (consumed - prev_len) {
-            let cert_len = bytes::to_u128_le_fill(&buf[consumed..consumed + 3]) as usize;
+            let cert_len = bytes::to_u128_be_fill(&buf[consumed..consumed + 3]) as usize;
             consumed += 3;
             let cert = Certificate::from_raw_x509(buf[consumed..consumed + cert_len].to_vec())?;
             consumed += cert_len;
