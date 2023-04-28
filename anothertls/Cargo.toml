@@ -1,6 +1,7 @@
 [package]
 name = "anothertls"
 version = "0.1.2"
+rust-version = "1.69"
 edition = "2021"
 authors = ["Tobias Müller <git@tsmr.eu>"]
 readme = "../README.md"
