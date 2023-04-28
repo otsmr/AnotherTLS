@@ -17,6 +17,11 @@ impl SupportedVersions {
         SupportedVersions(tls13)
     }
 }
+impl Default for SupportedVersions {
+    fn default() -> Self {
+        Self(true)
+    }
+}
 impl Extension for SupportedVersions {
     fn server_as_bytes(&self) -> Vec<u8> {
         vec![0x00, 0x2b, 0x00, 0x02, 0x03, 0x04]

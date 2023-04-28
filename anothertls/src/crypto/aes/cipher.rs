@@ -50,12 +50,12 @@ pub enum Blocksize {
 }
 
 impl Blocksize {
-    pub fn new (u: usize) -> Result<Blocksize, String> {
-        Ok(match u {
+    pub fn new (u: usize) -> Option<Blocksize> {
+        Some(match u {
             128 => Blocksize::B128,
             192 => Blocksize::B192,
             256 => Blocksize::B256,
-            _ => return Err("Wrong blocksize".to_string())
+            _ => return None
         })
     }
 }
@@ -69,12 +69,12 @@ pub struct AES {
 
 impl AES {
 
-    pub fn init(key: &[u8], blocksize: Blocksize) -> Result<AES, String> {
-        Ok(AES {
+    pub fn init(key: &[u8], blocksize: Blocksize) -> AES {
+        AES {
             blocksize,
             state: [0; 16],
-            expanded_key: AES::get_expanded_key(key, blocksize)?,
-        })
+            expanded_key: AES::get_expanded_key(key, blocksize),
+        }
     }
 
     pub fn encrypt(&mut self, input: [u8; 16]) -> [u8; 16] {
@@ -118,10 +118,7 @@ impl AES {
         self.state = [0; 16];
         out
     }
-    fn get_expanded_key(key: &[u8], blocksize: Blocksize) -> Result<[[u8; 4]; 60], String> {
-        if key.len() * 8 != blocksize as usize {
-            return Err("Key has not the right size".to_string());
-        }
+    fn get_expanded_key(key: &[u8], blocksize: Blocksize) -> [[u8; 4]; 60] {
 
         let mut temp: [u8; 4];
 
@@ -154,7 +151,7 @@ impl AES {
             }
         }
 
-        Ok(expanded_key)
+        expanded_key
     }
 
     fn gmult(mut a: u8, mut b: u8) -> u8 {
@@ -298,7 +295,7 @@ mod tests {
     fn test_aes(blocksize: Blocksize, input: [u8; 16], key: &[u8], expected: [u8; 16]) {
 
 
-        let mut aes = AES::init(key, blocksize).unwrap();
+        let mut aes = AES::init(key, blocksize);
 
         let out_encrypted = aes.encrypt(input);
 

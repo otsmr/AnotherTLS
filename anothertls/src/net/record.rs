@@ -122,9 +122,13 @@ pub struct RecordPayloadProtection {
 }
 
 impl RecordPayloadProtection {
-    pub fn new(key_schedule: KeySchedule, cipher: Box<dyn Cipher>, is_client: bool) -> Option<Self> {
+    pub fn new(
+        key_schedule: KeySchedule,
+        cipher: Box<dyn Cipher>,
+        is_client: bool,
+    ) -> Option<Self> {
         Some(Self {
-            handshake_keys: WriteKeys::handshake_keys(&key_schedule)?,
+            handshake_keys: WriteKeys::handshake_keys(&key_schedule, cipher.get_cipher_suite())?,
             // FIMXE: use application_keys
             application_keys: None,
             cipher,
@@ -141,6 +145,7 @@ impl RecordPayloadProtection {
         self.application_keys = WriteKeys::application_keys_from_master_secret(
             &self.key_schedule.hkdf_master_secret,
             &tshash.finalize(),
+            self.cipher.get_cipher_suite()
         );
         if self.application_keys.is_none() {
             return Err(TlsError::InternalError);
@@ -176,24 +181,15 @@ impl RecordPayloadProtection {
             len as u8,
         ];
 
-        let nonce = if self.is_client {
-            keys.client.get_per_record_nonce()
+        let (nonce, key) = if self.is_client {
+            (keys.client.get_per_record_nonce(), &keys.client.key)
         } else {
-            keys.server.get_per_record_nonce()
-        };
-
-        let key = if self.is_client {
-            keys.client.key
-        } else {
-            keys.server.key
+            (keys.server.get_per_record_nonce(), &keys.server.key)
         };
 
         let (encrypted_record, ahead) =
-            match self.cipher.encrypt(&key, &nonce, &inner_plaintext, &tls_cipher_text) {
-                Ok(e) => e,
-                Err(_) => return Err(TlsError::InternalError),
-            };
-
+            self.cipher
+                .encrypt(key, &nonce, &inner_plaintext, &tls_cipher_text)?;
         tls_cipher_text.extend(encrypted_record);
         tls_cipher_text.extend(ahead);
 
@@ -211,19 +207,16 @@ impl RecordPayloadProtection {
         let ciphertext = &record.fraqment.as_ref()[..record.fraqment.len() - 16]; // 1 = Inner ContentType
         let ahead = &record.fraqment.as_ref()[ciphertext.len()..];
 
-        let nonce = if self.is_client {
-            keys.server.get_per_record_nonce()
+        let (nonce, key) = if self.is_client {
+            (keys.server.get_per_record_nonce(), &keys.server.key)
         } else {
-            keys.client.get_per_record_nonce()
+            (keys.client.get_per_record_nonce(), &keys.client.key)
         };
 
-        let key = if self.is_client {
-            keys.server.key
-        } else {
-            keys.client.key
-        };
-
-        let plaintext = match self.cipher.decrypt(&key, &nonce, ciphertext, &record.header, ahead) {
+        let plaintext = match self
+            .cipher
+            .decrypt(key, &nonce, ciphertext, &record.header, ahead)
+        {
             Ok(e) => e,
             Err(_) => return Err(TlsError::DecryptError),
         };

@@ -33,18 +33,17 @@ impl<'a> ServerHello<'a> {
 
         let legacy_version = ((buf[0] as u16) << 8) | buf[1] as u16;
         if legacy_version != 0x0303 {
-            println!("legacy_version={:#x}", legacy_version);
             return Err(TlsError::ProtocolVersion);
         }
 
         let random: [u8; 32] = buf[2..34].try_into().unwrap();
         let session_id_length = buf[34];
         let mut consumed = 35;
-        // let mut legacy_session_id_echo = None;
+        let mut legacy_session_id_echo = None;
 
         if session_id_length != 0 {
             consumed += 32;
-            // legacy_session_id_echo = Some(&buf[35..(35 + 32)]);
+            legacy_session_id_echo = Some(&buf[35..(35 + 32)]);
         }
 
         let cipher_suite =
@@ -74,7 +73,7 @@ impl<'a> ServerHello<'a> {
 
         Ok(ServerHello {
             random,
-            legacy_session_id_echo: None,
+            legacy_session_id_echo,
             cipher_suite,
             extensions,
         })
@@ -159,20 +158,21 @@ impl<'a> ServerHello<'a> {
             return Err(TlsError::InsufficientSecurity);
         }
 
-        extensions.push(ServerExtension::SupportedVersions(SupportedVersions::new(
-            true,
-        )));
+        extensions.push(ServerExtension::SupportedVersions(
+            SupportedVersions::default(),
+        ));
 
         let mut cipher_suite_to_use = None;
         for cs in client_hello.cipher_suites.iter() {
             cipher_suite_to_use = Some(match cs {
-                CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
+                CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => {
+                    CipherSuite::TLS_CHACHA20_POLY1305_SHA256
+                }
                 CipherSuite::TLS_AES_256_GCM_SHA384 => CipherSuite::TLS_AES_256_GCM_SHA384,
                 CipherSuite::TLS_AES_128_GCM_SHA256 => CipherSuite::TLS_AES_128_GCM_SHA256,
-                CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => continue
+                CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => continue,
             });
             // servers best choice (add to options?)
-            // if cipher_suite_to_use.unwrap() == CipherSuite::TLS_AES_256_GCM_SHA384 {
             if cipher_suite_to_use.unwrap() == CipherSuite::TLS_CHACHA20_POLY1305_SHA256 {
                 break;
             }
@@ -218,9 +218,7 @@ impl<'a> ServerHello<'a> {
 
         out.push(00); // Compression Method
 
-        let server_extensions_raw = self.extensions.as_bytes();
-        out.extend(server_extensions_raw);
-
+        out.extend(self.extensions.as_bytes());
         out
     }
     pub fn get_public_key_share(&self) -> Option<&KeyShareEntry> {

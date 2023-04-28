@@ -26,9 +26,10 @@ pub fn get_verify_data_for_finished(
     secret: &Hkdf,
     tshash: &dyn TranscriptHash,
 ) -> Result<Vec<u8>, TlsError> {
-    let finished_hash = tshash.clone().finalize();
+    let finished_hash = tshash.finalize();
 
-    let finished_key = match secret.expand(&get_hkdf_expand_label(b"finished", b"", 48), 48)
+    let hash_size = tshash.get_type() as usize;
+    let finished_key = match secret.expand(&get_hkdf_expand_label(b"finished", b"", hash_size), hash_size)
     {
         Some(a) => a,
         None => return Err(TlsError::InternalError),

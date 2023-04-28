@@ -7,14 +7,18 @@
 
 #![allow(non_snake_case)]
 
+use crate::net::alert::TlsError;
 use super::{Blocksize, AES};
-use crate::crypto::Cipher;
+use crate::crypto::{Cipher, CipherSuite};
 use crate::utils::bytes;
 
-#[derive(Default)]
-pub struct Gcm();
+pub struct Gcm(CipherSuite);
+
 
 impl Gcm {
+    pub fn new(cs: CipherSuite) -> Self {
+        Self(cs)
+    }
     fn gmult(mut a: u128, mut b: u128) -> u128 {
         a = a.reverse_bits();
         b = b.reverse_bits();
@@ -42,11 +46,11 @@ impl Gcm {
         data: &[u8],
         additional_data: &[u8],
         encrypt: bool,
-    ) -> Result<(Vec<u8>, [u8; 16]), String> {
-        let blocksize = Blocksize::new(key.len() * 8)?;
+    ) -> Result<(Vec<u8>, [u8; 16]), TlsError> {
+        let blocksize = Blocksize::new(key.len() * 8).unwrap();
 
         let mut output = Vec::default();
-        let mut aes = AES::init(key, blocksize)?;
+        let mut aes = AES::init(key, blocksize);
         let mut counter = 0u128;
         let mut X = 0u128; // for i == 0
 
@@ -132,7 +136,7 @@ impl Cipher for Gcm {
         iv: &[u8],
         plaintext: &[u8],
         additional_data: &[u8],
-    ) -> Result<(Vec<u8>, [u8; 16]), String> {
+    ) -> Result<(Vec<u8>, [u8; 16]), TlsError> {
         Gcm::gcm(key, iv, plaintext, additional_data, true)
     }
 
@@ -143,20 +147,25 @@ impl Cipher for Gcm {
         ciphertext: &[u8],
         additional_data: &[u8],
         auth_tag: &[u8],
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>, TlsError> {
         let (P, T) = Gcm::gcm(key, iv, ciphertext, additional_data, false)?;
 
         if T != auth_tag {
-            return Err("auth_tag is not correct".to_string());
+            return Err(TlsError::BadRecordMac);
         }
 
         Ok(P)
+    }
+
+    fn get_cipher_suite(&self) -> crate::crypto::CipherSuite {
+        self.0
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Gcm;
+    use crate::crypto::CipherSuite;
     use crate::crypto::ciphersuite::Cipher;
     use crate::utils::bytes::from_hex;
 
@@ -166,7 +175,7 @@ mod tests {
         let P  = from_hex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255");
         let IV = from_hex("cafebabefacedbaddecaf888");
         let A = from_hex("");
-        let cipher = Gcm::default();
+        let cipher = Gcm::new(CipherSuite::TLS_AES_128_GCM_SHA256);
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(&T, from_hex("4d5c2af327cd64a62cf35abd2ba6fab4").as_slice());
 
@@ -182,7 +191,7 @@ mod tests {
         let IV = from_hex("000000000000000000000000");
         let A = from_hex("");
 
-        let cipher = Gcm::default();
+        let cipher = Gcm::new(CipherSuite::TLS_AES_128_GCM_SHA256);
         let (C, T) = cipher.encrypt(&K, &IV, &P, &A).unwrap();
         assert_eq!(C, vec![]);
         assert_eq!(T, from_hex("58e2fccefa7e3061367f1d57a4e7455a").as_slice());

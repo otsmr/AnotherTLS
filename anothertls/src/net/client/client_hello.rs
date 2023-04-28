@@ -30,6 +30,7 @@ impl<'a> ClientHello<'a> {
             cipher_suites: vec![
                 CipherSuite::TLS_AES_256_GCM_SHA384,
                 CipherSuite::TLS_AES_128_GCM_SHA256,
+                CipherSuite::TLS_CHACHA20_POLY1305_SHA256
             ],
             legacy_session_id_echo: session_id,
             extensions

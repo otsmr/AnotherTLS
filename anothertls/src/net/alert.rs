@@ -20,6 +20,7 @@ impl AlertLevel {
 pub enum TlsError {
     CloseNotify = 0,
     UnexpectedMessage = 10,
+    BadRecordMac = 20,
     HandshakeFailure = 40,
     BadCertificate = 42,
     UnsupportedCertificate = 43,

@@ -6,6 +6,7 @@
  */
 
 use crate::crypto::chacha20::ChaCha20;
+use crate::net::alert::TlsError;
 use crate::{crypto::Cipher, utils::bytes};
 use ibig::ibig;
 
@@ -72,9 +73,9 @@ impl Cipher for Poly1305 {
         iv: &[u8],
         plaintext: &[u8],
         additional_data: &[u8],
-    ) -> Result<(Vec<u8>, [u8; 16]), String> {
-        let otk = Poly1305::key_gen(key, iv);
+    ) -> Result<(Vec<u8>, [u8; 16]), TlsError> {
         let ciphertext = ChaCha20::encrypt(plaintext, key, iv, 1).unwrap();
+        let otk = Poly1305::key_gen(key, iv);
         let tag = Poly1305::mac(&otk, &Poly1305::get_mac_data(&ciphertext, additional_data));
         Ok((ciphertext, tag))
     }
@@ -86,14 +87,19 @@ impl Cipher for Poly1305 {
         ciphertext: &[u8],
         additional_data: &[u8],
         auth_tag: &[u8],
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>, TlsError> {
         let otk = Poly1305::key_gen(key, iv);
-        let plaintext = ChaCha20::decrypt(ciphertext, key, iv, 1).unwrap();
         let tag = Poly1305::mac(&otk, &Poly1305::get_mac_data(ciphertext, additional_data));
-        if tag != auth_tag {
-            return Err("auth_tag is not correct".to_string());
+        if tag == auth_tag {
+            if let Some(plaintext) = ChaCha20::decrypt(ciphertext, key, iv, 1) {
+                return Ok(plaintext);
+            }
         }
-        Ok(plaintext)
+        Err(TlsError::BadRecordMac)
+    }
+
+    fn get_cipher_suite(&self) -> crate::crypto::CipherSuite {
+        crate::crypto::CipherSuite::TLS_CHACHA20_POLY1305_SHA256
     }
 }
 

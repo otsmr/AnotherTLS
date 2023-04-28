@@ -115,7 +115,6 @@ impl Sha256 {
             c = b;
             b = a;
             a = add(t1, t2);
-
         }
 
         self.state[0] = add(self.state[0], a);
@@ -183,7 +182,7 @@ impl TranscriptHash for Sha256 {
     }
 
     fn get_type(&self) -> super::HashType {
-        super::HashType::SHA384
+        super::HashType::SHA256
     }
 }
 pub fn sha256(message: &[u8]) -> Vec<u8> {
@@ -220,4 +219,5 @@ mod tests {
             "e4c4d8f3bf76b692de791a173e05321150f7a345b46484fe427f6acc7ecc81be".to_string(),
         );
     }
+
 }
