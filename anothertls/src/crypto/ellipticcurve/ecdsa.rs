@@ -42,7 +42,7 @@ impl Ecdsa {
 
         loop {
             // 1. Select a cryptographically secure pseudorandom number
-            let k = self.rng.between(22, 32);
+            let k = self.rng.between(31, 32);
 
             // 2. k * G
             let p = math::multiply(&curve.g, k.clone(), &curve);
