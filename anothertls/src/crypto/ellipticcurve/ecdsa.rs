@@ -92,7 +92,8 @@ impl Ecdsa {
         let z = bytes::to_ibig_le(hashed_message);
         let curve = pub_key.curve;
 
-        let s_inv = math::inv(&sign.s, &curve.n);
+        let s = math::rem_euclid(&sign.s, &curve.n);
+        let s_inv = math::inv(&s, &curve.n);
 
         let u1 = math::rem_euclid(&(z * s_inv.clone()), &curve.n);
         let u2 = math::rem_euclid(&(sign.r.clone() * s_inv), &curve.n);
