@@ -157,10 +157,7 @@ impl<'a> ServerHandshake<'a> {
                     self.handle_handshake_encrypted_record(record)?;
                 }
                 ServerHsState::Ready => {
-                    // This is a real problem, because this data should
-                    // be processed by the user. But this will need a major
-                    // change, so therefore just a short and BAD FIX!
-                    return Err(TlsError::InternalError);
+                    self.stream.read_buffer.append(&mut record.as_bytes());
                 }
             },
         }

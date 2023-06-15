@@ -17,7 +17,8 @@ use std::{
 pub struct TlsStream {
     stream: TcpStream,
     pub protection: Option<RecordPayloadProtection>,
-    buffer: Vec<u8>
+    write_buffer: Vec<u8>,
+    pub read_buffer: Vec<u8>
 }
 
 impl TlsStream {
@@ -25,7 +26,8 @@ impl TlsStream {
         Self {
             stream,
             protection: None,
-            buffer: Vec::with_capacity(2048)
+            write_buffer: Vec::with_capacity(2048),
+            read_buffer: Vec::with_capacity(2048)
         }
     }
 
@@ -37,13 +39,13 @@ impl TlsStream {
         let record = Record::new(typ, Value::Ref(data));
 
         if let Some(protect) = self.protection.as_mut() {
-            self.buffer.append(&mut protect.encrypt(record)?);
+            self.write_buffer.append(&mut protect.encrypt(record)?);
         } else {
-            self.buffer.append(&mut record.as_bytes());
+            self.write_buffer.append(&mut record.as_bytes());
         }
 
         // TODO: Find a smart value
-        if self.buffer.len() >= 2048 {
+        if self.write_buffer.len() >= 2048 {
             self.flush()?;
         }
 
@@ -52,10 +54,10 @@ impl TlsStream {
     }
 
     pub fn flush(&mut self) -> Result<(), TlsError>{
-        if self.stream.write_all(&self.buffer).is_err() {
+        if self.stream.write_all(&self.write_buffer).is_err() {
             return Err(TlsError::BrokenPipe);
         };
-        self.buffer.clear();
+        self.write_buffer.clear();
         Ok(())
     }
 
@@ -102,7 +104,14 @@ impl TlsStream {
     pub fn tls_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
         let mut rx_buf: [u8; 4096] = [0; 4096];
 
-        let n = self.tcp_read(&mut rx_buf)?;
+        let n = if self.read_buffer.is_empty() {
+            self.tcp_read(&mut rx_buf)?
+        } else {
+            let n = self.read_buffer.len();
+            rx_buf.copy_from_slice(self.read_buffer.as_slice());
+            self.read_buffer.clear();
+            n
+        };
 
         let (_consumed, mut record) = Record::from_raw(&rx_buf[..n])?;
 
