@@ -74,8 +74,8 @@ impl TlsStream {
     /// Read directly from the TCP socket
     pub fn tcp_read<'b>(&'b mut self, buf: &'b mut [u8]) -> Result<usize, TlsError> {
         match self.stream.read(buf) {
-            Ok(n) => Ok(n),
-            Err(_) => Err(TlsError::BrokenPipe),
+            Ok(n) if n != 0 => Ok(n),
+            _ => Err(TlsError::BrokenPipe),
         }
     }
 
