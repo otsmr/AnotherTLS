@@ -8,20 +8,17 @@ use crate::{net::{
     record::{Record, RecordPayloadProtection, RecordType, Value},
 }, utils::log};
 
-use std::{
-    io::{Read, Write},
-    net::TcpStream,
-    result::Result,
-};
+use std::io::{Read, Write};
+use std::result::Result;
 
-pub struct TlsStream {
-    stream: TcpStream,
+pub struct TlsStream<T: Read + Write + ?Sized> {
+    stream: T,
     pub protection: Option<RecordPayloadProtection>,
     buffer: Vec<u8>
 }
 
-impl TlsStream {
-    pub fn new(stream: TcpStream) -> Self {
+impl<T> TlsStream<T> {
+    pub fn new(stream: T) -> Self {
         Self {
             stream,
             protection: None,

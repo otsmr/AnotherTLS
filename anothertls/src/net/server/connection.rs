@@ -19,36 +19,37 @@ use crate::net::{KeySchedule, TlsStream};
 use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng};
 use crate::utils::{bytes, keylog::KeyLog, log};
 use ibig::{IBig, ibig};
-use std::net::SocketAddr;
-use std::net::TcpListener;
 
+use std::io::{Write, Read};
 use std::result::Result;
 
-pub struct ServerConnection {
-    server: TcpListener,
-    config: ServerConfig,
+pub struct ServerConnection<'a> {
+    config: &'a ServerConfig,
 }
 
-impl ServerConnection {
-    pub fn new(server: TcpListener, config: ServerConfig) -> Self {
-        Self { server, config }
+impl<'a> ServerConnection<'a> {
+    pub fn new(config: &'a ServerConfig) -> Self {
+        Self { config }
     }
 
-    pub fn accept(&self) -> std::result::Result<(TlsStream, SocketAddr), TlsError> {
-        let (sock, _addr) = match self.server.accept() {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("TCP accept error: {e:?}");
-                return Err(TlsError::BrokenPipe);
-            }
-        };
+    pub fn is_handshaking(&self) -> bool {
 
-        let mut stream = TlsStream::new(sock);
+    }
+}
 
-        let mut shs = ServerHandshake::new(&mut stream, &self.config);
-        shs.do_handshake_with_error()?;
 
-        Ok((stream, _addr))
+enum Connection<'a> {
+    Server(ServerConnection<'a>)
+}
+
+impl<'a> Connection<'a> {
+    fn is_handshaking(&self) -> bool {
+        match self {
+            Connection::Server(con) => con.is_handshaking(),
+        }
+    }
+    fn complete_io<T>(&mut self, io: &mut T) -> Result<(), TlsError>  where T: Read + Write{
+        todo!();
     }
 }
 
