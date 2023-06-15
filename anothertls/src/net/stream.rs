@@ -108,7 +108,9 @@ impl TlsStream {
             self.tcp_read(&mut rx_buf)?
         } else {
             let n = self.read_buffer.len();
-            rx_buf.copy_from_slice(self.read_buffer.as_slice());
+            for (i, b) in self.read_buffer.iter().enumerate() {
+                rx_buf[i] = *b;
+            }
             self.read_buffer.clear();
             n
         };
