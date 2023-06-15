@@ -80,7 +80,7 @@ impl<'a> ClientHello<'a> {
         }
 
         let random = buf[2..34].try_into().unwrap();
-        let session_id_length = buf[35];
+        let session_id_length = buf[34];
         let mut consumed = 35;
         let mut legacy_session_id_echo = None;
 
