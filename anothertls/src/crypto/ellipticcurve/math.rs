@@ -124,14 +124,14 @@ mod tests {
         // openssl genpkey -algorithm x25519 -out x25519-priv.pem
         // openssl pkey -noout -text < x25519-priv.pem
         let curve = Curve::curve25519();
-        let p = curve.g.clone();
+        let p = &curve.g;
         let test_cases = [
             [ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16), ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16)],
             [ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16)]
         ];
         for test_case in test_cases {
             let scalar = test_case[0].clone();
-            let result = math::multiply(&p, scalar, &curve);
+            let result = math::multiply(p, scalar, &curve);
             let expected = Point {
                 x: test_case[1].clone(),
                 y: ibig!(0)

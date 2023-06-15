@@ -3,6 +3,7 @@
  *
  */
 
+use std::sync::Arc;
 use crate::crypto::aes::gcm::Gcm;
 use crate::crypto::chacha20::Poly1305;
 use crate::hash::{Sha256, Sha384, TranscriptHash};
@@ -75,10 +76,10 @@ impl CipherSuite {
             CipherSuite::TLS_EMPTY_RENEGOTIATION_INFO_SCSV => (32, 12),
         }
     }
-    pub fn get_cipher(&self) -> Result<Box<dyn Cipher>, TlsError> {
-        let cipher: Box<dyn Cipher> = match self {
-            CipherSuite::TLS_AES_256_GCM_SHA384 | CipherSuite::TLS_AES_128_GCM_SHA256 => Box::new(Gcm::new(*self)),
-            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => Box::<Poly1305>::default(),
+    pub fn get_cipher(&self) -> Result<Arc<dyn Cipher + Send + Sync>, TlsError> {
+        let cipher: Arc<dyn Cipher + Send + Sync> = match self {
+            CipherSuite::TLS_AES_256_GCM_SHA384 | CipherSuite::TLS_AES_128_GCM_SHA256 => Arc::new(Gcm::new(*self)),
+            CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => Arc::<Poly1305>::default(),
             _ => return Err(TlsError::InsufficientSecurity),
         };
         Ok(cipher)

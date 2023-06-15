@@ -4,6 +4,7 @@
  * https://www.rfc-editor.org/rfc/rfc8446#section-5.1
  */
 
+use std::sync::Arc;
 use crate::crypto::Cipher;
 use crate::hash::TranscriptHash;
 use crate::net::key_schedule::KeySchedule;
@@ -115,7 +116,7 @@ impl<'a> Record<'a> {
 
 pub struct RecordPayloadProtection {
     pub key_schedule: KeySchedule,
-    pub cipher: Box<dyn Cipher>,
+    pub cipher: Arc<dyn Cipher + Send + Sync>,
     pub handshake_keys: WriteKeys,
     pub is_client: bool,
     pub application_keys: Option<WriteKeys>,
@@ -124,7 +125,7 @@ pub struct RecordPayloadProtection {
 impl RecordPayloadProtection {
     pub fn new(
         key_schedule: KeySchedule,
-        cipher: Box<dyn Cipher>,
+        cipher: Arc<dyn Cipher + Send + Sync>,
         is_client: bool,
     ) -> Option<Self> {
         Some(Self {
