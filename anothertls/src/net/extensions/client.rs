@@ -38,6 +38,9 @@ impl ClientExtension {
         let mut extensions = ClientExtensions::new();
 
         while consumed < buf.len() {
+            if buf.len() < consumed + 4 {
+                return Err(TlsError::IllegalParameter);
+            }
             let extension_type = bytes::to_u16(&buf[consumed..consumed + 2]);
             let extension_type = ExtensionType::new(extension_type);
             let size = bytes::to_u16(&buf[consumed + 2..consumed + 4]) as usize;
@@ -45,6 +48,9 @@ impl ClientExtension {
             if extension_type.is_none() {
                 consumed += size;
                 continue;
+            }
+            if buf.len() < consumed + size {
+                return Err(TlsError::IllegalParameter);
             }
             let extension_type = extension_type.unwrap();
 

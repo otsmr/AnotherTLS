@@ -52,6 +52,9 @@ impl Extension for ServerName {
             }
             let server_name_len = bytes::to_u16(&buf[consumed..]) as usize;
             consumed += 2;
+            if buf.len() < server_name_len + consumed {
+                return Err(TlsError::IllegalParameter);
+            }
             server_name =
                 match String::from_utf8(buf[consumed..server_name_len + consumed].to_vec()) {
                     Ok(a) => a,
