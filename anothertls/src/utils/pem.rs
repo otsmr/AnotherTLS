@@ -3,7 +3,7 @@
  *
  */
 
-use std::{fs, collections::HashMap};
+use std::{collections::HashMap, fs};
 
 use super::base64;
 
@@ -11,13 +11,13 @@ use super::base64;
 enum PemState {
     Start,
     InContent,
-    End
+    End,
 }
 
 pub fn get_pem_content_from_file(filepath: String) -> Option<HashMap<String, Vec<u8>>> {
     let pem = match fs::read_to_string(filepath) {
         Ok(e) => e,
-        Err(_) => return None
+        Err(_) => return None,
     };
     let mut content = HashMap::new();
     let mut state = PemState::Start;
@@ -37,7 +37,7 @@ pub fn get_pem_content_from_file(filepath: String) -> Option<HashMap<String, Vec
             }
             PemState::End | PemState::Start => {
                 if line.starts_with("-----BEGIN") {
-                    current_title = line[11..(line.len()-5)].to_string();
+                    current_title = line[11..(line.len() - 5)].to_string();
                     state = PemState::InContent;
                 }
             }

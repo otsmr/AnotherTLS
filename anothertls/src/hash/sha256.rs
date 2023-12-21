@@ -194,13 +194,14 @@ pub fn sha256(message: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use crate::hash::sha256;
+    use core::fmt::Write;
 
     fn test_sha256_do(message: String, hash_expect: String) {
         let message = message.as_bytes().to_vec();
-        let hash = sha256(&message)
-            .iter()
-            .map(|x| format!("{:02x}", x))
-            .collect::<String>();
+        let hash = sha256(&message).iter().fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        });
         assert_eq!(hash, hash_expect);
     }
 
@@ -219,5 +220,4 @@ mod tests {
             "e4c4d8f3bf76b692de791a173e05321150f7a345b46484fe427f6acc7ecc81be".to_string(),
         );
     }
-
 }

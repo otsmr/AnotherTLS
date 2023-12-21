@@ -66,7 +66,7 @@ impl<'a> Handshake<'a> {
         Ok(Handshake {
             handshake_type,
             fraqment: &buf[4..(len + 4)],
-            raw: &buf[..(len + 4)]
+            raw: &buf[..(len + 4)],
         })
     }
     pub fn as_bytes(&self) -> &[u8] {

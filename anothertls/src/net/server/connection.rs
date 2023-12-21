@@ -6,7 +6,7 @@
 use crate::crypto::ellipticcurve::Signature;
 use crate::hash::TranscriptHash;
 use crate::net::record::{Record, RecordPayloadProtection, RecordType};
-use crate::net::server::{ServerHello, ServerConfig};
+use crate::net::server::{ServerConfig, ServerHello};
 use crate::net::{
     alert::TlsError,
     client::ClientHello,
@@ -16,13 +16,12 @@ use crate::net::{
     },
 };
 use crate::net::{KeySchedule, TlsStream};
-use crate::rand::{RngCore, PRNG, SimpleRng, URandomRng, SeedableRng};
+use crate::rand::{RngCore, SeedableRng, SimpleRng, URandomRng, PRNG};
 use crate::utils::{bytes, keylog::KeyLog, log};
-use ibig::{IBig, ibig};
+use core::result::Result;
+use ibig::{ibig, IBig};
 use std::net::SocketAddr;
 use std::net::TcpListener;
-
-use std::result::Result;
 
 pub struct ServerConnection {
     server: TcpListener,
@@ -34,7 +33,7 @@ impl ServerConnection {
         Self { server, config }
     }
 
-    pub fn accept(&self) -> std::result::Result<(TlsStream, SocketAddr), TlsError> {
+    pub fn accept(&self) -> Result<(TlsStream, SocketAddr), TlsError> {
         let (sock, _addr) = match self.server.accept() {
             Ok(e) => e,
             Err(e) => {
@@ -86,7 +85,7 @@ impl<'a> ServerHandshake<'a> {
             certificate_request_context: None,
             rng: match config.prng_type {
                 PRNG::Simple => Box::new(SimpleRng::from_seed(ibig!(0))),
-                PRNG::URandom  => Box::new(URandomRng::new())
+                PRNG::URandom => Box::new(URandomRng::new()),
             },
             tshash: None,
             tshash_clienthello_serverfinished: None,
@@ -449,17 +448,16 @@ impl<'a> ServerHandshake<'a> {
             return Err(TlsError::UnexpectedMessage);
         }
 
-
         let protection = self.stream.protection.as_mut().unwrap();
         log::debug!("--> ClientFinished");
         let fraqment = handshake.fraqment.to_owned();
 
-        let verify_data = Some(get_verify_data_for_finished(
+        let verify_data = get_verify_data_for_finished(
             &protection.key_schedule.client_handshake_traffic_secret,
             self.tshash.as_mut().unwrap().as_ref(),
-        )?);
+        )?;
 
-        if fraqment != verify_data.unwrap() {
+        if fraqment != verify_data {
             return Err(TlsError::DecryptError);
         }
 

@@ -3,11 +3,10 @@
  *
  */
 
-
-use crate::net::extensions::shared::Extension;
 use crate::net::alert::TlsError;
-use crate::utils::bytes;
+use crate::net::extensions::shared::Extension;
 use crate::net::extensions::shared::ExtensionType;
+use crate::utils::bytes;
 
 #[derive(Clone, Copy, Debug)]
 #[allow(non_camel_case_types)]
@@ -95,7 +94,8 @@ impl Extension for SignatureAlgorithms {
 
     fn server_parse(buf: &[u8]) -> Result<Self, TlsError>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         let len = bytes::to_u16(buf) as usize;
         let mut out = vec![];
         if len % 2 == 0 {
@@ -107,4 +107,3 @@ impl Extension for SignatureAlgorithms {
         Ok(SignatureAlgorithms(out))
     }
 }
-

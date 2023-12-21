@@ -3,11 +3,10 @@
  *
  */
 
-use anothertls::{ClientConnection, ClientConfigBuilder};
+use anothertls::{ClientConfigBuilder, ClientConnection};
 use std::net::TcpStream;
 
 fn main() {
-
     anothertls::log::init();
 
     let server_name = "localhost".to_string();
@@ -26,14 +25,16 @@ fn main() {
 
     println!("New secure connection");
 
-    let data = format!("\
+    let data = format!(
+        "\
 GET / HTTP/1.1\r\n\
 Host: {}
 User-Agent: AnotherTls/0.1\r\n\
-\r\n", server_name);
+\r\n",
+        server_name
+    );
 
-    sock
-        .tls_write(data.as_bytes())
+    sock.tls_write(data.as_bytes())
         .expect("Error writing to socket.");
 
     let mut buf: [u8; 4096] = [0; 4096];
@@ -43,4 +44,3 @@ User-Agent: AnotherTls/0.1\r\n\
         String::from_utf8(buf[..n].to_vec()).unwrap()
     );
 }
-

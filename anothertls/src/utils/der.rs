@@ -4,8 +4,8 @@
  *
  */
 
-use crate::utils::x509::ParseError;
 use super::bytes;
+use crate::utils::x509::ParseError;
 
 #[derive(Debug, PartialEq)]
 #[repr(u8)]

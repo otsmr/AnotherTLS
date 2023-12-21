@@ -27,7 +27,7 @@ pub fn init() {
                 "debug" => unsafe { LOG_LEVEL = LogLevel::Debug },
                 "error" => unsafe { LOG_LEVEL = LogLevel::Error },
                 "fixme" => unsafe { LOG_LEVEL = LogLevel::Fixme },
-                _ => ()
+                _ => (),
             }
             break;
         }

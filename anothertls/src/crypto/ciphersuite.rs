@@ -3,12 +3,11 @@
  *
  */
 
-use std::sync::Arc;
 use crate::crypto::aes::gcm::Gcm;
 use crate::crypto::chacha20::Poly1305;
 use crate::hash::{Sha256, Sha384, TranscriptHash};
 use crate::net::alert::TlsError;
-
+use std::sync::Arc;
 
 pub trait Cipher {
     // FIXME: How to use traits without self
@@ -78,7 +77,9 @@ impl CipherSuite {
     }
     pub fn get_cipher(&self) -> Result<Arc<dyn Cipher + Send + Sync>, TlsError> {
         let cipher: Arc<dyn Cipher + Send + Sync> = match self {
-            CipherSuite::TLS_AES_256_GCM_SHA384 | CipherSuite::TLS_AES_128_GCM_SHA256 => Arc::new(Gcm::new(*self)),
+            CipherSuite::TLS_AES_256_GCM_SHA384 | CipherSuite::TLS_AES_128_GCM_SHA256 => {
+                Arc::new(Gcm::new(*self))
+            }
             CipherSuite::TLS_CHACHA20_POLY1305_SHA256 => Arc::<Poly1305>::default(),
             _ => return Err(TlsError::InsufficientSecurity),
         };

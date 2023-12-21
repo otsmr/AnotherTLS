@@ -6,7 +6,7 @@
 use crate::net::alert::TlsError;
 use crate::net::extensions::{
     Extension, ExtensionType, ExtensionWrapper, Extensions, KeyShare, ServerName,
-    SignatureAlgorithms, SupportedVersions, SupportedGroups
+    SignatureAlgorithms, SupportedGroups, SupportedVersions,
 };
 use crate::utils::bytes;
 
@@ -61,7 +61,7 @@ impl ClientExtension {
                 ExtensionType::SignatureAlgorithms => ClientExtension::SignatureAlgorithms(
                     SignatureAlgorithms::server_parse(&buf[consumed..])?,
                 ),
-                ExtensionType::SupportedGroups => continue
+                ExtensionType::SupportedGroups => continue,
             };
             consumed += size;
             extensions.push(extension);

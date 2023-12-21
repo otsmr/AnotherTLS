@@ -9,26 +9,32 @@ use std::fs::OpenOptions;
 use super::bytes;
 use std::io::Write;
 
-
 pub struct KeyLog {
     filepath: String,
-    client_random: String
+    client_random: String,
 }
 
 impl KeyLog {
     pub fn new(filepath: String, client_random: &[u8]) -> Self {
         let client_random = bytes::to_hex(client_random);
-        Self {filepath, client_random}
+        Self {
+            filepath,
+            client_random,
+        }
     }
 
     pub fn append_from_record_payload_protection(&self, keys: &RecordPayloadProtection) {
-
         if let Some(akeys) = keys.application_keys.as_ref() {
-            self.append_application_traffic_secrets(&akeys.server.traffic_secret, &akeys.client.traffic_secret);
+            self.append_application_traffic_secrets(
+                &akeys.server.traffic_secret,
+                &akeys.client.traffic_secret,
+            );
         } else {
-            self.append_handshake_traffic_secrets(&keys.handshake_keys.server.traffic_secret, &keys.handshake_keys.client.traffic_secret);
+            self.append_handshake_traffic_secrets(
+                &keys.handshake_keys.server.traffic_secret,
+                &keys.handshake_keys.client.traffic_secret,
+            );
         }
-
     }
 
     pub fn append_application_traffic_secrets(&self, server: &[u8], client: &[u8]) {

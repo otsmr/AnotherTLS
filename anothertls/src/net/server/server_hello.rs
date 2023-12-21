@@ -15,8 +15,8 @@ use crate::net::server::ServerConfig;
 use crate::rand::RngCore;
 use crate::utils::bytes::{self, ByteOrder};
 use crate::utils::log;
+use core::result::Result;
 use ibig::IBig;
-use std::result::Result;
 
 pub struct ServerHello<'a> {
     pub random: [u8; 32],

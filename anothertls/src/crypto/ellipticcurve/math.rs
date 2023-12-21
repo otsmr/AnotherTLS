@@ -6,8 +6,8 @@
 mod curve25519;
 mod jacobian;
 
-use jacobian::{jacobian_multiply, jacobian_add};
 use ibig::{ibig, IBig};
+use jacobian::{jacobian_add, jacobian_multiply};
 
 use crate::utils::bytes;
 
@@ -95,7 +95,6 @@ pub fn add(p: Point, q: Point, curve: &Curve) -> Point {
     }
 }
 
-
 pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
     match curve.equation {
         Equation::Montgomery => {
@@ -104,7 +103,7 @@ pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
             let res = curve25519::scalarmult(x, &a);
             Point {
                 x: bytes::to_ibig_be(&res),
-                y: ibig!(0)
+                y: ibig!(0),
             }
         }
         Equation::ShortWeierstrass => {
@@ -112,7 +111,6 @@ pub fn multiply(p: &Point, n: IBig, curve: &Curve) -> Point {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -126,15 +124,21 @@ mod tests {
         let curve = Curve::curve25519();
         let p = &curve.g;
         let test_cases = [
-            [ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16), ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16)],
-            [ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16), ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16)]
+            [
+                ibig!(_583909765fa12b89f9e986f2beb10e8684fd058b1ddb79dbb4bd48e6ba7be65c base 16),
+                ibig!(_771f6d3336a02e79c8c3758fccd6c14971ef40998133fe710fb23474f02d0664 base 16),
+            ],
+            [
+                ibig!(_909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf base 16),
+                ibig!(_9fd7ad6dcff4298dd3f96d5b1b2af910a0535b1488d7f8fabb349a982880b615 base 16),
+            ],
         ];
         for test_case in test_cases {
             let scalar = test_case[0].clone();
             let result = math::multiply(p, scalar, &curve);
             let expected = Point {
                 x: test_case[1].clone(),
-                y: ibig!(0)
+                y: ibig!(0),
             };
             assert!(result == expected);
         }
@@ -155,7 +159,6 @@ mod tests {
     //         .y
     //         .eq(&ibig!(_8b1babf616e2094b38d4b97c5e83182d3478734247a5a8523828430f99668ebf base 16)));
     // }
-
 
     #[test]
     fn test_weierstrass_add() {

@@ -7,13 +7,12 @@
 
 #![allow(non_snake_case)]
 
-use crate::net::alert::TlsError;
 use super::{Blocksize, AES};
 use crate::crypto::{Cipher, CipherSuite};
+use crate::net::alert::TlsError;
 use crate::utils::bytes;
 
 pub struct Gcm(CipherSuite);
-
 
 impl Gcm {
     pub fn new(cs: CipherSuite) -> Self {
@@ -165,8 +164,8 @@ impl Cipher for Gcm {
 #[cfg(test)]
 mod tests {
     use super::Gcm;
-    use crate::crypto::CipherSuite;
     use crate::crypto::ciphersuite::Cipher;
+    use crate::crypto::CipherSuite;
     use crate::utils::bytes::from_hex;
 
     #[test]

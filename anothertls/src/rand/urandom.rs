@@ -6,7 +6,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use ibig::{IBig, ibig};
+use ibig::{ibig, IBig};
 
 use crate::rand::RngCore;
 use crate::utils::bytes;
@@ -43,8 +43,8 @@ impl Default for URandomRng {
 
 impl RngCore<IBig> for URandomRng {
     fn between(&mut self, min: usize, max: usize) -> IBig {
-        let min = ibig!(2).pow(min*8);
-        let max = ibig!(2).pow(max*8);
+        let min = ibig!(2).pow(min * 8);
+        let max = ibig!(2).pow(max * 8);
         self.next() % (max - min.clone()) + min
     }
     fn bytes(&mut self, size: usize) -> Vec<u8> {

@@ -5,7 +5,7 @@
  * https://www.rfc-editor.org/rfc/rfc5869
  */
 
-use super::{hmac::Hmac, HashType};
+use super::{HashType, Hmac};
 
 pub struct Hkdf {
     pub hash: HashType,
@@ -13,9 +13,11 @@ pub struct Hkdf {
 }
 
 impl Hkdf {
-
     pub fn from_prk(hash: HashType, pseudo_random_key: Vec<u8>) -> Self {
-        Self { hash, pseudo_random_key }
+        Self {
+            hash,
+            pseudo_random_key,
+        }
     }
 
     // 2.2 Step 1: Extract
@@ -54,9 +56,8 @@ impl Hkdf {
 
             last = hmac.result();
 
-            let needed = std::cmp::min(out_len, okm.len() + hash_len) - okm.len();
+            let needed = core::cmp::min(out_len, okm.len() + hash_len) - okm.len();
             okm.extend(&last[..needed]);
-
         }
 
         Some(okm)
@@ -105,7 +106,7 @@ mod tests {
         ];
 
         for (i, test_case) in test_cases.iter().enumerate() {
-            println!("Trying TestCase {}", i+1);
+            println!("Trying TestCase {}", i + 1);
             let ikm = bytes::from_hex(test_case.ikm);
             let salt = bytes::from_hex(test_case.salt);
             let info = bytes::from_hex(test_case.info);
@@ -113,7 +114,7 @@ mod tests {
 
             let hkdf = Hkdf::extract(test_case.hash, &salt, &ikm);
 
-            let okm = hkdf.expand(&info, test_case.okm.len()/2).unwrap();
+            let okm = hkdf.expand(&info, test_case.okm.len() / 2).unwrap();
             assert_eq!(okm_expected, okm);
         }
     }

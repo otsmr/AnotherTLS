@@ -3,17 +3,15 @@
  *
  */
 
-use crate::{
-    hash::{hkdf::Hkdf, hmac::Hmac, TranscriptHash},
-    net::{alert::TlsError, handshake::Handshake, key_schedule::get_hkdf_expand_label},
-};
-use std::result::Result;
+use crate::hash::{Hkdf, Hmac, TranscriptHash};
+use crate::net::{alert::TlsError, handshake::Handshake, key_schedule::get_hkdf_expand_label};
+
+use core::result::Result;
 
 pub fn get_finished_handshake(
     secret: &Hkdf,
     tshash: &dyn TranscriptHash,
 ) -> Result<Vec<u8>, TlsError> {
-
     let verify_data = get_verify_data_for_finished(secret, tshash)?;
 
     Ok(Handshake::to_bytes(
@@ -29,8 +27,10 @@ pub fn get_verify_data_for_finished(
     let finished_hash = tshash.finalize();
 
     let hash_size = tshash.get_type() as usize;
-    let finished_key = match secret.expand(&get_hkdf_expand_label(b"finished", b"", hash_size), hash_size)
-    {
+    let finished_key = match secret.expand(
+        &get_hkdf_expand_label(b"finished", b"", hash_size),
+        hash_size,
+    ) {
         Some(a) => a,
         None => return Err(TlsError::InternalError),
     };

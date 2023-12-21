@@ -3,8 +3,8 @@
  *
  */
 
-use crate::utils::der::{self, DerType, EncodedForm};
 use crate::net::alert::TlsError;
+use crate::utils::der::{self, DerType, EncodedForm};
 use crate::utils::{bytes, log};
 use ibig::IBig;
 

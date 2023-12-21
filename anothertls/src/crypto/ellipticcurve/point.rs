@@ -3,7 +3,7 @@
  *
  */
 
-use ibig::{IBig, ibig};
+use ibig::{ibig, IBig};
 
 use super::math;
 
@@ -49,7 +49,6 @@ impl JacobianPoint {
     }
 
     pub fn to_point(&self, p: &IBig) -> Point {
-
         let z = math::inv(&self.z, p);
         let x = self.x.clone() * z.pow(2) % p.clone();
         let y = self.y.clone() * z.pow(3) % p;

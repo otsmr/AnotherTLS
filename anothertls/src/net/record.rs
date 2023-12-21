@@ -4,11 +4,11 @@
  * https://www.rfc-editor.org/rfc/rfc8446#section-5.1
  */
 
-use std::sync::Arc;
 use crate::crypto::Cipher;
 use crate::hash::TranscriptHash;
 use crate::net::key_schedule::KeySchedule;
 use crate::net::{alert::TlsError, key_schedule::WriteKeys};
+use std::sync::Arc;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum RecordType {
@@ -146,7 +146,7 @@ impl RecordPayloadProtection {
         self.application_keys = WriteKeys::application_keys_from_master_secret(
             &self.key_schedule.hkdf_master_secret,
             &tshash.finalize(),
-            self.cipher.get_cipher_suite()
+            self.cipher.get_cipher_suite(),
         );
         if self.application_keys.is_none() {
             return Err(TlsError::InternalError);

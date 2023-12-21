@@ -12,6 +12,7 @@ use crate::utils::bytes;
 pub enum CertificateRequestExtension {
     SignatureAlgorithms(SignatureAlgorithms),
 }
+
 impl ExtensionWrapper for CertificateRequestExtension {
     fn get_extension(&self) -> Box<&dyn Extension> {
         match self {
@@ -39,9 +40,11 @@ impl CertificateRequestExtensions {
             let extension_type = extension_type.unwrap();
 
             let extension = match extension_type {
-                ExtensionType::SignatureAlgorithms => CertificateRequestExtension::SignatureAlgorithms(
-                    SignatureAlgorithms::client_parse(&buf[consumed..])?,
-                ),
+                ExtensionType::SignatureAlgorithms => {
+                    CertificateRequestExtension::SignatureAlgorithms(
+                        SignatureAlgorithms::client_parse(&buf[consumed..])?,
+                    )
+                }
                 _ => continue,
             };
             consumed += size;

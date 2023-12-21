@@ -3,12 +3,10 @@
  *
  */
 
-
 pub mod aes;
 pub mod chacha20;
-pub mod ellipticcurve;
 pub mod ciphersuite;
+pub mod ellipticcurve;
 
-pub use ciphersuite::CipherSuite;
 pub use ciphersuite::Cipher;
-
+pub use ciphersuite::CipherSuite;

@@ -45,12 +45,11 @@
 //!
 //! For more information about using AnotherTLS, see the `./examples` folder.
 
-
 pub mod crypto;
-pub mod net;
-pub mod utils;
-pub mod rand;
 pub mod hash;
+pub mod net;
+pub mod rand;
+pub mod utils;
 
 // pub use net::server::ServerConfig;
 pub use net::server::ServerConfigBuilder;

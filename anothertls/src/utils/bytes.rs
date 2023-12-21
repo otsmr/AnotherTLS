@@ -22,7 +22,7 @@ pub fn to_ibig_be(bytes: &[u8]) -> IBig {
 #[derive(PartialEq)]
 pub enum ByteOrder {
     Little,
-    Big
+    Big,
 }
 pub fn ibig_to_vec(num: IBig, order: ByteOrder) -> Vec<u8> {
     let b = <ibig::UBig as std::convert::TryFrom<IBig>>::try_from(num).unwrap();
@@ -62,12 +62,11 @@ pub fn str_to_u8(s: &str) -> u8 {
         "7" => 7,
         "8" => 8,
         "9" => 9,
-        _ => 0
+        _ => 0,
     }
-
 }
 pub fn str_to_u16(s: &str) -> u16 {
-    ((str_to_u8(&s[..1]) as u16)*10) + str_to_u8(&s[1..2]) as u16
+    ((str_to_u8(&s[..1]) as u16) * 10) + str_to_u8(&s[1..2]) as u16
 }
 // pub fn to_u32(buf: &[u8]) -> u32 {
 //     if buf.is_empty() {
@@ -102,9 +101,9 @@ pub fn to_u128_be_fill(bytes: &[u8]) -> u128 {
                 new[(16 - bytes.len()) + i] = *b;
             }
             &new
-        },
+        }
         a if a > 16 => &bytes[..16],
-        _ => bytes
+        _ => bytes,
     };
     to_u128_be(bytes)
 }
@@ -113,7 +112,7 @@ pub fn to_u128_be(bytes: &[u8]) -> u128 {
     let mut res: u128 = 0;
     let bytes: &[u8] = match bytes.len() {
         a if a > 16 => &bytes[..16],
-        _ => bytes
+        _ => bytes,
     };
     for (i, byte) in bytes.iter().enumerate() {
         res += (*byte as u128) << ((15 * 8) - i * 8);
@@ -125,7 +124,7 @@ pub fn to_u128_le(bytes: &[u8]) -> u128 {
     let mut res: u128 = 0;
     let bytes: &[u8] = match bytes.len() {
         a if a > 16 => &bytes[..16],
-        _ => bytes
+        _ => bytes,
     };
     for (i, byte) in bytes.iter().enumerate() {
         res += (*byte as u128) << (i * 8);

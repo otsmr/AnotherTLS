@@ -8,7 +8,7 @@ use crate::{
     crypto::CipherSuite,
     net::{
         alert::TlsError,
-        extensions::{KeyShareEntry, ClientExtension, ClientExtensions},
+        extensions::{ClientExtension, ClientExtensions, KeyShareEntry},
     },
     utils::log,
 };
@@ -22,7 +22,10 @@ pub struct ClientHello<'a> {
 }
 
 impl<'a> ClientHello<'a> {
-    pub fn new(random: &'a [u8], session_id: Option<&'a [u8]>) -> Result<ClientHello<'a>, TlsError> {
+    pub fn new(
+        random: &'a [u8],
+        session_id: Option<&'a [u8]>,
+    ) -> Result<ClientHello<'a>, TlsError> {
         let mut extensions = ClientExtensions::new();
         extensions.set_is_client();
         Ok(ClientHello {
@@ -30,10 +33,10 @@ impl<'a> ClientHello<'a> {
             cipher_suites: vec![
                 CipherSuite::TLS_AES_256_GCM_SHA384,
                 CipherSuite::TLS_AES_128_GCM_SHA256,
-                CipherSuite::TLS_CHACHA20_POLY1305_SHA256
+                CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
             ],
             legacy_session_id_echo: session_id,
-            extensions
+            extensions,
         })
     }
     pub fn as_bytes(&self) -> Result<Vec<u8>, TlsError> {
@@ -114,9 +117,8 @@ impl<'a> ClientHello<'a> {
         let extensions_len = ((buf[consumed] as usize) << 8) | (buf[consumed + 1] as usize);
         consumed += 2;
 
-        let extensions = ClientExtension::from_client_hello(
-            &buf[consumed..(consumed + extensions_len)],
-        )?;
+        let extensions =
+            ClientExtension::from_client_hello(&buf[consumed..(consumed + extensions_len)])?;
 
         Ok(ClientHello {
             random,

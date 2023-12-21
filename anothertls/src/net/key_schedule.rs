@@ -3,8 +3,8 @@
  *
  */
 
-use crate::crypto::CipherSuite;
 use crate::crypto::ellipticcurve::PrivateKey;
+use crate::crypto::CipherSuite;
 use crate::hash::{sha_x, HashType, TranscriptHash};
 use crate::{
     crypto::ellipticcurve::{math, Point},
@@ -15,7 +15,7 @@ use crate::{
 use ibig::ibig;
 
 use super::extensions::KeyShareEntry;
-use std::result::Result;
+use core::result::Result;
 
 pub fn get_hkdf_expand_label(label: &[u8], context: &[u8], out_len: usize) -> Vec<u8> {
     // 3.4.  Vectors (variable-length vector) <3
@@ -53,9 +53,8 @@ impl Key {
         let mut out = self.iv.to_vec();
 
         for i in 0..8 {
-            out[(12 - 1) - i] ^= (self.sequence_number >> (i*8)) as u8;
+            out[(12 - 1) - i] ^= (self.sequence_number >> (i * 8)) as u8;
         }
-
 
         // FIXME: Because the size of sequence numbers is 64-bit, they should not wrap. If a TLS
         // implementation would need to wrap a sequence number, it MUST either rekey (Section
@@ -73,14 +72,22 @@ pub struct WriteKeys {
 impl WriteKeys {
     pub fn handshake_keys(key_schedule: &KeySchedule, cs: CipherSuite) -> Option<Self> {
         let (key_len, iv_len) = cs.get_key_and_iv_len();
-        let server = Key::from_hkdf(&key_schedule.server_handshake_traffic_secret, key_len, iv_len)?;
-        let client = Key::from_hkdf(&key_schedule.client_handshake_traffic_secret, key_len, iv_len)?;
+        let server = Key::from_hkdf(
+            &key_schedule.server_handshake_traffic_secret,
+            key_len,
+            iv_len,
+        )?;
+        let client = Key::from_hkdf(
+            &key_schedule.client_handshake_traffic_secret,
+            key_len,
+            iv_len,
+        )?;
         Some(Self { server, client })
     }
     pub fn application_keys_from_master_secret(
         hkdf_master_secret: &Hkdf,
         handshake_hash: &[u8],
-        cs: CipherSuite
+        cs: CipherSuite,
     ) -> Option<Self> {
         let hash = hkdf_master_secret.hash;
         let hash_len = hash as usize;

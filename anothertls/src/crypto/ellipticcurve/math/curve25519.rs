@@ -4,7 +4,6 @@
  * Code based (almost completely) on https://martin.kleppmann.com/papers/curve25519.pdf
  */
 
-
 type FieldElem = [i64; 16];
 
 fn unpack25519(input: [u8; 32]) -> FieldElem {
@@ -108,9 +107,7 @@ fn pack25519(input: &FieldElem) -> [u8; 32] {
     out
 }
 
-
-pub fn scalarmult(point_x: [u8; 32], scalar: &[u8; 32]) -> [u8; 32]
-{
+pub fn scalarmult(point_x: [u8; 32], scalar: &[u8; 32]) -> [u8; 32] {
     let mut clamped = *scalar;
     clamped[0] &= 0xf8;
     clamped[31] = (clamped[31] & 0x7f) | 0x40;

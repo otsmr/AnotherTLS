@@ -6,7 +6,9 @@
 // TODO: Validate server certificate against os trusted CA
 // $ security verify-cert
 
-use crate::{crypto::ellipticcurve::PrivateKey, log, net::handshake::Certificate};
+use crate::crypto::ellipticcurve::PrivateKey;
+use crate::log;
+use crate::net::handshake::Certificate;
 
 pub struct ClientConfig {
     pub server_name: Option<String>,
@@ -65,7 +67,7 @@ impl ClientConfigBuilder {
         self.keylog = Some("keylog.txt".to_string());
         self
     }
-    pub fn build(self) -> std::result::Result<ClientConfig, String> {
+    pub fn build(self) -> core::result::Result<ClientConfig, String> {
         if self.client_cert.is_some() && self.client_key.is_none() {
             panic!("No private key was set for the client certificate.")
         }

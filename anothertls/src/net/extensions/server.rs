@@ -4,10 +4,11 @@
  */
 
 // use crate::utils::x509::Extensions;
-use crate::net::extensions::{
-    Extension, ExtensionWrapper, Extensions, KeyShare, SignatureAlgorithms, SupportedVersions, ExtensionType
-};
 use crate::net::alert::TlsError;
+use crate::net::extensions::{
+    Extension, ExtensionType, ExtensionWrapper, Extensions, KeyShare, SignatureAlgorithms,
+    SupportedVersions,
+};
 use crate::utils::bytes;
 
 pub enum ServerExtension {
@@ -46,17 +47,16 @@ impl ServerExtensions {
             let extension_type = extension_type.unwrap();
 
             let extension = match extension_type {
-                ExtensionType::KeyShare => {
-                    ServerExtension::KeyShare(KeyShare::client_parse(&buf[consumed..consumed + size])?)
-                }
-                ExtensionType::SupportedVersions => {
-                    ServerExtension::SupportedVersions(SupportedVersions::client_parse(&buf[consumed..])?)
-                }
+                ExtensionType::KeyShare => ServerExtension::KeyShare(KeyShare::client_parse(
+                    &buf[consumed..consumed + size],
+                )?),
+                ExtensionType::SupportedVersions => ServerExtension::SupportedVersions(
+                    SupportedVersions::client_parse(&buf[consumed..])?,
+                ),
                 ExtensionType::SignatureAlgorithms => ServerExtension::SignatureAlgorithms(
                     SignatureAlgorithms::client_parse(&buf[consumed..])?,
                 ), // ExtensionType::SupportedGroups => continue, // TODO
-                _ => continue
-                   // ExtensionType::PSKKeyExchangeMode => continue, // TODO
+                _ => continue, // ExtensionType::PSKKeyExchangeMode => continue, // TODO
             };
             consumed += size;
             extensions.push(extension);

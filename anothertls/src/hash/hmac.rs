@@ -5,44 +5,43 @@
  *
  */
 
-use super::{HashType, sha256, sha384};
+use crate::hash::{sha256, sha384, HashType};
 
 pub struct Hmac<'a> {
     hash: HashType,
     key: &'a [u8],
-    pub input: Vec<u8>
+    pub input: Vec<u8>,
 }
 
 impl<'a> Hmac<'a> {
     pub fn new(hash: HashType, key: &'a [u8]) -> Self {
-        Hmac { hash, key, input: vec![] }
+        Hmac {
+            hash,
+            key,
+            input: vec![],
+        }
     }
+
     pub fn update(&mut self, buf: &[u8]) {
         self.input.extend_from_slice(buf);
     }
+
     pub fn result(&self) -> Vec<u8> {
-
-
-        // FIMXE: This is realy bad code
-        let mut k_ipad = vec![];
-        let mut k_opad = vec![];
-        let mut padded_key = vec![];
+        let mut k_ipad = [0; 128];
+        let mut k_opad = [0; 128];
+        let mut padded_key = [0; 128];
+        let mut size = 64;
 
         if self.hash == HashType::SHA384 {
-            k_opad.resize(128, 0);
-            k_ipad.resize(128, 0);
-            padded_key.resize(128, 0)
-        } else {
-            k_opad.resize(64, 0);
-            k_ipad.resize(64, 0);
-            padded_key.resize(64, 0)
+            size = 128;
         }
+
         let hashed_key;
 
         let key = if self.key.len() > 64 {
             hashed_key = match self.hash {
-                HashType::SHA256 => sha256(self.key).to_vec(),
-                HashType::SHA384 => sha384(self.key).to_vec()
+                HashType::SHA256 => sha256(self.key),
+                HashType::SHA384 => sha384(self.key),
             };
             &hashed_key
         } else {
@@ -53,33 +52,30 @@ impl<'a> Hmac<'a> {
             padded_key[i] = *k;
         }
 
-        for (i, k) in padded_key.iter().enumerate() {
-            k_opad[i] = k ^ 0x5C;
-            k_ipad[i] = k ^ 0x36;
+        for i in 0..size {
+            k_opad[i] = padded_key[i] ^ 0x5C;
+            k_ipad[i] = padded_key[i] ^ 0x36;
         }
 
-
         let mut input: Vec<u8> = Vec::with_capacity(256);
-        input.extend_from_slice(&k_opad);
+        input.extend_from_slice(&k_opad[0..size]);
 
         let mut k_ipad_text = Vec::with_capacity(self.input.len() + 64);
-        k_ipad_text.extend_from_slice(&k_ipad);
+        k_ipad_text.extend_from_slice(&k_ipad[0..size]);
         k_ipad_text.extend_from_slice(&self.input);
 
         match self.hash {
             HashType::SHA256 => {
                 input.extend_from_slice(&sha256(&k_ipad_text));
-                sha256(&input).to_vec()
+                sha256(&input)
             }
             HashType::SHA384 => {
                 input.extend_from_slice(&sha384(&k_ipad_text));
-                sha384(&input).to_vec()
+                sha384(&input)
             }
         }
-
     }
 }
-
 
 // Test Cases from: https://www.rfc-editor.org/rfc/rfc2202
 
@@ -92,12 +88,12 @@ mod tests {
 
     enum TestResult<'a> {
         SHA256(&'a str),
-        SHA384(&'a str)
+        SHA384(&'a str),
     }
     struct TestCase<'a> {
         key: &'a str,
         data: &'a str,
-        result: Vec<TestResult<'a>>
+        result: Vec<TestResult<'a>>,
     }
 
     #[test]
@@ -128,14 +124,13 @@ mod tests {
 
             println!("Test Case {i}");
             for res in test_case.result.iter() {
-
                 match res {
                     TestResult::SHA256(digest) => {
                         println!("SHA256");
                         let mut hmac = Hmac::new(HashType::SHA256, &key);
                         hmac.update(&data);
                         assert_eq!(digest.to_string(), bytes::to_hex(&hmac.result()));
-                    },
+                    }
                     TestResult::SHA384(digest) => {
                         println!("SHA384");
                         let mut hmac = Hmac::new(HashType::SHA384, &key);
@@ -145,6 +140,5 @@ mod tests {
                 }
             }
         }
-
     }
 }

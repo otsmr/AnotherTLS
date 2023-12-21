@@ -3,21 +3,18 @@
  *
  */
 
-use crate::{net::{
-    alert::{AlertLevel, TlsError},
-    record::{Record, RecordPayloadProtection, RecordType, Value},
-}, utils::log};
+use crate::net::alert::{AlertLevel, TlsError};
+use crate::net::record::{Record, RecordPayloadProtection, RecordType, Value};
+use crate::utils::log;
 
-use std::{
-    io::{Read, Write},
-    net::TcpStream,
-    result::Result,
-};
+use core::result::Result;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 
 pub struct TlsStream {
     stream: TcpStream,
     pub protection: Option<RecordPayloadProtection>,
-    buffer: Vec<u8>
+    buffer: Vec<u8>,
 }
 
 impl TlsStream {
@@ -25,7 +22,7 @@ impl TlsStream {
         Self {
             stream,
             protection: None,
-            buffer: Vec::with_capacity(2048)
+            buffer: Vec::with_capacity(2048),
         }
     }
 
@@ -33,7 +30,6 @@ impl TlsStream {
     /// This is useful in the handshake process, where multiple
     /// TLS records are send to the client.
     pub fn write_record(&mut self, typ: RecordType, data: &[u8]) -> Result<(), TlsError> {
-
         let record = Record::new(typ, Value::Ref(data));
 
         if let Some(protect) = self.protection.as_mut() {
@@ -48,10 +44,9 @@ impl TlsStream {
         }
 
         Ok(())
-
     }
 
-    pub fn flush(&mut self) -> Result<(), TlsError>{
+    pub fn flush(&mut self) -> Result<(), TlsError> {
         if self.stream.write_all(&self.buffer).is_err() {
             return Err(TlsError::BrokenPipe);
         };
@@ -117,7 +112,8 @@ impl TlsStream {
             let (typ, data) = protection.decrypt(record)?;
             record = Record::new(typ, Value::Owned(data));
             if record.content_type != RecordType::ApplicationData {
-                todo!("Handle handshake messages");
+                log::error!("Not yet implemented: Handle handshake messages");
+                return Err(TlsError::UnexpectedMessage);
             }
         } else if record.content_type != RecordType::Handshake {
             return Err(TlsError::UnexpectedMessage);
@@ -136,7 +132,6 @@ impl TlsStream {
 
     /// Write to the TLS stream.
     pub fn tls_write<'b>(&'b mut self, src: &'b [u8]) -> Result<(), TlsError> {
-
         if self.protection.is_none() {
             // Don't write to the socket, if no secure
             // channel is present.

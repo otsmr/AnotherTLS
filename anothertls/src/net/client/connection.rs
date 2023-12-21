@@ -20,9 +20,9 @@ use crate::net::{KeySchedule, TlsStream};
 use crate::rand::{RngCore, URandomRng};
 use crate::utils::keylog::KeyLog;
 use crate::utils::{bytes, bytes::ByteOrder, log};
+use core::result::Result;
 use ibig::IBig;
 use std::net::TcpStream;
-use std::result::Result;
 
 pub struct ClientConnection();
 
@@ -453,18 +453,17 @@ impl<'a> ClientHandshake<'a> {
 
         let fraqment = handshake.fraqment.to_owned();
 
-        let verify_data = Some(get_verify_data_for_finished(
+        let verify_data = get_verify_data_for_finished(
             &protection.key_schedule.server_handshake_traffic_secret,
             self.tshash.as_mut().unwrap().as_ref(),
-        )?);
+        )?;
 
         if let ClientHsState::FinishWithError(err) = self.state {
             log::error!("Abort connection: {err:?}");
             return Err(err);
         }
 
-        if fraqment != verify_data.unwrap() {
-            println!("ERROR");
+        if fraqment != verify_data {
             return Err(TlsError::DecryptError);
         }
 

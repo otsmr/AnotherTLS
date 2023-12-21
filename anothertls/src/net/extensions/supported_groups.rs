@@ -1,12 +1,11 @@
-
 /*
  * Copyright (c) 2023, Tobias Müller <git@tsmr.eu>
  *
  */
 
 use crate::net::alert::TlsError;
-use crate::net::extensions::ExtensionType;
 use crate::net::extensions::shared::Extension;
+use crate::net::extensions::ExtensionType;
 
 use super::NamedGroup;
 

@@ -64,6 +64,7 @@ impl Sha384 {
         }
     }
     fn calc_round(&mut self) {
+        #[rustfmt::skip]
         let k: [u64; 80] = [
             0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
             0x3956c25bf348b538, 0x59f111f1b605d019, 0x923f82a4af194f9b, 0xab1c5ed5da6d8118,
@@ -144,8 +145,14 @@ impl TranscriptHash for Sha384 {
             input: [0; 128],
             input_len: 0,
             state: [
-                0xcbbb9d5dc1059ed8, 0x629a292a367cd507, 0x9159015a3070dd17, 0x152fecd8f70e5939,
-                0x67332667ffc00b31, 0x8eb44a8768581511, 0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4,
+                0xcbbb9d5dc1059ed8,
+                0x629a292a367cd507,
+                0x9159015a3070dd17,
+                0x152fecd8f70e5939,
+                0x67332667ffc00b31,
+                0x8eb44a8768581511,
+                0xdb0c2e0d64f98fa7,
+                0x47b5481dbefa4fa4,
             ],
             length: 0,
         }
@@ -168,7 +175,7 @@ impl TranscriptHash for Sha384 {
             input: self.input,
             input_len: self.input_len,
             state: self.state,
-            length: self.length
+            length: self.length,
         };
         copy.padd_input();
         let mut out: [u8; 48] = [0; 48];
@@ -183,14 +190,13 @@ impl TranscriptHash for Sha384 {
             input: self.input,
             input_len: self.input_len,
             state: self.state,
-            length: self.length
+            length: self.length,
         })
     }
 
     fn get_type(&self) -> super::HashType {
         super::HashType::SHA384
     }
-
 }
 
 pub fn sha384(message: &[u8]) -> Vec<u8> {
@@ -202,14 +208,15 @@ pub fn sha384(message: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use crate::hash::sha384;
+    use core::fmt::Write;
 
     fn test_sha384_do(message: String, hash_expect: String) {
         println!("{message}");
         let message = message.as_bytes().to_vec();
-        let hash = sha384(&message)
-            .iter()
-            .map(|x| format!("{:02x}", x))
-            .collect::<String>();
+        let hash = sha384(&message).iter().fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        });
         assert_eq!(hash, hash_expect);
     }
 

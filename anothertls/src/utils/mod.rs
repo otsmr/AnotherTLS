@@ -5,12 +5,11 @@
 
 pub mod base64;
 pub mod bytes;
-pub mod pem;
 pub mod der;
-pub mod keylog;
 pub mod error;
+pub mod keylog;
+pub mod pem;
 
 #[macro_use]
 pub mod log;
 pub mod x509;
-
